@@ -1,0 +1,40 @@
+name: CD
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Deploy on VPS (build & run via Docker Compose)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            cd /root/srv/simudza-web
+
+            echo "Updating code"
+            git fetch origin
+            git reset --hard origin/master
+
+            echo "Stopping containers"
+            docker compose down
+
+            echo "Building containers"
+            docker compose build
+
+            echo "Starting containers"
+            docker compose up -d
+
+            echo "Cleanup"
+            docker system prune -f

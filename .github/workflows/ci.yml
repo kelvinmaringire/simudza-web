@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: simudza_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d simudza_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t 7612/simudza-backend:ci .
+
+      - name: Run Django checks
+        run: |
+          docker run --rm \
+            --add-host=host.docker.internal:host-gateway \
+            -e DJANGO_SETTINGS_MODULE=simudza.settings \
+            -e DJANGO_ENV=development \
+            -e POSTGRES_HOST=host.docker.internal \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=simudza_test \
+            -e DJANGO_SECRET_KEY=ci-test-secret-key \
+            7612/simudza-backend:ci \
+            python manage.py check
+
+      - name: Run migrations check
+        run: |
+          docker run --rm \
+            --add-host=host.docker.internal:host-gateway \
+            -e DJANGO_SETTINGS_MODULE=simudza.settings \
+            -e DJANGO_ENV=development \
+            -e POSTGRES_HOST=host.docker.internal \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=simudza_test \
+            -e DJANGO_SECRET_KEY=ci-test-secret-key \
+            7612/simudza-backend:ci \
+            python manage.py makemigrations --check --dry-run
+
+      - name: Run Django tests
+        run: |
+          docker run --rm \
+            --add-host=host.docker.internal:host-gateway \
+            -e DJANGO_SETTINGS_MODULE=simudza.settings \
+            -e DJANGO_ENV=development \
+            -e POSTGRES_HOST=host.docker.internal \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=simudza_test \
+            -e DJANGO_SECRET_KEY=ci-test-secret-key \
+            7612/simudza-backend:ci \
+            python manage.py test
