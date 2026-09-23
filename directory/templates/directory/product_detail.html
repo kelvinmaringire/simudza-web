@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block body_class %}template-directory-product{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-6">
+    <p class="mb-4">
+        <a href="{% url 'directory:index' %}" class="link link-hover text-sm">← Directory</a>
+    </p>
+
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+        {% if product.image %}
+            {% image product.image fill-320x320 as hero %}
+            <img
+                class="rounded-box w-full max-w-xs object-cover"
+                src="{{ hero.url }}"
+                alt="{{ product.name }}"
+                width="320"
+                height="320"
+            />
+        {% endif %}
+
+        <div class="grow">
+            <h1 class="text-2xl font-semibold">{{ product.name }}</h1>
+            {% if product.business %}
+                <p class="mt-1 opacity-70">{{ product.business.name }}</p>
+            {% endif %}
+            {% if product.category %}
+                <p class="mt-1 text-sm opacity-60">{{ product.category }}</p>
+            {% endif %}
+            {% if listing.featured %}
+                <span class="badge badge-primary mt-3">Featured</span>
+            {% endif %}
+            {% if product.short_description %}
+                <p class="mt-4">{{ product.short_description }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if product.description %}
+        <div class="prose mt-8 max-w-none">{{ product.description|linebreaks }}</div>
+    {% endif %}
+</div>
+{% endblock %}

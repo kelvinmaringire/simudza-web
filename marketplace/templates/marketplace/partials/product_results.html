@@ -1,0 +1,102 @@
+{% load wagtailimages_tags %}
+
+{% if products %}
+    <p class="mb-3 text-xs tracking-wide opacity-60">
+        {% if q %}
+            Results for “{{ q }}” · {{ page_obj.paginator.count }} found
+        {% else %}
+            {{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}
+        {% endif %}
+    </p>
+
+    <ul class="grid gap-3 sm:grid-cols-2">
+        {% for product in products %}
+            {% if product.image %}
+                {% image product.image fill-320x200 as thumb %}
+                {% image product.image fill-64x64 as cart_thumb %}
+            {% endif %}
+            <li class="card border-base-300 bg-base-100 border shadow-sm">
+                <figure class="px-4 pt-4">
+                    {% if product.image %}
+                        <img
+                            class="aspect-[16/10] w-full rounded-box object-cover"
+                            src="{{ thumb.url }}"
+                            alt="{{ product.name }}"
+                            width="320"
+                            height="200"
+                        />
+                    {% else %}
+                        <div class="bg-base-200 flex aspect-[16/10] w-full items-center justify-center rounded-box text-sm opacity-50">
+                            No image
+                        </div>
+                    {% endif %}
+                </figure>
+                <div class="card-body gap-2 p-4">
+                    <h2 class="card-title text-base">{{ product.name }}</h2>
+                    <p class="text-xs uppercase font-semibold opacity-60">
+                        {% if product.business %}{{ product.business.name }}{% endif %}
+                        {% if product.business and product.category %} · {% endif %}
+                        {% if product.category %}{{ product.category.name }}{% endif %}
+                    </p>
+                    {% if product.short_description %}
+                        <p class="text-sm opacity-70 line-clamp-2">{{ product.short_description }}</p>
+                    {% endif %}
+                    <div class="mt-1 flex items-center justify-between gap-2">
+                        <span class="text-lg font-semibold">${{ product.price }}</span>
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-sm"
+                            @click="$store.cart.add({
+                                id: {{ product.pk }},
+                                name: '{{ product.name|escapejs }}',
+                                price: '{{ product.price }}',
+                                imageUrl: '{% if product.image %}{{ cart_thumb.url }}{% endif %}',
+                                maxQty: {{ product.inventory.available_quantity }}
+                            })"
+                        >
+                            Add to cart
+                        </button>
+                    </div>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if page_obj.has_other_pages %}
+        <div class="join mt-6 flex justify-center">
+            {% if page_obj.has_previous %}
+                <button
+                    type="button"
+                    class="join-item btn btn-sm"
+                    hx-get="{% url 'marketplace:results' %}?q={{ q|urlencode }}&page={{ page_obj.previous_page_number }}"
+                    hx-target="#marketplace-results"
+                    hx-swap="innerHTML"
+                >
+                    Previous
+                </button>
+            {% endif %}
+            <span class="join-item btn btn-sm btn-disabled">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            {% if page_obj.has_next %}
+                <button
+                    type="button"
+                    class="join-item btn btn-sm"
+                    hx-get="{% url 'marketplace:results' %}?q={{ q|urlencode }}&page={{ page_obj.next_page_number }}"
+                    hx-target="#marketplace-results"
+                    hx-swap="innerHTML"
+                >
+                    Next
+                </button>
+            {% endif %}
+        </div>
+    {% endif %}
+{% else %}
+    <div class="py-12 text-center opacity-60">
+        {% if q %}
+            No products match “{{ q }}”.
+        {% else %}
+            No products available in the marketplace yet.
+        {% endif %}
+    </div>
+{% endif %}

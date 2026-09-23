@@ -1,0 +1,67 @@
+<div class="flex min-h-full flex-col" x-data>
+    <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Your cart</h2>
+        <label for="cart-drawer" class="btn btn-ghost btn-sm btn-circle" aria-label="Close cart">✕</label>
+    </div>
+
+    <template x-if="!$store.cart.isEmpty">
+        <div class="flex min-h-0 flex-1 flex-col">
+            <ul class="divide-base-300 flex-1 divide-y">
+                <template x-for="item in $store.cart.items" :key="item.id">
+                    <li class="flex gap-3 py-3">
+                        <div class="shrink-0">
+                            <img
+                                x-show="item.imageUrl"
+                                class="size-12 rounded-box object-cover"
+                                :src="item.imageUrl"
+                                :alt="item.name"
+                                width="48"
+                                height="48"
+                            />
+                            <div
+                                x-show="!item.imageUrl"
+                                class="bg-base-200 flex size-12 items-center justify-center rounded-box text-xs opacity-50"
+                            >
+                                —
+                            </div>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-medium" x-text="item.name"></p>
+                            <p class="text-sm opacity-70">
+                                $<span x-text="item.price"></span> each
+                            </p>
+                            <div class="mt-2 flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    class="input input-bordered input-sm w-16"
+                                    :max="item.maxQty"
+                                    :value="item.quantity"
+                                    :aria-label="'Quantity for ' + item.name"
+                                    @change="$store.cart.setQuantity(item.id, $event.target.value)"
+                                />
+                                <button
+                                    type="button"
+                                    class="btn btn-ghost btn-xs"
+                                    @click="$store.cart.remove(item.id)"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+            <div class="border-base-300 mt-4 border-t pt-4">
+                <p class="text-sm opacity-70">Checkout coming soon.</p>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="$store.cart.isEmpty">
+        <div class="flex flex-1 flex-col items-center justify-center py-12 text-center opacity-60">
+            <p>Your cart is empty.</p>
+            <a href="{% url 'marketplace:index' %}" class="btn btn-ghost btn-sm mt-3">Browse marketplace</a>
+        </div>
+    </template>
+</div>

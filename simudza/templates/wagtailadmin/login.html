@@ -1,0 +1,16 @@
+{% extends "wagtailadmin/login.html" %}
+{% load static %}
+
+{% block branding_login %}Sign in to Simudza{% endblock %}
+
+{% block branding_logo %}
+    <div class="login-logo">
+        <img
+            src="{% static 'assets/logo.svg' %}"
+            alt="Simudza"
+            width="140"
+            height="32"
+            decoding="async"
+        />
+    </div>
+{% endblock %}

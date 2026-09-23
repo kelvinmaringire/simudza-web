@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Create account{% endblock %}
+
+{% block body_class %}template-accounts-signup{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md px-4 py-10">
+    <header class="mb-6 text-center">
+        <h1 class="text-2xl font-semibold">Create account</h1>
+        <p class="mt-2 text-sm opacity-70">Join Simudza to shop and explore</p>
+    </header>
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-error mb-4 text-sm" role="alert">
+            {% for error in form.non_field_errors %}
+                <span>{{ error }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'accounts:signup' %}" class="flex flex-col gap-4">
+        {% csrf_token %}
+
+        {% include "accounts/partials/text_field.html" with field=form.username label="Username" autocomplete="username" required=True autofocus=True placeholder="Username" %}
+
+        {% include "accounts/partials/text_field.html" with field=form.email label="Email" type="email" autocomplete="email" inputmode="email" required=True placeholder="Email address" %}
+
+        {% include "accounts/partials/password_field.html" with field=form.password1 label="Password" autocomplete="new-password" required=True placeholder="Password" help_text=form.password1.help_text %}
+
+        {% include "accounts/partials/password_field.html" with field=form.password2 label="Confirm password" autocomplete="new-password" required=True placeholder="Confirm password" %}
+
+        <button type="submit" class="btn btn-primary w-full">Create account</button>
+    </form>
+
+    <p class="mt-6 text-center text-sm opacity-70">
+        Already have an account?
+        <a href="{% url 'accounts:login' %}" class="link link-hover font-medium">Sign in</a>
+    </p>
+</div>
+{% endblock %}

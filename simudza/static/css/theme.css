@@ -1,0 +1,16 @@
+/*
+ * Simudza brand tokens.
+ *
+ * Overrides only the daisyUI theme variables we actually change; every other
+ * token keeps its daisyUI default. No selectors, no component rules — those
+ * belong in simudza.css.
+ *
+ * This file is unlayered, so it wins over daisyUI's @layer base regardless of
+ * which theme is active. Because of that, :root here also applies under
+ * [data-theme="dark"]; the dark block below re-overrides what must differ.
+ */
+
+:root {
+    --color-primary: #127818;
+    --color-primary-content: #ffffff;
+}

@@ -1,0 +1,80 @@
+# Environment / secrets — never commit real credentials
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.installed.cfg
+.eggs/
+dist/
+build/
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+.tox/
+.nox/
+.hypothesis/
+.python-version
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Django / Wagtail
+*.sqlite3
+db.sqlite3
+/media/
+/static/
+staticfiles/
+*.log
+local_settings.py
+
+# Node (if used for frontend tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE / editor / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker / local overrides
+*.local
+docker-compose.override.yml
+
+# Misc
+/tmp/
+.vagrant/
+Vagrantfile.local

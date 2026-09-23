@@ -1,0 +1,96 @@
+services:
+  web:
+    build: .                        # Build the Dockerfile in this directory
+    container_name: simudza_web
+    image: 7612/simudza-backend:0.1.0
+    ports:
+      - "8002:8000"                 # Map container port 8000 to host port 8002
+    volumes:
+      - .:/app                      # Mount project code for live development (hot reload)
+      - simudza_static:/app/static  # Persistent storage for collected static files
+      - simudza_media:/app/media    # Persistent storage for uploaded media
+    env_file:
+      - .env                        # Load environment variables from .env
+    depends_on:
+      db:
+        condition: service_healthy  # Wait for the DB to be healthy before starting
+    labels:
+      # Only used when this stack runs behind Traefik (see `traefik_net` below).
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_net"
+      - "traefik.http.routers.simudza.tls=true"
+      - "traefik.http.routers.simudza.tls.certresolver=cloudflare"
+      - "traefik.http.routers.simudza.entrypoints=websecure"
+      - "traefik.http.routers.simudza.rule=Host(`simudza.com`)"
+      - "traefik.http.services.simudza.loadbalancer.server.port=8000"
+    restart: unless-stopped
+    networks:
+      - simudza_net
+      - traefik_net
+
+  db:
+    image: postgis/postgis:17-3.5   # PostgreSQL 17 with PostGIS 3.5
+    container_name: simudza_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - simudza_db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # Loaded from .env
+      POSTGRES_USER: ${POSTGRES_USER}          # Loaded from .env
+      POSTGRES_DB: ${POSTGRES_DB}              # Loaded from .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    restart: unless-stopped
+    networks:
+      - simudza_net
+
+  adminer:
+    image: adminer:latest
+    container_name: simudza_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - simudza_net    
+
+  nginx:
+    image: nginx:alpine
+    container_name: simudza_nginx
+    volumes:
+      - simudza_static:/var/www/static:ro
+      - simudza_media:/var/www/media:ro
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_net"
+      - "traefik.http.routers.simudza_nginx.tls=true"
+      - "traefik.http.routers.simudza_nginx.tls.certresolver=cloudflare"
+      - "traefik.http.routers.simudza_nginx.entrypoints=websecure"
+      - "traefik.http.routers.simudza_nginx.rule=Host(`simudza.com`) && (PathPrefix(`/static`) || PathPrefix(`/media`))"
+      - "traefik.http.routers.simudza_nginx.priority=100"
+      - "traefik.http.services.simudza_nginx.loadbalancer.server.port=80"
+    depends_on:
+      - web
+    restart: unless-stopped
+    networks:
+      - simudza_net
+      - traefik_net
+
+# Named volumes
+volumes:
+  simudza_db:      # PostgreSQL data
+  simudza_static:  # Collected static files, shared with nginx
+  simudza_media:   # Uploaded media, shared with nginx
+
+networks:
+  simudza_net:
+    external: true
+  traefik_net:
+    external: true

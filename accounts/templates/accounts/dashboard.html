@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body_class %}template-accounts-dashboard{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-6">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="avatar placeholder">
+                <div class="bg-neutral text-neutral-content w-12 rounded-full">
+                    <span class="text-lg">{{ display_name|make_list|first|upper }}</span>
+                </div>
+            </div>
+            <div>
+                <h1 class="text-2xl font-semibold">Hello, {{ display_name }}</h1>
+                <p class="text-sm opacity-70">{{ user.email|default:user.username }}</p>
+            </div>
+        </div>
+        <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost btn-sm">Sign out</button>
+        </form>
+    </div>
+
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 mb-6 w-full shadow">
+        <div class="stat">
+            <div class="stat-title">Cart items</div>
+            <div class="stat-value text-primary">{{ cart_item_count }}</div>
+            <div class="stat-desc">
+                <a href="{% url 'marketplace:index' %}" class="link link-hover">Go to marketplace</a>
+            </div>
+        </div>
+        <div class="stat">
+            <div class="stat-title">Orders</div>
+            <div class="stat-value">{{ order_count }}</div>
+            <div class="stat-desc">Your purchase history</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title">Account</div>
+            <div class="stat-value text-sm font-medium">
+                {% if user.is_staff %}Staff{% else %}Member{% endif %}
+            </div>
+            <div class="stat-desc">Signed in</div>
+        </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+        <div class="card border-base-300 bg-base-100 border shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-base">Marketplace</h2>
+                <p class="text-sm opacity-70">Browse products and manage your cart.</p>
+                <div class="card-actions justify-end">
+                    <a href="{% url 'marketplace:index' %}" class="btn btn-primary btn-sm">Shop</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-base-300 bg-base-100 border shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-base">Directory</h2>
+                <p class="text-sm opacity-70">Explore local products and businesses.</p>
+                <div class="card-actions justify-end">
+                    <a href="{% url 'directory:index' %}" class="btn btn-ghost btn-sm">Browse</a>
+                </div>
+            </div>
+        </div>
+
+        {% if user.is_staff %}
+            <div class="card border-base-300 bg-base-100 border shadow-sm sm:col-span-2">
+                <div class="card-body">
+                    <h2 class="card-title text-base">Site management</h2>
+                    <p class="text-sm opacity-70">Open Wagtail to manage products, inventory, and more.</p>
+                    <div class="card-actions justify-end">
+                        <a href="/admin/" class="btn btn-secondary btn-sm">Open admin</a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <ul class="menu bg-base-100 border-base-300 mt-6 rounded-box border shadow-sm">
+        <li class="menu-title">Account</li>
+        <li><a href="{% url 'accounts:password_change' %}">Change password</a></li>
+        <li class="menu-title">Quick links</li>
+        <li><a href="{% url 'marketplace:index' %}">Marketplace</a></li>
+        <li><a href="{% url 'directory:index' %}">Directory</a></li>
+        <li><a href="/">Home</a></li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags %}
+
+{% block title %}
+    {% if marketplace_page %}{{ marketplace_page.title }}{% else %}Marketplace{% endif %}
+{% endblock %}
+
+{% block body_class %}template-marketplace{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-6">
+    <header class="mb-6">
+        <h1 class="text-2xl font-semibold">
+            {% if marketplace_page %}{{ marketplace_page.title }}{% else %}Marketplace{% endif %}
+        </h1>
+        {% if marketplace_page and marketplace_page.intro %}
+            <div class="prose mt-2 max-w-none opacity-80">
+                {{ marketplace_page.intro|richtext }}
+            </div>
+        {% endif %}
+    </header>
+
+    <label class="input mb-4 w-full">
+        <svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+            <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+            </g>
+        </svg>
+        <input
+            id="marketplace-search"
+            type="search"
+            name="q"
+            class="grow"
+            placeholder="Search products, brands, businesses…"
+            value="{{ q }}"
+            autocomplete="off"
+            aria-label="Search marketplace"
+            hx-get="{% url 'marketplace:results' %}"
+            hx-target="#marketplace-results"
+            hx-swap="innerHTML"
+            hx-trigger="keyup changed delay:300ms, search"
+            hx-indicator="#marketplace-loading"
+        />
+    </label>
+
+    <div id="marketplace-loading" class="htmx-indicator mb-3 text-center text-sm opacity-60">
+        Searching…
+    </div>
+
+    <div id="marketplace-results">
+        {% include "marketplace/partials/product_results.html" %}
+    </div>
+</div>
+{% endblock %}

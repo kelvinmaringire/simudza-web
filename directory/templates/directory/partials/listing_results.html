@@ -1,0 +1,89 @@
+{% load wagtailimages_tags %}
+
+{% if listings %}
+    <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">
+        {% if q %}
+            Results for “{{ q }}” · {{ page_obj.paginator.count }} found
+        {% else %}
+            {{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}
+        {% endif %}
+    </li>
+
+    {% for listing in listings %}
+        {% with product=listing.product %}
+            <li class="list-row">
+                <div>
+                    {% if product.image %}
+                        {% image product.image fill-80x80 as thumb %}
+                        <img
+                            class="size-10 rounded-box object-cover"
+                            src="{{ thumb.url }}"
+                            alt="{{ product.name }}"
+                            width="40"
+                            height="40"
+                        />
+                    {% else %}
+                        <div class="bg-base-200 flex size-10 items-center justify-center rounded-box text-xs opacity-50">
+                            —
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="list-col-grow">
+                    <a href="{{ listing.get_absolute_url }}" class="link link-hover font-medium">
+                        {{ product.name }}
+                    </a>
+                    <div class="text-xs uppercase font-semibold opacity-60">
+                        {% if product.business %}{{ product.business.name }}{% endif %}
+                        {% if product.business and product.category %} · {% endif %}
+                        {% if product.category %}{{ product.category.name }}{% endif %}
+                    </div>
+                    {% if product.short_description %}
+                        <p class="mt-1 text-sm opacity-70 line-clamp-2">{{ product.short_description }}</p>
+                    {% endif %}
+                </div>
+                <div class="flex flex-col items-end gap-1">
+                    {% if listing.featured %}
+                        <span class="badge badge-primary badge-sm">Featured</span>
+                    {% endif %}
+                    <a href="{{ listing.get_absolute_url }}" class="btn btn-ghost btn-sm">View</a>
+                </div>
+            </li>
+        {% endwith %}
+    {% endfor %}
+
+    {% if page_obj.has_other_pages %}
+        <li class="p-4">
+            <div class="join">
+                {% if page_obj.has_previous %}
+                    <a
+                        class="btn btn-sm join-item"
+                        href="?q={{ q|urlencode }}&page={{ page_obj.previous_page_number }}"
+                        hx-get="{% url 'directory:results' %}?q={{ q|urlencode }}&page={{ page_obj.previous_page_number }}"
+                        hx-target="#directory-results"
+                        hx-swap="innerHTML"
+                    >«</a>
+                {% endif %}
+                <button class="btn btn-sm join-item btn-disabled">
+                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                </button>
+                {% if page_obj.has_next %}
+                    <a
+                        class="btn btn-sm join-item"
+                        href="?q={{ q|urlencode }}&page={{ page_obj.next_page_number }}"
+                        hx-get="{% url 'directory:results' %}?q={{ q|urlencode }}&page={{ page_obj.next_page_number }}"
+                        hx-target="#directory-results"
+                        hx-swap="innerHTML"
+                    >»</a>
+                {% endif %}
+            </div>
+        </li>
+    {% endif %}
+{% else %}
+    <li class="p-6 text-center opacity-70">
+        {% if q %}
+            No products match “{{ q }}”.
+        {% else %}
+            No products in the directory yet.
+        {% endif %}
+    </li>
+{% endif %}

@@ -1,0 +1,17 @@
+[x-cloak] {
+    display: none !important;
+}
+
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    display: block;
+}
+
+/* Leave room for the fixed daisyUI dock at the bottom of the page. */
+body {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}

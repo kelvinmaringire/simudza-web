@@ -1,0 +1,22 @@
+<label class="form-control w-full">
+    <span class="label">
+        <span class="label-text">{{ label }}</span>
+    </span>
+    <input
+        type="{{ type|default:'text' }}"
+        name="{{ field.html_name }}"
+        id="{{ field.id_for_label }}"
+        value="{{ field.value|default:'' }}"
+        autocomplete="{{ autocomplete|default:'' }}"
+        inputmode="{{ inputmode|default:'' }}"
+        {% if required %}required{% endif %}
+        {% if autofocus %}autofocus{% endif %}
+        placeholder="{{ placeholder|default:'' }}"
+        class="input input-bordered w-full{% if field.errors %} input-error{% endif %}"
+    />
+    {% if field.errors %}
+        <span class="label">
+            <span class="label-text-alt text-error">{{ field.errors.0 }}</span>
+        </span>
+    {% endif %}
+</label>
