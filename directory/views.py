@@ -16,6 +16,22 @@ FILTER_PARAM_NAMES = (
     "verified",
 )
 
+SORT_OPTIONS = (
+    ("featured", "Featured"),
+    ("popular", "Most viewed"),
+    ("newest", "Newest"),
+    ("name", "Name: A–Z"),
+    ("name_desc", "Name: Z–A"),
+)
+
+SORT_ORDERING = {
+    "featured": ("-featured", "product__name"),
+    "popular": ("-views", "product__name"),
+    "newest": ("-product__created_at", "product__name"),
+    "name": ("product__name",),
+    "name_desc": ("-product__name",),
+}
+
 
 class DirectoryListingQuerysetMixin:
     """Shared queryset + search/filters for directory listing views."""
@@ -46,8 +62,16 @@ class DirectoryListingQuerysetMixin:
             .order_by("-featured", "product__name")
         )
 
+    def get_sort_key(self):
+        sort = self.request.GET.get("sort", "").strip()
+        return sort if sort in SORT_ORDERING else "featured"
+
     def get_queryset(self):
-        return self.get_filterset().qs.distinct()
+        return (
+            self.get_filterset()
+            .qs.distinct()
+            .order_by(*SORT_ORDERING[self.get_sort_key()])
+        )
 
     def get_filter_querystring(self):
         params = self.request.GET.copy()
@@ -73,6 +97,8 @@ class DirectoryListingQuerysetMixin:
         context["selected_category"] = selected_category
         context["category_tree"] = build_directory_category_tree(selected_category)
         context["filters_active"] = self.filters_are_active()
+        context["sort"] = self.get_sort_key()
+        context["sort_options"] = SORT_OPTIONS
         context["directory_page"] = DirectoryPage.objects.live().public().first()
         return context
 

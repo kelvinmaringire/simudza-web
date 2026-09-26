@@ -55,12 +55,6 @@ staticfiles/
 *.log
 local_settings.py
 
-# Node (if used for frontend tooling)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
 # IDE / editor / OS
 .idea/
 .vscode/

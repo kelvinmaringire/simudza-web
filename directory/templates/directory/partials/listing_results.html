@@ -1,14 +1,22 @@
 {% load wagtailimages_tags %}
 
 {% if listings %}
-    <div class="mb-3 flex items-baseline justify-between gap-3">
-        <p class="text-sm text-base-content/60">
+    <div class="mb-3 flex items-center justify-between gap-3">
+        <p class="min-w-0 text-sm text-base-content/60">
             {% if q %}
                 {{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }} for “{{ q }}”
             {% else %}
                 {{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}
             {% endif %}
         </p>
+        <label class="flex shrink-0 items-center gap-2">
+            <span class="sr-only text-[0.8125rem] text-base-content/55 sm:not-sr-only">Sort by</span>
+            <select name="sort" class="select select-sm w-auto rounded-full text-[0.8125rem]" aria-label="Sort products">
+                {% for value, label in sort_options %}
+                    <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
     </div>
 
     <div class="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-6 lg:grid-cols-4">

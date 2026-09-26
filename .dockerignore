@@ -12,8 +12,6 @@ __pycache__
 /tmp/
 /.vagrant/
 /Vagrantfile.local
-node_modules/
-/npm-debug.log
 /.idea/
 .vscode
 coverage
