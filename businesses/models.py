@@ -37,7 +37,7 @@ class Business(models.Model):
         VERIFIED = "verified", "Verified"
         REJECTED = "rejected", "Rejected"
 
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
 
     slug = models.SlugField(
         max_length=220,
