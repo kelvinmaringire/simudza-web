@@ -26,7 +26,7 @@
         <link rel="icon" type="image/svg+xml" href="{% static 'assets/favicon.svg' %}" />
 
         {# Theme: applied before first paint so there is no flash of the wrong theme #}
-        <script type="text/javascript" src="{% static 'js/theme.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/theme.js' %}?v={{ STATIC_VERSION }}"></script>
 
         {# Force all links in the live preview panel to be opened in a new tab #}
         {% if request.in_preview_panel %}
@@ -47,11 +47,11 @@
         />
 
         {# Project styles last so they override daisyUI/Tailwind #}
-        <link rel="stylesheet" type="text/css" href="{% static 'css/theme.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'css/simudza.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/theme.css' %}?v={{ STATIC_VERSION }}">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/simudza.css' %}?v={{ STATIC_VERSION }}">
 
         <script defer type="text/javascript" src="{% static 'js/htmx.min.js' %}"></script>
-        <script defer type="text/javascript" src="{% static 'js/cart.js' %}"></script>
+        <script defer type="text/javascript" src="{% static 'js/cart.js' %}?v={{ STATIC_VERSION }}"></script>
         <script defer src="{% static 'js/alpine.min.js' %}"></script>
 
         {% block extra_css %}
@@ -83,7 +83,7 @@
         </div>
 
         {# Global javascript #}
-        <script defer type="text/javascript" src="{% static 'js/simudza.js' %}"></script>
+        <script defer type="text/javascript" src="{% static 'js/simudza.js' %}?v={{ STATIC_VERSION }}"></script>
 
         {% block extra_js %}
         {# Override this in templates to add extra javascript #}

@@ -13,6 +13,6 @@ if [ "$DJANGO_ENV" = "production" ]; then
     echo "Running Uvicorn (production)..."
     exec uvicorn simudza.asgi:application --host 0.0.0.0 --port "${PORT:-8000}"
 else
-    echo "Running Uvicorn (development, autoreload)..."
-    exec uvicorn simudza.asgi:application --host 0.0.0.0 --port "${PORT:-8000}" --reload
+    echo "Running Django runserver (development)..."
+    exec python manage.py runserver "0.0.0.0:${PORT:-8000}"
 fi

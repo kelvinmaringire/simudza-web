@@ -50,7 +50,7 @@
         {% endif %}
     >
         <div class="min-w-0 lg:sticky lg:top-3">
-            {% if gallery %}
+        {% if gallery %}
                 <div
                     id="product-gallery-hero"
                     class="product-image-well relative flex aspect-square w-full"
@@ -68,15 +68,15 @@
                             alt="{{ item.alt }}"
                             width="{{ slide.width }}"
                             height="{{ slide.height }}"
-                            draggable="false"
+                    draggable="false"
                             {% if gallery|length > 1 %}
                             x-show="active === {{ forloop.counter0 }}"
                             {% if not forloop.first %}x-cloak{% endif %}
                             {% endif %}
-                        />
+                />
                     {% endfor %}
-                </div>
-                {% if gallery|length > 1 %}
+            </div>
+            {% if gallery|length > 1 %}
                     <ul
                         class="mt-2 flex gap-1.5 overflow-x-auto pb-0.5"
                         role="listbox"
@@ -97,24 +97,24 @@
                                     @click="select({{ forloop.counter0 }})"
                                     aria-label="{{ item.alt }} ({{ forloop.counter }} of {{ gallery|length }})"
                                 >
-                                    <img
-                                        class="max-h-full max-w-full object-contain"
-                                        src="{{ thumb.url }}"
-                                        alt=""
-                                        width="{{ thumb.width }}"
-                                        height="{{ thumb.height }}"
-                                        draggable="false"
-                                    />
+                            <img
+                                class="max-h-full max-w-full object-contain"
+                                src="{{ thumb.url }}"
+                                alt=""
+                                width="{{ thumb.width }}"
+                                height="{{ thumb.height }}"
+                                draggable="false"
+                            />
                                 </button>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
             {% else %}
                 <div class="product-image-well product-image-well__empty flex aspect-square w-full text-sm">
                     No image
                 </div>
-            {% endif %}
+        {% endif %}
         </div>
 
         <div class="min-w-0 lg:pt-1">
@@ -126,7 +126,7 @@
                 <p class="mt-1 text-base text-base-content/65">
                     {% if business %}
                         <a href="{{ business.get_absolute_url }}" class="link link-hover text-base-content/65">
-                            {% firstof product.brand_name business.name %}
+                    {% firstof product.brand_name business.name %}
                         </a>
                     {% else %}
                         {{ product.brand_name }}
@@ -199,8 +199,8 @@
                             </svg>
                             Website
                         </a>
-                    {% endif %}
-                </div>
+                {% endif %}
+            </div>
             {% endif %}
 
             {% if product.short_description or product.description %}
@@ -208,13 +208,13 @@
                     {% if product.short_description %}
                         <p>{{ product.short_description }}</p>
                     {% endif %}
-                    {% if product.description %}
+    {% if product.description %}
                         <div class="prose max-w-none text-sm leading-relaxed text-base-content/70 sm:text-[0.95rem]">
                             {{ product.description|linebreaks }}
-                        </div>
-                    {% endif %}
-                </div>
-            {% endif %}
+                    </div>
+                {% endif %}
+                    </div>
+    {% endif %}
 
             {% if in_marketplace %}
                 <aside class="product-marketplace-note mt-5 max-w-prose" aria-label="Available on Simudza Marketplace">
@@ -247,23 +247,23 @@
                             <dt class="shrink-0 text-base-content/45">Size</dt>
                             <dd>
                                 {% if product.size_value %}{{ product.size_value }}{% endif %}{% if product.size_unit %} {{ product.size_unit }}{% endif %}
-                            </dd>
-                        </div>
-                    {% endif %}
+                    </dd>
+                    </div>
+                {% endif %}
                     {% if product.sku %}
                         <div class="flex gap-2">
                             <dt class="shrink-0 text-base-content/45">SKU</dt>
                             <dd>{{ product.sku }}</dd>
-                        </div>
-                    {% endif %}
+                    </div>
+                {% endif %}
                     {% if product.barcode %}
                         <div class="flex gap-2">
                             <dt class="shrink-0 text-base-content/45">Barcode</dt>
                             <dd>{{ product.barcode }}</dd>
-                        </div>
-                    {% endif %}
-                </dl>
-            </section>
+                    </div>
+                {% endif %}
+            </dl>
+        </section>
         {% endif %}
 
         {% if business %}
@@ -423,7 +423,7 @@
             <div class="mb-3 flex items-baseline justify-between gap-3">
                 <h2 id="product-related" class="text-base font-semibold tracking-tight">
                     Related products
-                </h2>
+        </h2>
                 {% if product.category %}
                     <a
                         href="{% url 'directory:index' %}?category={{ product.category_id }}"
@@ -451,7 +451,7 @@
                                     loading="lazy"
                                     draggable="false"
                                 />
-                            {% else %}
+                    {% else %}
                                 <span class="product-image-well__empty text-sm">No image</span>
                             {% endif %}
                         </div>
@@ -463,12 +463,12 @@
                                 <p class="truncate text-xs text-base-content/60 sm:text-sm">
                                     {% firstof related.brand_name related.business.name %}
                                 </p>
-                            {% endif %}
+                    {% endif %}
                         </div>
                     </a>
                 {% endfor %}
             </div>
         </section>
-    {% endif %}
+            {% endif %}
 </article>
 {% endblock %}

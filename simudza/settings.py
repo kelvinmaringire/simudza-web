@@ -131,6 +131,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "marketplace.context_processors.cart_context",
+                "simudza.context_processors.static_version",
             ],
             "loaders": _TEMPLATE_LOADERS,
         },
