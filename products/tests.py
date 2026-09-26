@@ -72,7 +72,6 @@ class ProductSlugStabilityTests(TestCase):
             "description": "",
             "category": self.category.pk,
             "origin_type": Product.OriginType.MADE_IN_ZIMBABWE,
-            "country_of_origin": "Zimbabwe",
             "brand_name": "",
             "sku": "",
             "barcode": "",

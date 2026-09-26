@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-product-classification{% endblock %}
+
+{% block content %}
+<article class="classification-page mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 lg:px-8">
+    <p class="mb-3 text-sm">
+        <a href="{% url 'directory:index' %}" class="link link-hover text-base-content/60">
+            ← Directory
+        </a>
+    </p>
+
+    {# 1. Hero — brand + one clear job #}
+    <header class="classification-hero">
+        <p class="classification-hero__eyebrow">Product classification</p>
+        <h1 class="classification-hero__title">
+            {{ page.title }}
+        </h1>
+        {% if page.intro %}
+            <div class="classification-hero__lede prose max-w-none">
+                {{ page.intro|richtext }}
+            </div>
+        {% else %}
+            <p class="classification-hero__lede">
+                A transparent system for describing how products connect to
+                Zimbabwean production and economic activity — so shoppers and
+                makers share the same language.
+            </p>
+        {% endif %}
+
+        <div class="classification-chip-row" role="note" aria-label="Classification principles at a glance">
+            <span class="classification-chip">Not a quality rating</span>
+            <span class="classification-chip">Multiple classifications allowed</span>
+            <span class="classification-chip">Evidence-based</span>
+        </div>
+    </header>
+
+    {# 2. Hierarchy — types of connection, not a ranking #}
+    <section class="classification-section" aria-labelledby="classification-hierarchy">
+        <div class="classification-section__intro">
+            <h2 id="classification-hierarchy" class="classification-section__title">
+                From production to economic connection
+            </h2>
+            <p class="classification-section__lede">
+                These classifications describe where and how a product connects to
+                Zimbabwe. They are not quality ratings, and a product may carry
+                more than one.
+            </p>
+        </div>
+
+        <div class="classification-hierarchy" role="list">
+            {% for group in classification_groups %}
+                <div class="classification-hierarchy__group" role="listitem">
+                    <p class="classification-hierarchy__label">{{ group.label }}</p>
+                    <ul class="classification-hierarchy__items">
+                        {% for item in group.items %}
+                            <li>
+                                <a href="#{{ item.anchor }}" class="classification-hierarchy__link">
+                                    {{ item.title }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# 3. Classification system — scannable cards #}
+    <section class="classification-section" aria-labelledby="classification-system">
+        <div class="classification-section__intro">
+            <h2 id="classification-system" class="classification-section__title">
+                Classification system
+            </h2>
+            <p class="classification-section__lede">
+                Six classification types. Scan the cards, then open any one for
+                definition, flow, and examples.
+            </p>
+        </div>
+
+        <div class="classification-card-grid">
+            {% for item in classifications %}
+                <article
+                    id="{{ item.anchor }}"
+                    class="classification-card classification-card--{{ item.group }} scroll-mt-24"
+                >
+                    <div class="classification-card__icon" aria-hidden="true">
+                        {% include "products/partials/classification_icon.html" with icon=item.icon %}
+                    </div>
+                    <div class="classification-card__body">
+                        <p class="classification-card__group">{{ item.group_label }}</p>
+                        <h3 class="classification-card__title">{{ item.title }}</h3>
+                        <p class="classification-card__summary">
+                            {% firstof item.summary item.definition %}
+                        </p>
+
+                        {% if item.steps %}
+                            <ol class="classification-flow" aria-label="{{ item.title }} process">
+                                {% for step in item.steps %}
+                                    <li class="classification-flow__step">
+                                        {% if "Zimbabwe" in step %}
+                                            <span class="classification-flow__mark" aria-hidden="true">ZW</span>
+                                        {% endif %}
+                                        <span>{{ step }}</span>
+                                    </li>
+                                    {% if not forloop.last %}
+                                        <li class="classification-flow__arrow" aria-hidden="true">→</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ol>
+                        {% endif %}
+
+                        {% if item.examples %}
+                            <div class="classification-card__examples">
+                                <p class="classification-card__examples-label">Examples</p>
+                                <ul>
+                                    {% for example in item.examples %}
+                                        <li>{{ example }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        {% if item.notes %}
+                            <div class="classification-card__notes">
+                                {% for note in item.notes %}
+                                    <p>{{ note }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# 4. How classification works #}
+    <section class="classification-section" aria-labelledby="classification-how">
+        <div class="classification-section__intro">
+            <h2 id="classification-how" class="classification-section__title">
+                How does Simudza classify a product?
+            </h2>
+            <p class="classification-section__lede">
+                Classification follows evidence about materials, manufacturing,
+                finishing, and documented economic links — not marketing claims alone.
+            </p>
+        </div>
+
+        <ol class="classification-steps">
+            <li class="classification-steps__item">
+                <span class="classification-steps__num" aria-hidden="true">1</span>
+                <div>
+                    <p class="classification-steps__title">What is the product?</p>
+                    <p class="classification-steps__body">Identify the finished good as listed.</p>
+                </div>
+            </li>
+            <li class="classification-steps__item">
+                <span class="classification-steps__num" aria-hidden="true">2</span>
+                <div>
+                    <p class="classification-steps__title">Where are its primary materials produced?</p>
+                    <p class="classification-steps__body">Agricultural or plant-based origin points to Grown.</p>
+                </div>
+            </li>
+            <li class="classification-steps__item">
+                <span class="classification-steps__num" aria-hidden="true">3</span>
+                <div>
+                    <p class="classification-steps__title">Where does manufacturing or processing happen?</p>
+                    <p class="classification-steps__body">Substantial local manufacture points to Made.</p>
+                </div>
+            </li>
+            <li class="classification-steps__item">
+                <span class="classification-steps__num" aria-hidden="true">4</span>
+                <div>
+                    <p class="classification-steps__title">Where is it packaged or assembled?</p>
+                    <p class="classification-steps__body">Local finishing may add Packaged or Assembled.</p>
+                </div>
+            </li>
+            <li class="classification-steps__item">
+                <span class="classification-steps__num" aria-hidden="true">5</span>
+                <div>
+                    <p class="classification-steps__title">Is there another documented Zimbabwean economic connection?</p>
+                    <p class="classification-steps__body">Ownership or business links may support Supports Zimbabwe.</p>
+                </div>
+            </li>
+            <li class="classification-steps__item">
+                <span class="classification-steps__num" aria-hidden="true">6</span>
+                <div>
+                    <p class="classification-steps__title">Apply every classification that honestly fits</p>
+                    <p class="classification-steps__body">Use all that evidence supports — skip what it does not.</p>
+                </div>
+            </li>
+        </ol>
+    </section>
+
+    {# 5. Important distinction — Packaged vs Assembled #}
+    {% if packaged_classification or assembled_classification %}
+        <section class="classification-section" aria-labelledby="classification-distinction">
+            <div class="classification-section__intro">
+                <h2 id="classification-distinction" class="classification-section__title">
+                    Packaged is not the same as Assembled
+                </h2>
+                <p class="classification-section__lede">
+                    Both are local finishing — but they describe different work.
+                    Side-by-side, the difference is immediate.
+                </p>
+            </div>
+
+            <div class="classification-compare">
+                {% if packaged_classification %}
+                    <div class="classification-compare__panel">
+                        <h3 class="classification-compare__title">
+                            <span class="classification-compare__icon" aria-hidden="true">
+                                {% include "products/partials/classification_icon.html" with icon="packaged" %}
+                            </span>
+                            Packaged in Zimbabwe
+                        </h3>
+                        <p class="classification-compare__body">
+                            {{ packaged_classification.definition }}
+                        </p>
+                        {% if packaged_classification.steps %}
+                            <ol class="classification-flow classification-flow--stacked" aria-label="Packaged in Zimbabwe flow">
+                                {% for step in packaged_classification.steps %}
+                                    <li class="classification-flow__step">
+                                        {% if "Zimbabwe" in step %}
+                                            <span class="classification-flow__mark" aria-hidden="true">ZW</span>
+                                        {% endif %}
+                                        <span>{{ step }}</span>
+                                    </li>
+                                    {% if not forloop.last %}
+                                        <li class="classification-flow__arrow" aria-hidden="true">↓</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ol>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if assembled_classification %}
+                    <div class="classification-compare__panel">
+                        <h3 class="classification-compare__title">
+                            <span class="classification-compare__icon" aria-hidden="true">
+                                {% include "products/partials/classification_icon.html" with icon="assembled" %}
+                            </span>
+                            Assembled in Zimbabwe
+                        </h3>
+                        <p class="classification-compare__body">
+                            {{ assembled_classification.definition }}
+                        </p>
+                        {% if assembled_classification.steps %}
+                            <ol class="classification-flow classification-flow--stacked" aria-label="Assembled in Zimbabwe flow">
+                                {% for step in assembled_classification.steps %}
+                                    <li class="classification-flow__step">
+                                        {% if "Zimbabwe" in step %}
+                                            <span class="classification-flow__mark" aria-hidden="true">ZW</span>
+                                        {% endif %}
+                                        <span>{{ step }}</span>
+                                    </li>
+                                    {% if not forloop.last %}
+                                        <li class="classification-flow__arrow" aria-hidden="true">↓</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ol>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+
+    {# 6. Real examples from the directory #}
+    {% if classification_examples %}
+        <section class="classification-section" aria-labelledby="classification-examples">
+            <div class="classification-section__intro">
+                <h2 id="classification-examples" class="classification-section__title">
+                    How this looks on real products
+                </h2>
+                <p class="classification-section__lede">
+                    Examples from the Simudza directory — with the classifications
+                    that apply and why.
+                </p>
+            </div>
+
+            <div class="classification-example-grid">
+                {% for example in classification_examples %}
+                    {% with product=example.product %}
+                        <a
+                            href="{{ product.get_absolute_url }}"
+                            class="classification-example outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
+                            <div class="classification-example__media product-image-well">
+                                {% if product.image %}
+                                    {% image product.image max-480x480 as thumb %}
+                                    <img
+                                        class="max-h-full max-w-full object-contain"
+                                        src="{{ thumb.url }}"
+                                        alt=""
+                                        width="{{ thumb.width }}"
+                                        height="{{ thumb.height }}"
+                                        loading="lazy"
+                                        draggable="false"
+                                    />
+                                {% else %}
+                                    <span class="product-image-well__empty text-sm">No image</span>
+                                {% endif %}
+                            </div>
+                            <div class="classification-example__body">
+                                <h3 class="classification-example__name">{{ product.name }}</h3>
+                                {% if product.brand_name or product.business %}
+                                    <p class="classification-example__brand">
+                                        {% firstof product.brand_name product.business.name %}
+                                    </p>
+                                {% endif %}
+                                <ul class="classification-example__tags">
+                                    {% for tag in example.tags %}
+                                        <li>
+                                            <span class="classification-example__check" aria-hidden="true">✓</span>
+                                            {{ tag }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                <p class="classification-example__why">{{ example.why }}</p>
+                            </div>
+                        </a>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {# 7. Principles #}
+    <section class="classification-section classification-section--last" aria-labelledby="classification-principles">
+        <div class="classification-section__intro">
+            <h2 id="classification-principles" class="classification-section__title">
+                Classification principles
+            </h2>
+            <p class="classification-section__lede">
+                {% if important_note %}
+                    {{ important_note }}
+                {% else %}
+                    The standard Simudza uses when describing a Zimbabwean product connection.
+                {% endif %}
+            </p>
+        </div>
+
+        <ul class="classification-principles">
+            <li>Evidence-based — claims need a documented basis</li>
+            <li>Multiple classifications allowed when they all fit</li>
+            <li>Not a quality rating or ranking of “better” products</li>
+            <li>No classification without a documented Zimbabwean connection</li>
+        </ul>
+    </section>
+</article>
+{% endblock %}

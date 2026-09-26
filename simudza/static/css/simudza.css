@@ -11,7 +11,1352 @@
     display: block;
 }
 
+/* Compact radios in the directory filter sidebar */
+.directory-filter-radio.radio {
+    width: 0.875rem;
+    height: 0.875rem;
+    min-width: 0.875rem;
+    min-height: 0.875rem;
+}
+
+/* Recursive category tree hierarchy */
+.directory-category-tree {
+    list-style: none;
+}
+
+.directory-category-node {
+    list-style: none;
+}
+
+.directory-category-root + .directory-category-root {
+    margin-top: 0.125rem;
+}
+
+.directory-category-children {
+    margin-top: 0.125rem;
+    list-style: none;
+}
+
+.directory-category-children .directory-category-node {
+    margin-top: 0.0625rem;
+}
+
+.directory-category-branch {
+    line-height: 1;
+}
+
+/* Soft pill search — directory header */
+.directory-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.45rem 0.85rem;
+    border-radius: 9999px;
+    background-color: var(--color-base-200);
+    border: 2px solid color-mix(in oklab, var(--color-base-content) 30%, transparent);
+    transition:
+        box-shadow 0.15s ease,
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.directory-search:focus-within {
+    background-color: var(--color-base-100);
+    border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
+}
+
+.directory-search-icon {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+
+.directory-search input[type="search"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0.15rem 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    outline: none;
+    box-shadow: none;
+}
+
+.directory-search input[type="search"]::-webkit-search-cancel-button,
+.directory-search input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.directory-search-loading.htmx-indicator {
+    display: none;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.directory-search-loading.htmx-indicator.htmx-request {
+    display: inline-flex;
+}
+
+.directory-search:has(.directory-search-loading.htmx-request) .directory-search-clear {
+    display: none !important;
+}
+
+.directory-search-clear {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0.15rem;
+    border: none;
+    border-radius: 9999px;
+    background: transparent;
+    color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+    cursor: pointer;
+}
+
+.directory-search-clear:hover {
+    color: var(--color-base-content);
+    background-color: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+
+#directory-filters.htmx-request .directory-results,
+#business-filters.htmx-request .directory-results {
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+/* Company directory cards — horizontal logo wells, not square tiles. */
+.business-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem 1rem;
+}
+
+@media (min-width: 640px) {
+    .business-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem 1.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .business-card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.75rem 1.5rem;
+    }
+}
+
+.business-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+}
+
+.business-card__logo {
+    position: relative;
+    display: flex;
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+    background-color: #ffffff;
+    padding: 1.25rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .business-card__logo {
+        padding: 1.5rem 1.75rem;
+    }
+}
+
+[data-theme="dark"] .business-card__logo {
+    /* Keep logo plates white so brand marks stay true-to-file in both themes */
+    background-color: #ffffff;
+    border-color: color-mix(in oklab, #ffffff 18%, transparent);
+}
+
+.business-card__logo-img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    transition: transform 0.2s ease;
+}
+
+.business-card:hover .business-card__logo-img {
+    transform: scale(1.03);
+}
+
+.business-card__logo-fallback {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: color-mix(in oklab, #000000 28%, transparent);
+}
+
+.business-card__badge {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    border-radius: 0.35rem;
+    background-color: var(--color-success);
+    color: var(--color-success-content);
+    padding: 0.15rem 0.45rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.business-card__meta {
+    min-width: 0;
+    margin-top: 0.65rem;
+    padding-inline: 0.15rem;
+}
+
+.business-card__name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.business-card__type {
+    margin-top: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    color: color-mix(in oklab, var(--color-base-content) 58%, transparent);
+}
+
+.business-card__detail {
+    margin-top: 0.1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: color-mix(in oklab, var(--color-base-content) 48%, transparent);
+}
+
+/* Business detail hero logo — same white rectangular plate as company list. */
+.business-detail-logo {
+    position: relative;
+    display: flex;
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+    background-color: #ffffff;
+    padding: 1.5rem 1.75rem;
+}
+
+@media (min-width: 640px) {
+    .business-detail-logo {
+        padding: 2rem 2.25rem;
+    }
+}
+
+[data-theme="dark"] .business-detail-logo {
+    background-color: #ffffff;
+    border-color: color-mix(in oklab, #ffffff 18%, transparent);
+}
+
+.business-detail-logo__img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.business-detail-logo__fallback {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: color-mix(in oklab, #000000 28%, transparent);
+}
+
+.product-maker-contacts--flush {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.business-retail-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.business-retail-item {
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    border-radius: 0.85rem;
+    background-color: color-mix(in oklab, var(--color-base-200) 55%, transparent);
+    padding: 0.85rem 1rem;
+}
+
+.business-retail-item + .business-retail-item {
+    margin-top: 0.75rem;
+}
+
+/* Product image wells — white plate in both themes (directory + product detail). */
+.product-image-well {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: var(--radius-box, 1rem);
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+    background-color: #ffffff;
+}
+
+[data-theme="dark"] .product-image-well {
+    background-color: #ffffff;
+    border-color: color-mix(in oklab, #ffffff 18%, transparent);
+}
+
+.product-image-well__empty {
+    color: color-mix(in oklab, #000000 35%, transparent);
+}
+
+.product-image-well--thumb {
+    border-radius: 0.75rem;
+}
+
+/* Product gallery thumbnails — selected via aria-selected (Alpine). */
+.product-gallery-thumb {
+    opacity: 0.7;
+    box-shadow: 0 0 0 2px transparent;
+}
+
+.product-gallery-thumb:hover {
+    opacity: 1;
+}
+
+.product-gallery-thumb[aria-selected="true"] {
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 50%, transparent);
+}
+
+.product-gallery-thumb:focus-visible {
+    opacity: 1;
+    box-shadow:
+        0 0 0 2px color-mix(in oklab, var(--color-primary) 55%, transparent),
+        0 0 0 4px color-mix(in oklab, var(--color-primary) 20%, transparent);
+}
+
+/* Soft contact actions on product detail (Call / Email / Website). */
+.product-contact-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.product-contact-btn__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+.product-contact-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 28%, transparent);
+}
+
+.product-contact-btn--call {
+    color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+    border-color: color-mix(in oklab, var(--color-primary) 16%, transparent);
+}
+
+.product-contact-btn--call:hover {
+    background-color: color-mix(in oklab, var(--color-primary) 18%, transparent);
+    border-color: color-mix(in oklab, var(--color-primary) 28%, transparent);
+}
+
+.product-contact-btn--email {
+    /* Mix with base-content so pale daisyUI --color-info stays readable as text */
+    color: color-mix(in oklab, var(--color-info, #0284c7) 45%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 12%, transparent);
+    border-color: color-mix(in oklab, var(--color-info, #0284c7) 16%, transparent);
+}
+
+.product-contact-btn--email:hover {
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 18%, transparent);
+    border-color: color-mix(in oklab, var(--color-info, #0284c7) 28%, transparent);
+}
+
+.product-contact-btn--web {
+    color: color-mix(in oklab, var(--color-base-content) 78%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+    border-color: color-mix(in oklab, var(--color-base-content) 12%, transparent);
+}
+
+.product-contact-btn--web:hover {
+    color: var(--color-base-content);
+    background-color: color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    border-color: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+}
+
+/* Manufacturer contact well on product detail. */
+.product-maker-well {
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+    padding: 1rem;
+}
+
+.product-maker-well__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+}
+
+.product-maker-well__logo {
+    display: flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background-color: var(--color-base-100);
+    padding: 0.25rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+
+.product-maker-well__logo--fallback {
+    color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.product-maker-contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.875rem 0 0;
+    padding: 0.875rem 0 0;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+    list-style: none;
+}
+
+.product-maker-contact {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    min-width: 0;
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    text-decoration: none;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+a.product-maker-contact {
+    cursor: pointer;
+}
+
+a.product-maker-contact .product-maker-contact__icon,
+a.product-maker-contact .product-maker-contact__value {
+    pointer-events: none;
+}
+
+.product-maker-contact--compact {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.4rem 0.65rem;
+}
+
+.product-maker-contact__icon {
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.55rem;
+}
+
+.product-maker-contact__icon svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.product-maker-contact__icon--inline {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.1rem;
+    background: transparent !important;
+    border: none !important;
+}
+
+.product-maker-contact__icon--inline svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.product-maker-contact__value {
+    min-width: 0;
+    padding-top: 0.15rem;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.product-maker-contact--call {
+    color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 8%, transparent);
+    border-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+}
+
+.product-maker-contact--call .product-maker-contact__icon {
+    color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 14%, transparent);
+}
+
+a.product-maker-contact--call:hover {
+    background-color: color-mix(in oklab, var(--color-primary) 14%, transparent);
+    border-color: color-mix(in oklab, var(--color-primary) 22%, transparent);
+}
+
+.product-maker-contact--email {
+    color: color-mix(in oklab, var(--color-info, #0284c7) 45%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 8%, transparent);
+    border-color: color-mix(in oklab, var(--color-info, #0284c7) 12%, transparent);
+}
+
+.product-maker-contact--email .product-maker-contact__icon {
+    color: color-mix(in oklab, var(--color-info, #0284c7) 45%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 14%, transparent);
+}
+
+a.product-maker-contact--email:hover {
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 14%, transparent);
+    border-color: color-mix(in oklab, var(--color-info, #0284c7) 22%, transparent);
+}
+
+.product-maker-contact--web {
+    color: color-mix(in oklab, var(--color-base-content) 78%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
+    border-color: color-mix(in oklab, var(--color-base-content) 10%, transparent);
+}
+
+.product-maker-contact--web .product-maker-contact__icon {
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+
+a.product-maker-contact--web:hover {
+    color: var(--color-base-content);
+    background-color: color-mix(in oklab, var(--color-base-content) 9%, transparent);
+    border-color: color-mix(in oklab, var(--color-base-content) 16%, transparent);
+}
+
+.product-maker-contact--place {
+    color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 4%, transparent);
+    border-color: color-mix(in oklab, var(--color-base-content) 9%, transparent);
+}
+
+.product-maker-contact--place .product-maker-contact__icon {
+    color: color-mix(in oklab, var(--color-warning, #d97706) 90%, var(--color-base-content));
+    background-color: color-mix(
+        in oklab,
+        var(--color-warning, #d97706) 14%,
+        transparent
+    );
+}
+
+.product-maker-locations {
+    margin-top: 0.875rem;
+    padding-top: 0.875rem;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+
+.product-maker-locations__label {
+    margin-bottom: 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+
+.product-maker-location + .product-maker-location {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 6%, transparent);
+}
+
+/* Directory product → marketplace prompt (no cart on directory pages). */
+.product-marketplace-note {
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-primary) 18%, transparent);
+    background-color: color-mix(in oklab, var(--color-primary) 8%, transparent);
+    padding: 1rem 1.05rem;
+}
+
+.product-marketplace-note__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.product-marketplace-note__body {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+}
+
+.product-marketplace-note__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.95rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-primary) 22%, transparent);
+    background-color: color-mix(in oklab, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.product-marketplace-note__cta:hover {
+    background-color: color-mix(in oklab, var(--color-primary) 20%, transparent);
+    border-color: color-mix(in oklab, var(--color-primary) 32%, transparent);
+}
+
+.product-marketplace-note__cta:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 28%, transparent);
+}
+
+.product-marketplace-note__cta-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+}
+
 /* Leave room for the fixed daisyUI dock at the bottom of the page. */
 body {
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Keep the bottom dock above nested drawers (e.g. directory filters). */
+.dock {
+    z-index: 50;
+}
+
+/*
+ * Directory / companies filters: fixed to the viewport so page scroll never
+ * opens a gap above the dock. Bottom edge sits on the dock; filter list scrolls inside.
+ */
+.template-directory .drawer.drawer-open > .drawer-side,
+.template-business-list .drawer.drawer-open > .drawer-side {
+    overflow: hidden;
+    background-color: var(--color-base-200);
+}
+
+@media (min-width: 1024px) {
+    .template-directory .drawer.drawer-open > .drawer-side,
+    .template-business-list .drawer.drawer-open > .drawer-side {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: auto !important;
+        bottom: calc(4rem + env(safe-area-inset-bottom, 0px)) !important;
+        height: auto !important;
+        max-height: none !important;
+        width: 20rem !important;
+        z-index: 20;
+        overflow: hidden;
+        background-color: var(--color-base-200);
+    }
+
+    .template-directory .drawer.drawer-open > .drawer-side > .directory-filters-panel,
+    .template-business-list .drawer.drawer-open > .drawer-side > .directory-filters-panel {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        background-color: var(--color-base-200);
+    }
+
+    /* Sidebar is out of flow when fixed — keep main content clear of it */
+    .template-directory .drawer.drawer-open > .drawer-content,
+    .template-business-list .drawer.drawer-open > .drawer-content {
+        margin-left: 20rem;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Product classification page — experience, not documentation         */
+/* ------------------------------------------------------------------ */
+
+.classification-hero {
+    position: relative;
+    margin: 0 -0.75rem;
+    padding: 1.75rem 0.75rem 2rem;
+    border-radius: 0;
+    background:
+        radial-gradient(
+            120% 80% at 0% 0%,
+            color-mix(in oklab, var(--color-primary) 14%, transparent),
+            transparent 55%
+        ),
+        radial-gradient(
+            90% 70% at 100% 10%,
+            color-mix(in oklab, var(--color-primary) 8%, transparent),
+            transparent 50%
+        ),
+        color-mix(in oklab, var(--color-base-200) 65%, var(--color-base-100));
+}
+
+@media (min-width: 640px) {
+    .classification-hero {
+        margin: 0;
+        padding: 2.25rem 1.75rem 2.5rem;
+        border-radius: 1.25rem;
+    }
+}
+
+.classification-hero__eyebrow {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+
+.classification-hero__title {
+    margin-top: 0.5rem;
+    max-width: 22ch;
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+}
+
+.classification-hero__lede {
+    margin-top: 0.9rem;
+    max-width: 40rem;
+    font-size: 1.05rem;
+    line-height: 1.55;
+    color: color-mix(in oklab, var(--color-base-content) 78%, transparent);
+}
+
+.classification-hero__lede p {
+    margin: 0;
+}
+
+.classification-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.classification-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--color-primary) 22%, transparent);
+    background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    color: color-mix(in oklab, var(--color-primary) 55%, var(--color-base-content));
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.classification-section {
+    margin-top: 2.75rem;
+    padding-top: 2rem;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+
+.classification-section--last {
+    margin-bottom: 1rem;
+}
+
+.classification-section__intro {
+    max-width: 42rem;
+    margin-bottom: 1.25rem;
+}
+
+.classification-section__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+}
+
+@media (min-width: 640px) {
+    .classification-section__title {
+        font-size: 1.45rem;
+    }
+}
+
+.classification-section__lede {
+    margin-top: 0.45rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: color-mix(in oklab, var(--color-base-content) 68%, transparent);
+}
+
+.classification-hierarchy {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+    .classification-hierarchy {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .classification-hierarchy {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.classification-hierarchy__group {
+    padding: 1rem 1.05rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-200) 55%, var(--color-base-100));
+}
+
+.classification-hierarchy__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+
+.classification-hierarchy__items {
+    margin-top: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    list-style: none;
+}
+
+.classification-hierarchy__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-base-content);
+    text-decoration: none;
+}
+
+.classification-hierarchy__link::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background-color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.classification-hierarchy__link:hover {
+    color: var(--color-primary);
+}
+
+.classification-card-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .classification-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.15rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .classification-card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.classification-card {
+    display: flex;
+    gap: 0.9rem;
+    min-width: 0;
+    padding: 1.15rem 1.1rem;
+    border-radius: 1.1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: var(--color-base-100);
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.classification-card:hover {
+    border-color: color-mix(in oklab, var(--color-primary) 28%, transparent);
+    box-shadow: 0 10px 28px -18px color-mix(in oklab, var(--color-base-content) 35%, transparent);
+}
+
+.classification-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+    border-radius: 0.8rem;
+    color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+}
+
+.classification-card__icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.classification-card--finishing .classification-card__icon {
+    color: color-mix(in oklab, var(--color-info, #0284c7) 40%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 12%, transparent);
+}
+
+.classification-card--economic .classification-card__icon {
+    color: color-mix(in oklab, var(--color-success) 35%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-success) 12%, transparent);
+}
+
+.classification-card--unclassified .classification-card__icon {
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 7%, transparent);
+}
+
+.classification-card__body {
+    min-width: 0;
+    flex: 1;
+}
+
+.classification-card__group {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-base-content) 48%, transparent);
+}
+
+.classification-card__title {
+    margin-top: 0.2rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+}
+
+.classification-card__summary {
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
+}
+
+.classification-card__definition {
+    margin-top: 0.55rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: color-mix(in oklab, var(--color-base-content) 62%, transparent);
+}
+
+.classification-card__examples {
+    margin-top: 0.85rem;
+}
+
+.classification-card__examples-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-base-content) 48%, transparent);
+}
+
+.classification-card__examples ul {
+    margin-top: 0.35rem;
+    padding-left: 1rem;
+    list-style: disc;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+}
+
+.classification-card__examples li + li {
+    margin-top: 0.2rem;
+}
+
+.classification-card__notes {
+    margin-top: 0.75rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+}
+
+.classification-card__notes p + p {
+    margin-top: 0.4rem;
+}
+
+.classification-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.85rem;
+    list-style: none;
+}
+
+.classification-flow--stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.3rem;
+}
+
+.classification-flow__step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+    padding: 0.4rem 0.65rem;
+    border-radius: 0.65rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.classification-flow__mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.15rem;
+    padding: 0 0.25rem;
+    border-radius: 0.35rem;
+    background-color: color-mix(in oklab, var(--color-primary) 16%, transparent);
+    color: var(--color-primary);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.classification-flow__arrow {
+    color: color-mix(in oklab, var(--color-base-content) 35%, transparent);
+    font-size: 0.85rem;
+    line-height: 1;
+    list-style: none;
+}
+
+.classification-flow--stacked .classification-flow__arrow {
+    text-align: center;
+    padding: 0.1rem 0;
+}
+
+.classification-steps {
+    display: grid;
+    gap: 0.75rem;
+    list-style: none;
+}
+
+@media (min-width: 768px) {
+    .classification-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .classification-steps {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.classification-steps__item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 9%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-200) 40%, var(--color-base-100));
+}
+
+.classification-steps__num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background-color: color-mix(in oklab, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.classification-steps__title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.classification-steps__body {
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+}
+
+.classification-compare {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (min-width: 900px) {
+    .classification-compare {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.25rem;
+    }
+}
+
+.classification-compare__panel {
+    padding: 1.2rem 1.15rem;
+    border-radius: 1.15rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: var(--color-base-100);
+}
+
+.classification-compare__title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+}
+
+.classification-compare__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.7rem;
+    color: color-mix(in oklab, var(--color-info, #0284c7) 40%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 12%, transparent);
+}
+
+.classification-compare__icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.classification-compare__body {
+    margin-top: 0.65rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+}
+
+.classification-example-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .classification-example-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.15rem;
+    }
+}
+
+.classification-example {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 0.9rem;
+    padding: 0.85rem;
+    border-radius: 1.1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: var(--color-base-100);
+    text-decoration: none;
+    color: inherit;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+@media (min-width: 640px) {
+    .classification-example {
+        grid-template-columns: 7rem minmax(0, 1fr);
+        gap: 1rem;
+        padding: 1rem;
+    }
+}
+
+.classification-example:hover {
+    border-color: color-mix(in oklab, var(--color-primary) 28%, transparent);
+    box-shadow: 0 10px 28px -18px color-mix(in oklab, var(--color-base-content) 35%, transparent);
+}
+
+.classification-example__media {
+    aspect-square;
+    width: 100%;
+    padding: 0.5rem;
+}
+
+.classification-example__name {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+}
+
+.classification-example:hover .classification-example__name {
+    text-decoration: underline;
+}
+
+.classification-example__brand {
+    margin-top: 0.15rem;
+    font-size: 0.82rem;
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+
+.classification-example__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+    list-style: none;
+}
+
+.classification-example__tags li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    color: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content));
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.classification-example__check {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.classification-example__why {
+    margin-top: 0.55rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+}
+
+.classification-principles {
+    display: grid;
+    gap: 0.65rem;
+    list-style: none;
+}
+
+@media (min-width: 768px) {
+    .classification-principles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.classification-principles li {
+    position: relative;
+    padding: 0.9rem 1rem 0.9rem 2.4rem;
+    border-radius: 0.9rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 9%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-200) 45%, var(--color-base-100));
+    font-size: 0.9rem;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.classification-principles li::before {
+    content: "✓";
+    position: absolute;
+    left: 0.9rem;
+    top: 0.9rem;
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+/*
+ * Image protection (deterrent only — not proof against DevTools / screenshots).
+ * Blocks casual drag / select / long-press save affordances on media.
+ */
+img,
+picture,
+svg.media-protected {
+    -webkit-user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }

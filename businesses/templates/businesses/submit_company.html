@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Submit company profile{% endblock %}
+
+{% block body_class %}template-business-submit-company{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl px-4 py-6">
+    <p class="mb-4">
+        <a href="{% url 'businesses:submit' %}" class="link link-hover text-sm">← Submissions</a>
+    </p>
+    <header class="mb-6">
+        <h1 class="text-2xl font-semibold">Company profile</h1>
+        <p class="mt-2 text-sm text-base-content/80">
+            Submit or update your company description, logo, location, and contact details.
+        </p>
+    </header>
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-error mb-4 text-sm">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="flex flex-col gap-4">
+        {% csrf_token %}
+        {% include "businesses/partials/form_field.html" with field=form.business %}
+        {% include "businesses/partials/form_field.html" with field=form.company_name label="Company name" %}
+        {% include "businesses/partials/form_field.html" with field=form.business_type %}
+        {% include "businesses/partials/form_field.html" with field=form.company_description label="Description" %}
+        {% include "businesses/partials/form_field.html" with field=form.logo_upload label="Logo" %}
+        {% include "businesses/partials/form_field.html" with field=form.website %}
+        {% include "businesses/partials/form_field.html" with field=form.email %}
+        {% include "businesses/partials/form_field.html" with field=form.phone %}
+        {% include "businesses/partials/form_field.html" with field=form.town_or_city label="Town / city" %}
+        {% include "businesses/partials/form_field.html" with field=form.address %}
+        {% include "businesses/partials/form_field.html" with field=form.submitter_notes label="Notes for reviewers" %}
+        <button type="submit" class="btn btn-primary">Submit company profile</button>
+    </form>
+</div>
+{% endblock %}

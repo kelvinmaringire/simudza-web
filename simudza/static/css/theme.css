@@ -11,6 +11,17 @@
  */
 
 :root {
-    --color-primary: #127818;
+    /* Single app typeface — daisyUI reads --default-font-family on html */
+    --default-font-family: "Geist", ui-sans-serif, system-ui, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-sans: var(--default-font-family);
+    font-family: var(--default-font-family);
+
+    --color-primary: #157913;
     --color-primary-content: #ffffff;
+}
+
+[data-theme="dark"] {
+    /* Brighter than the logo green so primary stays clear on dark surfaces */
+    --color-primary: #3baa36;
 }

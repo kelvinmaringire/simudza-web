@@ -32,7 +32,6 @@ class ProductForm(WagtailAdminModelForm):
             "description",
             "category",
             "origin_type",
-            "country_of_origin",
             "brand_name",
             "sku",
             "barcode",

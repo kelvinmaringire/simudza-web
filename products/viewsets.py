@@ -102,7 +102,6 @@ class ProductViewSet(ModelViewSet):
         "featured",
         "category",
         "business",
-        "country_of_origin",
     ]
 
     search_fields = [
@@ -133,7 +132,6 @@ class ProductViewSet(ModelViewSet):
             MultiFieldPanel(
                 [
                     FieldPanel("origin_type"),
-                    FieldPanel("country_of_origin"),
                     FieldPanel("brand_name"),
                     FieldPanel("sku"),
                     FieldPanel("barcode"),
@@ -171,7 +169,6 @@ class ProductViewSet(ModelViewSet):
         "short_description",
         "description",
         "origin_type",
-        "country_of_origin",
         "brand_name",
         "sku",
         "barcode",

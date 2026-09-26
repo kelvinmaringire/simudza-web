@@ -16,7 +16,7 @@
             </div>
             <div>
                 <h1 class="text-2xl font-semibold">Hello, {{ display_name }}</h1>
-                <p class="text-sm opacity-70">{{ user.email|default:user.username }}</p>
+                <p class="text-sm text-base-content/70">{{ user.email|default:user.username }}</p>
             </div>
         </div>
         <form method="post" action="{% url 'accounts:logout' %}">
@@ -51,7 +51,7 @@
         <div class="card border-base-300 bg-base-100 border shadow-sm">
             <div class="card-body">
                 <h2 class="card-title text-base">Marketplace</h2>
-                <p class="text-sm opacity-70">Browse products and manage your cart.</p>
+                <p class="text-sm text-base-content/70">Browse products and manage your cart.</p>
                 <div class="card-actions justify-end">
                     <a href="{% url 'marketplace:index' %}" class="btn btn-primary btn-sm">Shop</a>
                 </div>
@@ -61,9 +61,21 @@
         <div class="card border-base-300 bg-base-100 border shadow-sm">
             <div class="card-body">
                 <h2 class="card-title text-base">Directory</h2>
-                <p class="text-sm opacity-70">Explore local products and businesses.</p>
+                <p class="text-sm text-base-content/70">Explore local products and businesses.</p>
                 <div class="card-actions justify-end">
                     <a href="{% url 'directory:index' %}" class="btn btn-ghost btn-sm">Browse</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-base-300 bg-base-100 border shadow-sm sm:col-span-2">
+            <div class="card-body">
+                <h2 class="card-title text-base">Manufacturer submissions</h2>
+                <p class="text-sm text-base-content/70">
+                    Submit or update your company profile, products, images, and retail locations.
+                </p>
+                <div class="card-actions justify-end">
+                    <a href="{% url 'businesses:submit' %}" class="btn btn-primary btn-sm">Submit</a>
                 </div>
             </div>
         </div>
@@ -72,7 +84,7 @@
             <div class="card border-base-300 bg-base-100 border shadow-sm sm:col-span-2">
                 <div class="card-body">
                     <h2 class="card-title text-base">Site management</h2>
-                    <p class="text-sm opacity-70">Open Wagtail to manage products, inventory, and more.</p>
+                    <p class="text-sm text-base-content/70">Open Wagtail to manage products, inventory, and more.</p>
                     <div class="card-actions justify-end">
                         <a href="/admin/" class="btn btn-secondary btn-sm">Open admin</a>
                     </div>
@@ -85,6 +97,7 @@
         <li class="menu-title">Account</li>
         <li><a href="{% url 'accounts:password_change' %}">Change password</a></li>
         <li class="menu-title">Quick links</li>
+        <li><a href="{% url 'businesses:submit' %}">Manufacturer submissions</a></li>
         <li><a href="{% url 'marketplace:index' %}">Marketplace</a></li>
         <li><a href="{% url 'directory:index' %}">Directory</a></li>
         <li><a href="/">Home</a></li>

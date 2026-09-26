@@ -1,0 +1,16 @@
+<label class="form-control w-full">
+    <span class="label py-1">
+        <span class="label-text">{{ label|default:field.label }}</span>
+    </span>
+    {{ field }}
+    {% if field.help_text %}
+        <span class="label">
+            <span class="label-text-alt text-base-content/60">{{ field.help_text }}</span>
+        </span>
+    {% endif %}
+    {% if field.errors %}
+        <span class="label">
+            <span class="label-text-alt text-error">{{ field.errors.0 }}</span>
+        </span>
+    {% endif %}
+</label>

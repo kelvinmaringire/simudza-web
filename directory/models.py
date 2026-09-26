@@ -50,7 +50,7 @@ class DirectoryListing(models.Model):
 
     def get_absolute_url(self):
         return reverse(
-            "directory:product",
+            "products:detail",
             kwargs={
                 "slug": self.product.slug,
             },

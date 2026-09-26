@@ -1,5 +1,5 @@
-{# Bottom dock: primary site navigation #}
-<nav class="dock dock-md bg-base-300 border-base-400 border-t" aria-label="Main">
+{# Bottom dock: primary site navigation — keep above page drawers (filters, etc.) #}
+<nav class="dock dock-md bg-base-300 border-base-400 z-50 border-t" aria-label="Main">
     <a
         href="/"
         {% if request.path == "/" %}class="dock-active"{% endif %}
@@ -27,6 +27,25 @@
             </g>
         </svg>
         <span class="dock-label">Directory</span>
+    </a>
+
+    <a
+        href="{% url 'businesses:index' %}"
+        {% if request.resolver_match and request.resolver_match.namespace == "businesses" %}class="dock-active"{% endif %}
+        aria-label="Companies"
+    >
+        <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2">
+                <path d="M3 21h18"></path>
+                <path d="M5 21V7l7-4 7 4v14"></path>
+                <path d="M9 21v-6h6v6"></path>
+                <path d="M9 10h.01"></path>
+                <path d="M15 10h.01"></path>
+                <path d="M9 14h.01"></path>
+                <path d="M15 14h.01"></path>
+            </g>
+        </svg>
+        <span class="dock-label">Companies</span>
     </a>
 
     <a

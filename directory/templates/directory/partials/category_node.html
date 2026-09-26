@@ -1,0 +1,76 @@
+<li
+    class="directory-category-node {% if node.depth == 0 %}directory-category-root border-base-300 bg-base-200/40 rounded-lg border{% endif %}"
+    data-depth="{{ node.depth }}"
+    x-data="{ open: {{ node.expanded|yesno:'true,false' }} }"
+>
+    <div class="directory-category-row flex items-center gap-1 px-1.5 py-1">
+        {% if node.children %}
+            <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square shrink-0"
+                @click.prevent="open = !open"
+                :aria-expanded="open.toString()"
+                aria-label="Toggle {{ node.category.name }} subcategories"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="h-3.5 w-3.5 transition-transform duration-150"
+                    :class="{ 'rotate-90': open }"
+                    aria-hidden="true"
+                >
+                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        {% elif node.depth > 0 %}
+            <span class="directory-category-branch text-base-content/40 w-6 shrink-0 text-center text-xs select-none" aria-hidden="true">↳</span>
+        {% else %}
+            <span class="btn btn-ghost btn-xs btn-square invisible shrink-0" aria-hidden="true"></span>
+        {% endif %}
+
+        <div class="hover:bg-base-100 flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1">
+            <label class="flex cursor-pointer items-center py-0.5">
+                <input
+                    type="radio"
+                    name="category"
+                    value="{{ node.category.pk }}"
+                    class="radio radio-xs directory-filter-radio"
+                    {% if node.selected %}checked{% endif %}
+                    {% if node.children %}@change="open = true"{% endif %}
+                />
+            </label>
+
+            {% if node.children %}
+                <button
+                    type="button"
+                    class="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    @click.prevent="open = !open"
+                >
+                    <span class="truncate {% if node.depth == 0 %}text-sm font-semibold{% else %}text-sm font-medium{% endif %}">
+                        {{ node.category.name }}
+                    </span>
+                    <span class="badge badge-ghost badge-xs shrink-0">{{ node.children|length }}</span>
+                </button>
+            {% else %}
+                <span class="truncate text-sm {% if node.depth == 0 %}font-semibold{% else %}font-normal text-base-content/80{% endif %}">
+                    {{ node.category.name }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if node.children %}
+        <ul
+            x-show="open"
+            x-cloak
+            class="directory-category-children border-base-300 mb-1.5 ml-3 border-l-2 pl-2"
+            role="group"
+            aria-label="{{ node.category.name }} subcategories"
+        >
+            {% for child in node.children %}
+                {% include "directory/partials/category_node.html" with node=child %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li>

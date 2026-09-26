@@ -1,0 +1,154 @@
+<div
+    class="form-control w-full"
+    x-data="{ typesOpen: false }"
+>
+    <span class="label py-1"><span class="label-text text-xs">Company type</span></span>
+
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="typesOpen = !typesOpen"
+            :aria-expanded="typesOpen.toString()"
+            aria-controls="business-type-list"
+        >
+            <span>All company types</span>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150"
+                :class="{ 'rotate-90': typesOpen }"
+                aria-hidden="true"
+            >
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div
+            id="business-type-list"
+            x-show="typesOpen"
+            x-cloak
+            class="border-base-300 border-t px-2 py-2"
+        >
+            <ul class="flex w-full flex-col gap-0.5 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input
+                            type="radio"
+                            name="business_type"
+                            value=""
+                            class="radio radio-xs directory-filter-radio"
+                            {% if not selected_business_type %}checked{% endif %}
+                        />
+                        <span class="text-sm font-medium">All types</span>
+                    </label>
+                </li>
+                {% for value, label in business_types %}
+                    <li class="px-1">
+                        <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                            <input
+                                type="radio"
+                                name="business_type"
+                                value="{{ value }}"
+                                class="radio radio-xs directory-filter-radio"
+                                {% if selected_business_type == value %}checked{% endif %}
+                            />
+                            <span class="truncate text-sm">{{ label }}</span>
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div
+    class="form-control w-full"
+    x-data="{ townsOpen: false }"
+>
+    <span class="label py-1"><span class="label-text text-xs">Town / city</span></span>
+
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="townsOpen = !townsOpen"
+            :aria-expanded="townsOpen.toString()"
+            aria-controls="business-town-list"
+        >
+            <span>All towns / cities</span>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150"
+                :class="{ 'rotate-90': townsOpen }"
+                aria-hidden="true"
+            >
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div
+            id="business-town-list"
+            x-show="townsOpen"
+            x-cloak
+            class="border-base-300 border-t px-2 py-2"
+        >
+            <ul class="flex w-full flex-col gap-0.5 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input
+                            type="radio"
+                            name="town_or_city"
+                            value=""
+                            class="radio radio-xs directory-filter-radio"
+                            {% if not selected_town %}checked{% endif %}
+                        />
+                        <span class="text-sm font-medium">All towns / cities</span>
+                    </label>
+                </li>
+                {% for town in town_choices %}
+                    <li class="px-1">
+                        <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                            <input
+                                type="radio"
+                                name="town_or_city"
+                                value="{{ town }}"
+                                class="radio radio-xs directory-filter-radio"
+                                {% if selected_town == town %}checked{% endif %}
+                            />
+                            <span class="truncate text-sm">{{ town }}</span>
+                        </label>
+                    </li>
+                {% empty %}
+                    <li class="px-3 py-2 text-sm text-base-content/60">No towns / cities yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="form-control w-full">
+    <label class="hover:bg-base-200 border-base-300 flex cursor-pointer items-center gap-2 rounded-box border bg-base-100 px-3 py-2.5">
+        <input
+            type="checkbox"
+            name="verified"
+            value="1"
+            class="checkbox checkbox-sm"
+            {% if verified_only %}checked{% endif %}
+        />
+        <span class="text-sm">Verified only</span>
+    </label>
+</div>
+
+{% if filters_active %}
+    <a
+        href="{% url 'businesses:index' %}"
+        class="btn btn-ghost btn-sm mt-1 self-start"
+        x-show="clearActive"
+    >
+        Clear filters
+    </a>
+{% endif %}

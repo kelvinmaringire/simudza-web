@@ -1,0 +1,98 @@
+{% load wagtailimages_tags %}
+
+{% if businesses %}
+    <div class="mb-4 flex items-baseline justify-between gap-3">
+        <p class="text-sm text-base-content/60">
+            {% if q %}
+                {{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }} for “{{ q }}”
+            {% else %}
+                {{ page_obj.paginator.count }} compan{{ page_obj.paginator.count|pluralize:"y,ies" }}
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="business-card-grid">
+        {% for business in businesses %}
+            <a
+                href="{{ business.get_absolute_url }}"
+                class="business-card group outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+                <div class="business-card__logo">
+                    {% if business.logo %}
+                        {% image business.logo max-640x360 as logo %}
+                        <img
+                            class="business-card__logo-img"
+                            src="{{ logo.url }}"
+                            alt="{{ business.name }}"
+                            width="{{ logo.width }}"
+                            height="{{ logo.height }}"
+                            loading="lazy"
+                            draggable="false"
+                        />
+                    {% else %}
+                        <span class="business-card__logo-fallback">
+                            {{ business.name|slice:":1"|upper }}
+                        </span>
+                    {% endif %}
+                    {% if business.verification_status == "verified" %}
+                        <span class="business-card__badge">Verified</span>
+                    {% endif %}
+                </div>
+
+                <div class="business-card__meta">
+                    <h2 class="business-card__name group-hover:underline">
+                        {{ business.name }}
+                    </h2>
+                    <p class="business-card__type">
+                        {{ business.get_business_type_display }}
+                    </p>
+                    {% if business.town_or_city or business.product_count %}
+                        <p class="business-card__detail">
+                            {% if business.town_or_city %}{{ business.town_or_city }}{% endif %}
+                            {% if business.town_or_city and business.product_count %} · {% endif %}
+                            {% if business.product_count %}
+                                {{ business.product_count }} product{{ business.product_count|pluralize }}
+                            {% endif %}
+                        </p>
+                    {% endif %}
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+        <div class="mt-10 flex justify-center">
+            <div class="join">
+                {% if page_obj.has_previous %}
+                    <a
+                        class="btn btn-sm join-item"
+                        href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                        hx-get="{% url 'businesses:results' %}?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                        hx-target="#business-results"
+                        hx-swap="innerHTML"
+                    >«</a>
+                {% endif %}
+                <button type="button" class="btn btn-sm join-item btn-disabled">
+                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                </button>
+                {% if page_obj.has_next %}
+                    <a
+                        class="btn btn-sm join-item"
+                        href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ page_obj.next_page_number }}"
+                        hx-get="{% url 'businesses:results' %}?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ page_obj.next_page_number }}"
+                        hx-target="#business-results"
+                        hx-swap="innerHTML"
+                    >»</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="py-16 text-center text-base-content/60">
+        {% if q or filter_qs %}
+            No companies match these filters.
+        {% else %}
+            No companies listed yet.
+        {% endif %}
+    </div>
+{% endif %}

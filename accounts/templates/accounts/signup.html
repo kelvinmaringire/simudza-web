@@ -8,7 +8,7 @@
 <div class="mx-auto max-w-md px-4 py-10">
     <header class="mb-6 text-center">
         <h1 class="text-2xl font-semibold">Create account</h1>
-        <p class="mt-2 text-sm opacity-70">Join Simudza to shop and explore</p>
+        <p class="mt-2 text-sm text-base-content/70">Join Simudza to shop and explore</p>
     </header>
 
     {% if form.non_field_errors %}
@@ -33,7 +33,7 @@
         <button type="submit" class="btn btn-primary w-full">Create account</button>
     </form>
 
-    <p class="mt-6 text-center text-sm opacity-70">
+    <p class="mt-6 text-center text-sm text-base-content/70">
         Already have an account?
         <a href="{% url 'accounts:login' %}" class="link link-hover font-medium">Sign in</a>
     </p>

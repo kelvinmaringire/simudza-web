@@ -1,55 +1,136 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags %}
 
-{% block title %}
-    {% if directory_page %}{{ directory_page.title }}{% else %}Directory{% endif %}
-{% endblock %}
+{% block title %}Zimbabwean Products{% endblock %}
 
 {% block body_class %}template-directory{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-3xl px-4 py-6">
-    <header class="mb-6">
-        <h1 class="text-2xl font-semibold">
-            {% if directory_page %}{{ directory_page.title }}{% else %}Directory{% endif %}
-        </h1>
-        {% if directory_page and directory_page.intro %}
-            <div class="prose mt-2 max-w-none opacity-80">
-                {{ directory_page.intro|richtext }}
+<form
+    id="directory-filters"
+    method="get"
+    action="{% url 'directory:index' %}"
+    hx-get="{% url 'directory:results' %}"
+    hx-target="#directory-results"
+    hx-swap="innerHTML"
+    hx-trigger="change, keyup changed delay:300ms from:input[name='q'], search from:input[name='q']"
+    hx-indicator="#directory-loading"
+    class="block"
+    x-data="{ clearActive: {{ filters_active|yesno:'true,false' }} }"
+    @change="
+        const data = new FormData($el);
+        clearActive = ['q', 'category', 'town_or_city', 'origin_type', 'verified'].some(function (key) {
+            return data.getAll(key).some(function (value) {
+                return String(value).trim() !== '';
+            });
+        });
+    "
+    @input="
+        const data = new FormData($el);
+        clearActive = ['q', 'category', 'town_or_city', 'origin_type', 'verified'].some(function (key) {
+            return data.getAll(key).some(function (value) {
+                return String(value).trim() !== '';
+            });
+        });
+    "
+>
+    <div class="drawer lg:drawer-open">
+        <input id="directory-drawer" type="checkbox" class="drawer-toggle" />
+
+        <div class="drawer-content flex min-h-[70vh] flex-col">
+            <header class="border-base-300 bg-base-100 sticky top-0 z-10 border-b px-3 py-3 sm:px-5">
+                <div class="flex items-center gap-3">
+                    <h1 class="shrink-0 text-xl font-semibold tracking-tight sm:text-2xl">
+                        Zimbabwean Products
+                    </h1>
+
+                    <div class="ml-auto flex min-w-0 max-w-md flex-1 items-center justify-end gap-2 sm:max-w-lg">
+                        <div
+                            class="directory-search"
+                            x-data="{ q: '{{ filterset.form.q.value|default_if_none:''|escapejs }}' }"
+                        >
+                            <svg class="directory-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.3-4.3"></path>
+                                </g>
+                            </svg>
+                            <input
+                                id="directory-search"
+                                type="search"
+                                name="{{ filterset.form.q.name }}"
+                                x-ref="directorySearch"
+                                x-model="q"
+                                placeholder="Search products…"
+                                value="{{ filterset.form.q.value|default_if_none:'' }}"
+                                autocomplete="off"
+                                aria-label="Search directory"
+                            />
+                            <span
+                                id="directory-loading"
+                                class="htmx-indicator directory-search-loading"
+                                aria-live="polite"
+                            >
+                                <span class="loading loading-spinner loading-sm text-primary"></span>
+                                <span class="sr-only">Searching…</span>
+                            </span>
+                            <button
+                                type="button"
+                                class="directory-search-clear"
+                                x-show="q.length > 0"
+                                x-cloak
+                                aria-label="Clear search"
+                                @click="
+                                    q = '';
+                                    $refs.directorySearch.value = '';
+                                    $refs.directorySearch.dispatchEvent(new Event('input', { bubbles: true }));
+                                    $refs.directorySearch.dispatchEvent(new Event('search', { bubbles: true }));
+                                "
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4" aria-hidden="true">
+                                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <label
+                            for="directory-drawer"
+                            class="btn btn-outline btn-sm drawer-button shrink-0 lg:hidden"
+                            aria-label="Filters"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="h-4 w-4 stroke-current" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                            <span class="hidden sm:inline">Filters</span>
+                        </label>
+                    </div>
+                </div>
+
+                <p class="mt-1 max-w-xl text-sm leading-snug text-base-content/70">
+                    Discover products made, grown, processed or branded in Zimbabwe.
+                </p>
+            </header>
+
+            <div id="directory-results" class="directory-results flex-1 px-3 py-4 sm:px-5">
+                {% include "directory/partials/listing_results.html" %}
             </div>
-        {% endif %}
-    </header>
+        </div>
 
-    <label class="input mb-4 w-full">
-        <svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-            <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.3-4.3"></path>
-            </g>
-        </svg>
-        <input
-            id="directory-search"
-            type="search"
-            name="q"
-            class="grow"
-            placeholder="Search products, brands, businesses…"
-            value="{{ q }}"
-            autocomplete="off"
-            aria-label="Search directory"
-            hx-get="{% url 'directory:results' %}"
-            hx-target="#directory-results"
-            hx-swap="innerHTML"
-            hx-trigger="keyup changed delay:300ms, search"
-            hx-indicator="#directory-loading"
-        />
-    </label>
-
-    <div id="directory-loading" class="htmx-indicator mb-3 text-center text-sm opacity-60">
-        Searching…
+        <div class="drawer-side bg-base-200 z-20">
+            <label for="directory-drawer" aria-label="Close filters" class="drawer-overlay lg:hidden"></label>
+            <aside class="directory-filters-panel bg-base-200 border-base-300 flex h-full min-h-full w-72 max-w-[calc(100vw-3rem)] flex-col border-r sm:w-80">
+                <div class="border-base-300 bg-base-200 shrink-0 border-b px-4 py-3">
+                    <div class="flex items-center justify-between lg:hidden">
+                        <span class="font-medium">Filters</span>
+                        <label for="directory-drawer" class="btn btn-ghost btn-sm btn-circle" aria-label="Close filters">✕</label>
+                    </div>
+                    <h2 class="hidden text-sm font-semibold tracking-wide uppercase text-base-content/70 lg:block">
+                        Filters
+                    </h2>
+                </div>
+                <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-4">
+                    {% include "directory/partials/filter_fields.html" %}
+                </div>
+            </aside>
+        </div>
     </div>
-
-    <ul id="directory-results" class="list bg-base-100 rounded-box shadow-md">
-        {% include "directory/partials/listing_results.html" %}
-    </ul>
-</div>
+</form>
 {% endblock %}

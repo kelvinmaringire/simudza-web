@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{% if product %}Update product{% else %}Submit product{% endif %}{% endblock %}
+
+{% block body_class %}template-business-submit-product{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl px-4 py-6">
+    <p class="mb-4">
+        <a href="{% url 'businesses:submit' %}" class="link link-hover text-sm">← Submissions</a>
+    </p>
+    <header class="mb-6">
+        <h1 class="text-2xl font-semibold">
+            {% if product %}Update product{% else %}New product{% endif %}
+        </h1>
+        <p class="mt-2 text-sm text-base-content/80">
+            Submit product details and an image. New products are saved as pending review.
+        </p>
+    </header>
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-error mb-4 text-sm">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="flex flex-col gap-4">
+        {% csrf_token %}
+        {% include "businesses/partials/form_field.html" with field=form.business %}
+        {% if not product %}
+            {% include "businesses/partials/form_field.html" with field=form.product label="Existing product (optional)" %}
+        {% else %}
+            <input type="hidden" name="product" value="{{ product.pk }}" />
+        {% endif %}
+        {% include "businesses/partials/form_field.html" with field=form.product_name label="Product name" %}
+        {% include "businesses/partials/form_field.html" with field=form.brand_name label="Brand" %}
+        {% include "businesses/partials/form_field.html" with field=form.category %}
+        {% include "businesses/partials/form_field.html" with field=form.origin_type label="Product type" %}
+        {% include "businesses/partials/form_field.html" with field=form.short_description %}
+        {% include "businesses/partials/form_field.html" with field=form.product_description label="Description / specifications" %}
+        {% include "businesses/partials/form_field.html" with field=form.product_image_upload label="Product image" %}
+        {% include "businesses/partials/form_field.html" with field=form.sku %}
+        {% include "businesses/partials/form_field.html" with field=form.barcode %}
+        {% include "businesses/partials/form_field.html" with field=form.size_value label="Size value" %}
+        {% include "businesses/partials/form_field.html" with field=form.size_unit label="Size unit" %}
+        {% include "businesses/partials/form_field.html" with field=form.price %}
+        {% include "businesses/partials/form_field.html" with field=form.submitter_notes label="Notes for reviewers" %}
+        <button type="submit" class="btn btn-primary">
+            {% if product %}Update product{% else %}Submit product{% endif %}
+        </button>
+    </form>
+</div>
+{% endblock %}

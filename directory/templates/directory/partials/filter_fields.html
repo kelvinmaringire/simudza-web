@@ -1,0 +1,220 @@
+<div
+    class="form-control w-full"
+    x-data="{ categoriesOpen: false }"
+>
+    <span class="label py-1"><span class="label-text text-xs">Category</span></span>
+
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="categoriesOpen = !categoriesOpen"
+            :aria-expanded="categoriesOpen.toString()"
+            aria-controls="directory-category-list"
+        >
+            <span>All Categories</span>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150"
+                :class="{ 'rotate-90': categoriesOpen }"
+                aria-hidden="true"
+            >
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div
+            id="directory-category-list"
+            x-show="categoriesOpen"
+            x-cloak
+            class="border-base-300 border-t px-2 py-2"
+        >
+            <ul class="directory-category-tree flex w-full flex-col gap-2 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input
+                            type="radio"
+                            name="category"
+                            value=""
+                            class="radio radio-xs directory-filter-radio"
+                            {% if not selected_category %}checked{% endif %}
+                        />
+                        <span class="text-sm font-medium">All categories</span>
+                    </label>
+                </li>
+
+                {% for node in category_tree %}
+                    {% include "directory/partials/category_node.html" with node=node %}
+                {% empty %}
+                    <li class="px-3 py-2 text-sm text-base-content/60">No categories yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div
+    class="form-control w-full"
+    x-data="{ townsOpen: false }"
+>
+    <span class="label py-1"><span class="label-text text-xs">Town / city</span></span>
+
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="townsOpen = !townsOpen"
+            :aria-expanded="townsOpen.toString()"
+            aria-controls="directory-town-list"
+        >
+            <span>All Towns / Cities</span>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150"
+                :class="{ 'rotate-90': townsOpen }"
+                aria-hidden="true"
+            >
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div
+            id="directory-town-list"
+            x-show="townsOpen"
+            x-cloak
+            class="border-base-300 border-t px-2 py-2"
+        >
+            <ul class="flex w-full flex-col gap-0.5 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input
+                            type="radio"
+                            name="{{ filterset.form.town_or_city.name }}"
+                            value=""
+                            class="radio radio-xs directory-filter-radio"
+                            {% if not filterset.form.town_or_city.value %}checked{% endif %}
+                        />
+                        <span class="text-sm font-medium">All towns / cities</span>
+                    </label>
+                </li>
+
+                {% for value, label in filterset.form.town_or_city.field.choices %}
+                    {% if value %}
+                        <li class="px-1">
+                            <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                                <input
+                                    type="radio"
+                                    name="{{ filterset.form.town_or_city.name }}"
+                                    value="{{ value }}"
+                                    class="radio radio-xs directory-filter-radio"
+                                    {% if filterset.form.town_or_city.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}
+                                />
+                                <span class="truncate text-sm">{{ label }}</span>
+                            </label>
+                        </li>
+                    {% endif %}
+                {% empty %}
+                    <li class="px-3 py-2 text-sm text-base-content/60">No towns / cities yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div
+    class="form-control w-full"
+    x-data="{ originOpen: false }"
+>
+    <span class="label py-1"><span class="label-text text-xs">Product type</span></span>
+
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="originOpen = !originOpen"
+            :aria-expanded="originOpen.toString()"
+            aria-controls="directory-origin-list"
+        >
+            <span>All Product Types</span>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150"
+                :class="{ 'rotate-90': originOpen }"
+                aria-hidden="true"
+            >
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <div
+            id="directory-origin-list"
+            x-show="originOpen"
+            x-cloak
+            class="border-base-300 border-t px-2 py-2"
+        >
+            <ul class="flex w-full flex-col gap-0.5 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input
+                            type="radio"
+                            name="{{ filterset.form.origin_type.name }}"
+                            value=""
+                            class="radio radio-xs directory-filter-radio"
+                            {% if not filterset.form.origin_type.value %}checked{% endif %}
+                        />
+                        <span class="text-sm font-medium">All product types</span>
+                    </label>
+                </li>
+
+                {% for value, label in filterset.form.origin_type.field.choices %}
+                    {% if value %}
+                        <li class="px-1">
+                            <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                                <input
+                                    type="radio"
+                                    name="{{ filterset.form.origin_type.name }}"
+                                    value="{{ value }}"
+                                    class="radio radio-xs directory-filter-radio"
+                                    {% if filterset.form.origin_type.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}
+                                />
+                                <span class="truncate text-sm">{{ label }}</span>
+                            </label>
+                        </li>
+                    {% endif %}
+                {% empty %}
+                    <li class="px-3 py-2 text-sm text-base-content/60">No product types yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="form-control w-full gap-2">
+    <label class="label cursor-pointer justify-start gap-2 py-1">
+        <input
+            type="checkbox"
+            name="{{ filterset.form.verified.name }}"
+            value="true"
+            class="checkbox checkbox-xs"
+            {% if filterset.form.verified.value %}checked{% endif %}
+        />
+        <span class="label-text text-sm">Verified only</span>
+    </label>
+</div>
+
+<a
+    href="{% url 'directory:index' %}"
+    class="btn btn-sm mt-2 w-full"
+    :class="clearActive ? 'btn-primary' : 'btn-ghost btn-disabled pointer-events-none text-base-content/40'"
+    :tabindex="clearActive ? 0 : -1"
+    :aria-disabled="(!clearActive).toString()"
+    @click="if (!clearActive) $event.preventDefault()"
+>
+    Clear filters
+</a>

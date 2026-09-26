@@ -25,8 +25,7 @@ class BusinessChooserFilterForm(BaseFilterForm):
         if search_query:
             objects = objects.filter(
                 Q(name__icontains=search_query)
-                | Q(city__icontains=search_query)
-                | Q(province__icontains=search_query)
+                | Q(town_or_city__icontains=search_query)
                 | Q(email__icontains=search_query)
                 | Q(phone__icontains=search_query)
             )
@@ -42,7 +41,7 @@ class BusinessChooseViewMixin:
     def columns(self):
         return [
             self.title_column,
-            Column("city", label=_("City"), accessor="city"),
+            Column("town_or_city", label=_("Town / city"), accessor="town_or_city"),
             Column(
                 "business_type",
                 label=_("Type"),
@@ -85,8 +84,7 @@ class BusinessViewSet(ModelViewSet):
         "name",
         "business_type",
         "verification_status",
-        "city",
-        "country",
+        "town_or_city",
         "is_active",
     ]
 
@@ -94,16 +92,12 @@ class BusinessViewSet(ModelViewSet):
         "business_type",
         "verification_status",
         "is_active",
-        "country",
-        "province",
     ]
 
     search_fields = [
         "name",
         "description",
-        "city",
-        "province",
-        "country",
+        "town_or_city",
         "email",
         "phone",
     ]
@@ -129,9 +123,7 @@ class BusinessViewSet(ModelViewSet):
                     FieldPanel("email"),
                     FieldPanel("phone"),
                     FieldPanel("address"),
-                    FieldPanel("city"),
-                    FieldPanel("province"),
-                    FieldPanel("country"),
+                    FieldPanel("town_or_city"),
                 ],
                 heading="Contact",
             ),
@@ -159,9 +151,7 @@ class BusinessViewSet(ModelViewSet):
         "email",
         "phone",
         "address",
-        "city",
-        "province",
-        "country",
+        "town_or_city",
         "verification_status",
         "verified_at",
         "owner",

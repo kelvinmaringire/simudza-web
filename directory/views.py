@@ -1,21 +1,37 @@
-from django.db.models import F, Q
+from django.db.models import F
+from django.shortcuts import redirect
 from django.views.generic import DetailView, ListView
 
 from products.models import Product
 
+from .filters import DirectoryListingFilter, build_directory_category_tree
 from .models import DirectoryListing, DirectoryPage
 
 
+FILTER_PARAM_NAMES = (
+    "q",
+    "category",
+    "town_or_city",
+    "origin_type",
+    "verified",
+)
+
+
 class DirectoryListingQuerysetMixin:
-    """Shared queryset + search for directory listing views."""
+    """Shared queryset + search/filters for directory listing views."""
 
     paginate_by = 24
 
-    def get_search_query(self):
-        return self.request.GET.get("q", "").strip()
+    def get_filterset(self):
+        if not hasattr(self, "_filterset"):
+            self._filterset = DirectoryListingFilter(
+                self.request.GET or None,
+                queryset=self.get_base_queryset(),
+            )
+        return self._filterset
 
-    def get_queryset(self):
-        qs = (
+    def get_base_queryset(self):
+        return (
             DirectoryListing.objects.filter(
                 show_in_directory=True,
                 product__status=Product.ProductStatus.PUBLISHED,
@@ -25,27 +41,38 @@ class DirectoryListingQuerysetMixin:
                 "product__business",
                 "product__category",
                 "product__image",
+                "product__inventory",
             )
             .order_by("-featured", "product__name")
         )
 
-        query = self.get_search_query()
-        if query:
-            qs = qs.filter(
-                Q(product__name__icontains=query)
-                | Q(product__brand_name__icontains=query)
-                | Q(product__short_description__icontains=query)
-                | Q(product__description__icontains=query)
-                | Q(product__sku__icontains=query)
-                | Q(product__business__name__icontains=query)
-                | Q(product__category__name__icontains=query)
-            ).distinct()
+    def get_queryset(self):
+        return self.get_filterset().qs.distinct()
 
-        return qs
+    def get_filter_querystring(self):
+        params = self.request.GET.copy()
+        params.pop("page", None)
+        return params.urlencode()
+
+    def get_selected_category_id(self):
+        return self.request.GET.get("category", "")
+
+    def filters_are_active(self):
+        for name in FILTER_PARAM_NAMES:
+            if self.request.GET.get(name, "").strip():
+                return True
+        return False
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["q"] = self.get_search_query()
+        filterset = self.get_filterset()
+        selected_category = self.get_selected_category_id()
+        context["filterset"] = filterset
+        context["q"] = (filterset.data.get("q") or "").strip() if filterset.data else ""
+        context["filter_qs"] = self.get_filter_querystring()
+        context["selected_category"] = selected_category
+        context["category_tree"] = build_directory_category_tree(selected_category)
+        context["filters_active"] = self.filters_are_active()
         context["directory_page"] = DirectoryPage.objects.live().public().first()
         return context
 
@@ -65,9 +92,9 @@ class DirectoryResultsView(DirectoryListingQuerysetMixin, ListView):
 
 
 class DirectoryProductDetailView(DetailView):
+    """Legacy URL: count a directory view, then open the product page."""
+
     model = DirectoryListing
-    context_object_name = "listing"
-    template_name = "directory/product_detail.html"
     slug_field = "product__slug"
     slug_url_kwarg = "slug"
 
@@ -75,22 +102,9 @@ class DirectoryProductDetailView(DetailView):
         return DirectoryListing.objects.filter(
             show_in_directory=True,
             product__status=Product.ProductStatus.PUBLISHED,
-        ).select_related(
-            "product",
-            "product__business",
-            "product__category",
-            "product__image",
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["product"] = self.object.product
-        context["directory_page"] = DirectoryPage.objects.live().public().first()
-        return context
+        ).select_related("product")
 
     def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        DirectoryListing.objects.filter(pk=self.object.pk).update(views=F("views") + 1)
-        self.object.refresh_from_db(fields=["views"])
-        context = self.get_context_data(object=self.object)
-        return self.render_to_response(context)
+        listing = self.get_object()
+        DirectoryListing.objects.filter(pk=listing.pk).update(views=F("views") + 1)
+        return redirect("products:detail", slug=listing.product.slug)

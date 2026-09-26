@@ -1,7 +1,7 @@
 {% load wagtailimages_tags %}
 
 {% if products %}
-    <p class="mb-3 text-xs tracking-wide opacity-60">
+    <p class="mb-3 text-xs tracking-wide text-base-content/60">
         {% if q %}
             Results for “{{ q }}” · {{ page_obj.paginator.count }} found
         {% else %}
@@ -26,20 +26,28 @@
                             height="200"
                         />
                     {% else %}
-                        <div class="bg-base-200 flex aspect-[16/10] w-full items-center justify-center rounded-box text-sm opacity-50">
+                        <div class="bg-base-200 flex aspect-[16/10] w-full items-center justify-center rounded-box text-sm text-base-content/50">
                             No image
                         </div>
                     {% endif %}
                 </figure>
                 <div class="card-body gap-2 p-4">
-                    <h2 class="card-title text-base">{{ product.name }}</h2>
-                    <p class="text-xs uppercase font-semibold opacity-60">
-                        {% if product.business %}{{ product.business.name }}{% endif %}
+                    <h2 class="card-title text-base">
+                        <a href="{{ product.get_absolute_url }}" class="link link-hover">
+                            {{ product.name }}
+                        </a>
+                    </h2>
+                    <p class="text-xs uppercase font-semibold text-base-content/60">
+                        {% if product.business %}
+                            <a href="{{ product.business.get_absolute_url }}" class="link link-hover">
+                                {{ product.business.name }}
+                            </a>
+                        {% endif %}
                         {% if product.business and product.category %} · {% endif %}
                         {% if product.category %}{{ product.category.name }}{% endif %}
                     </p>
                     {% if product.short_description %}
-                        <p class="text-sm opacity-70 line-clamp-2">{{ product.short_description }}</p>
+                        <p class="text-sm text-base-content/70 line-clamp-2">{{ product.short_description }}</p>
                     {% endif %}
                     <div class="mt-1 flex items-center justify-between gap-2">
                         <span class="text-lg font-semibold">${{ product.price }}</span>
@@ -92,7 +100,7 @@
         </div>
     {% endif %}
 {% else %}
-    <div class="py-12 text-center opacity-60">
+    <div class="py-12 text-center text-base-content/60">
         {% if q %}
             No products match “{{ q }}”.
         {% else %}

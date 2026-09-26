@@ -1,0 +1,12 @@
+{# Kept for Wagtail preview; the public page renders cards from page context. #}
+<section id="{{ anchor }}" class="classification-card scroll-mt-24">
+    <h2 class="text-xl font-semibold tracking-tight">{{ value.title }}</h2>
+    <p class="mt-2 text-base leading-relaxed text-base-content/80">{{ value.definition }}</p>
+    {% if value.steps %}
+        <ol class="mt-4 flex flex-wrap gap-2">
+            {% for step in value.steps %}
+                <li class="classification-flow__step">{{ step }}</li>
+            {% endfor %}
+        </ol>
+    {% endif %}
+</section>

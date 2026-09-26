@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% load wagtailimages_tags %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block body_class %}template-product-detail{% endblock %}
+
+{% block content %}
+<article class="product-detail mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 lg:px-8">
+    <p class="mb-3 text-sm">
+        <a href="{% url 'directory:index' %}" class="link link-hover text-base-content/60">
+            ← Directory
+        </a>
+    </p>
+
+    {# Desktop: image | identity + actions. Mobile: image → identity → actions. #}
+    <section
+        class="grid gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start lg:gap-8 xl:gap-10"
+        aria-labelledby="product-title"
+        {% if gallery|length > 1 %}
+        x-data="{
+            active: 0,
+            count: {{ gallery|length }},
+            select(i, focus) {
+                this.active = ((i % this.count) + this.count) % this.count;
+                if (!focus) return;
+                this.$nextTick(() => {
+                    const options = this.$refs.thumbs && this.$refs.thumbs.querySelectorAll('[role=option]');
+                    if (options && options[this.active]) {
+                        options[this.active].focus({ preventScroll: true });
+                    }
+                });
+            },
+            onThumbKey(e) {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.select(this.active + 1, true);
+                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.select(this.active - 1, true);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    this.select(0, true);
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    this.select(this.count - 1, true);
+                }
+            }
+        }"
+        {% endif %}
+    >
+        <div class="min-w-0 lg:sticky lg:top-3">
+            {% if gallery %}
+                <div
+                    id="product-gallery-hero"
+                    class="product-image-well relative flex aspect-square w-full"
+                    role="img"
+                    aria-live="polite"
+                    {% if gallery|length > 1 %}
+                    :aria-label="'Image ' + (active + 1) + ' of {{ gallery|length }}'"
+                    {% endif %}
+                >
+                    {% for item in gallery %}
+                        {% image item.image max-960x960 as slide %}
+                        <img
+                            class="absolute inset-0 m-auto max-h-full max-w-full object-contain p-4 sm:p-6 lg:p-8"
+                            src="{{ slide.url }}"
+                            alt="{{ item.alt }}"
+                            width="{{ slide.width }}"
+                            height="{{ slide.height }}"
+                            draggable="false"
+                            {% if gallery|length > 1 %}
+                            x-show="active === {{ forloop.counter0 }}"
+                            {% if not forloop.first %}x-cloak{% endif %}
+                            {% endif %}
+                        />
+                    {% endfor %}
+                </div>
+                {% if gallery|length > 1 %}
+                    <ul
+                        class="mt-2 flex gap-1.5 overflow-x-auto pb-0.5"
+                        role="listbox"
+                        aria-label="Product images"
+                        aria-controls="product-gallery-hero"
+                        x-ref="thumbs"
+                        @keydown="onThumbKey($event)"
+                    >
+                        {% for item in gallery %}
+                            {% image item.image max-96x96 as thumb %}
+                            <li class="shrink-0" role="none">
+                                <button
+                                    type="button"
+                                    role="option"
+                                    class="product-gallery-thumb product-image-well product-image-well--thumb flex size-12 items-center justify-center p-1 transition outline-none sm:size-14"
+                                    :aria-selected="active === {{ forloop.counter0 }}"
+                                    :tabindex="active === {{ forloop.counter0 }} ? 0 : -1"
+                                    @click="select({{ forloop.counter0 }})"
+                                    aria-label="{{ item.alt }} ({{ forloop.counter }} of {{ gallery|length }})"
+                                >
+                                    <img
+                                        class="max-h-full max-w-full object-contain"
+                                        src="{{ thumb.url }}"
+                                        alt=""
+                                        width="{{ thumb.width }}"
+                                        height="{{ thumb.height }}"
+                                        draggable="false"
+                                    />
+                                </button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% else %}
+                <div class="product-image-well product-image-well__empty flex aspect-square w-full text-sm">
+                    No image
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="min-w-0 lg:pt-1">
+            <h1 id="product-title" class="text-2xl font-semibold tracking-tight sm:text-3xl">
+                {{ product.name }}
+            </h1>
+
+            {% if product.brand_name or business %}
+                <p class="mt-1 text-base text-base-content/65">
+                    {% if business %}
+                        <a href="{{ business.get_absolute_url }}" class="link link-hover text-base-content/65">
+                            {% firstof product.brand_name business.name %}
+                        </a>
+                    {% else %}
+                        {{ product.brand_name }}
+                    {% endif %}
+                </p>
+            {% endif %}
+
+            <p class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-base-content/50">
+                {% if product.category %}
+                    <a
+                        href="{% url 'directory:index' %}?category={{ product.category_id }}"
+                        class="link link-hover text-base-content/55"
+                    >
+                        {{ product.category.name }}
+                    </a>
+                {% endif %}
+                {% if product.category and product.origin_type %}
+                    <span class="text-base-content/25" aria-hidden="true">·</span>
+                {% endif %}
+                {% if product.origin_type %}
+                    <a href="/product-classification/" class="link link-hover text-base-content/55">
+                        {{ product.get_origin_type_display }}
+                    </a>
+                {% endif %}
+                {% if product.verified_at %}
+                    {% if product.category or product.origin_type %}
+                        <span class="text-base-content/25" aria-hidden="true">·</span>
+                    {% endif %}
+                    <span class="text-success">
+                        Verified {{ product.verified_at|date:"j M Y" }}
+                    </span>
+                {% endif %}
+            </p>
+
+            {# Contact maker — directory pages don't add to cart here #}
+            {% if business.phone or business.email or business.website %}
+                <div class="mt-5 flex flex-wrap items-center gap-2">
+                    {% if business.phone %}
+                        <a
+                            href="tel:{{ business.phone }}"
+                            class="product-contact-btn product-contact-btn--call"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="product-contact-btn__icon" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 0 1 3.5 2h1.148a1.5 1.5 0 0 1 1.465 1.175l.716 3.223a1.5 1.5 0 0 1-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 0 0 6.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 0 1 1.767-1.052l3.223.716A1.5 1.5 0 0 1 18 15.352V16.5a1.5 1.5 0 0 1-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 0 1 2.43 8.326 13.019 13.019 0 0 1 2 5V3.5Z" clip-rule="evenodd" />
+                            </svg>
+                            Call
+                        </a>
+                    {% endif %}
+                    {% if business.email %}
+                        <a
+                            href="mailto:{{ business.email }}?subject={{ product.name|urlencode }}"
+                            class="product-contact-btn product-contact-btn--email"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="product-contact-btn__icon" aria-hidden="true">
+                                <path d="M3 4a2 2 0 0 0-2 2v1.161l8.441 4.221a1.25 1.25 0 0 0 1.118 0L19 7.162V6a2 2 0 0 0-2-2H3Z" />
+                                <path d="m19 8.839-7.77 3.885a2.75 2.75 0 0 1-2.46 0L1 8.839V14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.839Z" />
+                            </svg>
+                            Email
+                        </a>
+                    {% endif %}
+                    {% if business.website %}
+                        <a
+                            href="{{ business.website }}"
+                            class="product-contact-btn product-contact-btn--web"
+                            rel="noopener noreferrer"
+                            target="_blank"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="product-contact-btn__icon" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" />
+                            </svg>
+                            Website
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if product.short_description or product.description %}
+                <div class="mt-5 max-w-prose space-y-3 text-[0.95rem] leading-relaxed text-base-content/75 sm:text-base">
+                    {% if product.short_description %}
+                        <p>{{ product.short_description }}</p>
+                    {% endif %}
+                    {% if product.description %}
+                        <div class="prose max-w-none text-sm leading-relaxed text-base-content/70 sm:text-[0.95rem]">
+                            {{ product.description|linebreaks }}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if in_marketplace %}
+                <aside class="product-marketplace-note mt-5 max-w-prose" aria-label="Available on Simudza Marketplace">
+                    <p class="product-marketplace-note__title">Available on Simudza Marketplace</p>
+                    <p class="product-marketplace-note__body">
+                        This product can be purchased directly through Simudza.
+                    </p>
+                    <a
+                        href="{% url 'marketplace:index' %}?q={{ product.name|urlencode }}"
+                        class="product-marketplace-note__cta"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="product-marketplace-note__cta-icon" aria-hidden="true">
+                            <path d="M1 1.75A.75.75 0 0 1 1.75 1h1.628a1.75 1.75 0 0 1 1.734 1.51L5.18 3a65.25 65.25 0 0 1 13.36 1.48.75.75 0 0 1 .58.875 48.645 48.645 0 0 1-1.618 6.2.75.75 0 0 1-.712.513H6a2.503 2.503 0 0 0-2.342 1.57l-.271.683a.75.75 0 0 1-1.392-.555l.347-.873A.75.75 0 0 1 3.75 11h11.663a49.172 49.172 0 0 0 .991-3.63 63.75 63.75 0 0 0-12.28-1.36l-.405-2.025A.25.25 0 0 0 3.378 3.5H1.75a.75.75 0 0 1-.75-.75ZM6 17.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM16.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+                        </svg>
+                        Shop this product
+                    </a>
+                </aside>
+            {% endif %}
+        </div>
+    </section>
+
+    {# Below: Specs · Manufacturer — quiet, directory-like #}
+    <div class="mt-8 max-w-3xl space-y-8 sm:mt-10 sm:space-y-9">
+        {% if product.size_value or product.size_unit or product.sku or product.barcode %}
+            <section aria-labelledby="product-specs">
+                <h2 id="product-specs" class="text-base font-semibold tracking-tight">Specs</h2>
+                <dl class="mt-2 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                    {% if product.size_value or product.size_unit %}
+                        <div class="flex gap-2">
+                            <dt class="shrink-0 text-base-content/45">Size</dt>
+                            <dd>
+                                {% if product.size_value %}{{ product.size_value }}{% endif %}{% if product.size_unit %} {{ product.size_unit }}{% endif %}
+                            </dd>
+                        </div>
+                    {% endif %}
+                    {% if product.sku %}
+                        <div class="flex gap-2">
+                            <dt class="shrink-0 text-base-content/45">SKU</dt>
+                            <dd>{{ product.sku }}</dd>
+                        </div>
+                    {% endif %}
+                    {% if product.barcode %}
+                        <div class="flex gap-2">
+                            <dt class="shrink-0 text-base-content/45">Barcode</dt>
+                            <dd>{{ product.barcode }}</dd>
+                        </div>
+                    {% endif %}
+                </dl>
+            </section>
+        {% endif %}
+
+        {% if business %}
+            <section aria-labelledby="product-maker">
+                <h2 id="product-maker" class="text-base font-semibold tracking-tight">Manufacturer</h2>
+
+                <div class="product-maker-well mt-3">
+                    <a
+                        href="{{ business.get_absolute_url }}"
+                        class="product-maker-well__header outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                        {% if business.logo %}
+                            {% image business.logo max-80x80 as logo %}
+                            <span class="product-maker-well__logo">
+                                <img
+                                    class="max-h-full max-w-full object-contain"
+                                    src="{{ logo.url }}"
+                                    alt=""
+                                    width="{{ logo.width }}"
+                                    height="{{ logo.height }}"
+                                    draggable="false"
+                                />
+                            </span>
+                        {% else %}
+                            <span class="product-maker-well__logo product-maker-well__logo--fallback">
+                                {{ business.name|slice:":1"|upper }}
+                            </span>
+                        {% endif %}
+                        <span class="min-w-0">
+                            <span class="block font-semibold text-base-content">{{ business.name }}</span>
+                            <span class="mt-0.5 block text-sm text-base-content/55">
+                                {% if business.town_or_city %}{{ business.town_or_city }}{% endif %}
+                                {% if business.town_or_city and business.verification_status == "verified" %}
+                                    <span class="text-base-content/30">·</span>
+                                {% endif %}
+                                {% if business.verification_status == "verified" %}
+                                    <span class="text-success">Verified</span>
+                                {% endif %}
+                            </span>
+                        </span>
+                    </a>
+
+                    {% if business.phone or business.email or business.website or business.address or business.town_or_city or retail_locations %}
+                        <ul class="product-maker-contacts">
+                            {% if business.phone %}
+                                <li>
+                                    <a href="tel:{{ business.phone }}" class="product-maker-contact product-maker-contact--call">
+                                        <span class="product-maker-contact__icon" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 0 1 3.5 2h1.148a1.5 1.5 0 0 1 1.465 1.175l.716 3.223a1.5 1.5 0 0 1-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 0 0 6.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 0 1 1.767-1.052l3.223.716A1.5 1.5 0 0 1 18 15.352V16.5a1.5 1.5 0 0 1-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 0 1 2.43 8.326 13.019 13.019 0 0 1 2 5V3.5Z" clip-rule="evenodd" />
+                                            </svg>
+                                        </span>
+                                        <span class="product-maker-contact__value">{{ business.phone }}</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if business.email %}
+                                <li>
+                                    <a
+                                        href="mailto:{{ business.email }}?subject={{ product.name|urlencode }}"
+                                        class="product-maker-contact product-maker-contact--email"
+                                    >
+                                        <span class="product-maker-contact__icon" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M3 4a2 2 0 0 0-2 2v1.161l8.441 4.221a1.25 1.25 0 0 0 1.118 0L19 7.162V6a2 2 0 0 0-2-2H3Z" />
+                                                <path d="m19 8.839-7.77 3.885a2.75 2.75 0 0 1-2.46 0L1 8.839V14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.839Z" />
+                                            </svg>
+                                        </span>
+                                        <span class="product-maker-contact__value">{{ business.email }}</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if business.website %}
+                                <li>
+                                    <a
+                                        href="{{ business.website }}"
+                                        class="product-maker-contact product-maker-contact--web"
+                                        rel="noopener noreferrer"
+                                        target="_blank"
+                                    >
+                                        <span class="product-maker-contact__icon" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" />
+                                            </svg>
+                                        </span>
+                                        <span class="product-maker-contact__value">{{ business.website }}</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if business.address or business.town_or_city %}
+                                <li>
+                                    <div class="product-maker-contact product-maker-contact--place">
+                                        <span class="product-maker-contact__icon" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" />
+                                            </svg>
+                                        </span>
+                                        <span class="product-maker-contact__value">
+                                            {% if business.address %}
+                                                <span class="whitespace-pre-line">{{ business.address }}</span>
+                                                {% if business.town_or_city %}
+                                                    <span class="mt-0.5 block text-base-content/55">{{ business.town_or_city }}</span>
+                                                {% endif %}
+                                            {% else %}
+                                                {{ business.town_or_city }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    {% endif %}
+
+                    {% if retail_locations %}
+                        <div class="product-maker-locations">
+                            <p class="product-maker-locations__label">Also sold at</p>
+                            <ul class="space-y-3">
+                                {% for location in retail_locations %}
+                                    <li class="product-maker-location">
+                                        <p class="font-medium text-base-content">{{ location.name }}</p>
+                                        {% if location.address or location.town_or_city %}
+                                            <p class="mt-0.5 flex gap-2 text-sm text-base-content/65">
+                                                <span class="product-maker-contact__icon product-maker-contact__icon--inline product-maker-contact--place" aria-hidden="true">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </span>
+                                                <span>
+                                                    {% if location.address %}{{ location.address }}{% endif %}
+                                                    {% if location.address and location.town_or_city %} · {% endif %}
+                                                    {% if location.town_or_city %}{{ location.town_or_city }}{% endif %}
+                                                </span>
+                                            </p>
+                                        {% endif %}
+                                        {% if location.phone %}
+                                            <a href="tel:{{ location.phone }}" class="product-maker-contact product-maker-contact--call product-maker-contact--compact mt-1.5">
+                                                <span class="product-maker-contact__icon" aria-hidden="true">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 0 1 3.5 2h1.148a1.5 1.5 0 0 1 1.465 1.175l.716 3.223a1.5 1.5 0 0 1-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 0 0 6.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 0 1 1.767-1.052l3.223.716A1.5 1.5 0 0 1 18 15.352V16.5a1.5 1.5 0 0 1-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 0 1 2.43 8.326 13.019 13.019 0 0 1 2 5V3.5Z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </span>
+                                                <span class="product-maker-contact__value">{{ location.phone }}</span>
+                                            </a>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </section>
+        {% endif %}
+    </div>
+
+    {% if related_products %}
+        <section class="mt-10 sm:mt-12" aria-labelledby="product-related">
+            <div class="mb-3 flex items-baseline justify-between gap-3">
+                <h2 id="product-related" class="text-base font-semibold tracking-tight">
+                    Related products
+                </h2>
+                {% if product.category %}
+                    <a
+                        href="{% url 'directory:index' %}?category={{ product.category_id }}"
+                        class="link link-hover shrink-0 text-sm text-base-content/50"
+                    >
+                        More in {{ product.category.name }}
+                    </a>
+                {% endif %}
+            </div>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-6 lg:grid-cols-4">
+                {% for related in related_products %}
+                    <a
+                        href="{{ related.get_absolute_url }}"
+                        class="group flex min-w-0 flex-col outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                        <div class="product-image-well relative flex aspect-square items-center justify-center p-3 sm:p-4">
+                            {% if related.image %}
+                                {% image related.image max-480x480 as related_thumb %}
+                                <img
+                                    class="max-h-full max-w-full object-contain transition duration-200 group-hover:scale-[1.03]"
+                                    src="{{ related_thumb.url }}"
+                                    alt="{{ related.name }}"
+                                    width="{{ related_thumb.width }}"
+                                    height="{{ related_thumb.height }}"
+                                    loading="lazy"
+                                    draggable="false"
+                                />
+                            {% else %}
+                                <span class="product-image-well__empty text-sm">No image</span>
+                            {% endif %}
+                        </div>
+                        <div class="mt-2 min-w-0 space-y-0.5 px-0.5">
+                            <h3 class="text-sm leading-snug font-semibold group-hover:underline sm:text-[0.95rem]">
+                                {{ related.name }}
+                            </h3>
+                            {% if related.brand_name or related.business %}
+                                <p class="truncate text-xs text-base-content/60 sm:text-sm">
+                                    {% firstof related.brand_name related.business.name %}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+</article>
+{% endblock %}

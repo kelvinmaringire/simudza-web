@@ -15,6 +15,8 @@ urlpatterns = [
     path("search/", search_views.search, name="search"),
     path("directory/", include("directory.urls")),
     path("marketplace/", include("marketplace.urls")),
+    path("businesses/", include("businesses.urls")),
+    path("products/", include("products.urls")),
     path("accounts/", include("accounts.urls")),
 ]
 
