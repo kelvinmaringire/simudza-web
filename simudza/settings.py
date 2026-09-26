@@ -228,12 +228,19 @@ MEDIA_URL = "/media/"
 
 # Default storage settings
 # See https://docs.djangoproject.com/en/6.1/ref/settings/#std-setting-STORAGES
+#
+# Production uses hashed filenames so deploys bust browser/CDN caches. Local
+# DEBUG keeps plain paths so template/CSS edits work without collectstatic.
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+        ),
     },
 }
 
