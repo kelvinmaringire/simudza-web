@@ -1,0 +1,76 @@
+{% load wagtailimages_tags %}
+{% if product.image %}{% image product.image fill-96x96 as cart_thumb %}{% endif %}
+<article class="mp-card group">
+    <div class="mp-card__media product-image-well">
+        {% if product.image %}
+            {% srcset_image product.image max-{320x320,480x480,640x640} sizes="(min-width: 1024px) 18rem, (min-width: 640px) 33vw, 50vw" class="mp-card__img" alt=product.name loading="lazy" draggable="false" %}
+        {% else %}
+            <span class="product-image-well__empty text-sm">No image</span>
+        {% endif %}
+
+        {% if product.featured or product.inventory.is_low_stock %}
+            <div class="mp-card__badges">
+                {% if product.featured %}
+                    <span class="mp-badge mp-badge--featured">Featured</span>
+                {% endif %}
+                {% if product.inventory.is_low_stock %}
+                    <span class="mp-badge mp-badge--low">Only {{ product.inventory.available_quantity }} left</span>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <span
+            class="mp-card__in-cart"
+            x-show="$store.cart.quantityOf({{ product.pk }}) > 0"
+            x-cloak
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+            </svg>
+            <span x-text="$store.cart.quantityOf({{ product.pk }}) + ' in cart'"></span>
+        </span>
+    </div>
+
+    <div class="mp-card__body">
+        {% if product.brand_name or product.business %}
+            <p class="mp-card__brand">{% firstof product.brand_name product.business.name %}</p>
+        {% endif %}
+        <h3 class="mp-card__name">
+            <a href="{{ product.get_marketplace_url }}" class="mp-card__link">{{ product.name }}</a>
+        </h3>
+        <p class="mp-card__meta">
+            {% if product.size_value or product.size_unit %}
+                <span>{% if product.size_value %}{{ product.size_value|floatformat:"-2" }}{% endif %}{% if product.size_unit %} {{ product.size_unit }}{% endif %}</span>
+                <span aria-hidden="true">·</span>
+            {% endif %}
+            <span>{{ product.get_origin_type_display }}</span>
+        </p>
+
+        <div class="mp-card__footer">
+            <p class="mp-card__price">
+                <span class="sr-only">Price</span>${{ product.price }}
+            </p>
+            <button
+                type="button"
+                class="mp-card__add btn btn-primary btn-sm"
+                aria-label="Add {{ product.name }} to cart"
+                :disabled="$store.cart.quantityOf({{ product.pk }}) >= {{ product.inventory.available_quantity }}"
+                @click="$store.cart.add({
+                    id: {{ product.pk }},
+                    name: '{{ product.name|escapejs }}',
+                    price: '{{ product.price }}',
+                    imageUrl: '{% if product.image %}{{ cart_thumb.url|escapejs }}{% endif %}',
+                    url: '{{ product.get_marketplace_url|escapejs }}',
+                    maxQty: {{ product.inventory.available_quantity }}
+                })"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                    <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
+                    <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                    <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span class="hidden sm:inline">Add</span>
+            </button>
+        </div>
+    </div>
+</article>

@@ -174,6 +174,12 @@ class Product(ClusterableModel):
             kwargs={"slug": self.slug},
         )
 
+    def get_marketplace_url(self):
+        return reverse(
+            "marketplace:product_detail",
+            kwargs={"slug": self.slug},
+        )
+
 
 class ProductImage(Orderable):
     product = ParentalKey(

@@ -223,7 +223,7 @@
                         This product can be purchased directly through Simudza.
                     </p>
                     <a
-                        href="{% url 'marketplace:index' %}?q={{ product.name|urlencode }}"
+                        href="{{ product.get_marketplace_url }}"
                         class="product-marketplace-note__cta"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="product-marketplace-note__cta-icon" aria-hidden="true">

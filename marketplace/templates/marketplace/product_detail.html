@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% load wagtailimages_tags %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block body_class %}template-marketplace-product{% endblock %}
+
+{% block content %}
+{% if product.image %}{% image product.image fill-96x96 as cart_thumb %}{% endif %}
+<article
+    class="mp-detail mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-5 lg:px-8"
+    x-data="{
+        product: {
+            id: {{ product.pk }},
+            name: '{{ product.name|escapejs }}',
+            price: '{{ product.price }}',
+            imageUrl: '{% if product.image %}{{ cart_thumb.url|escapejs }}{% endif %}',
+            url: '{{ product.get_marketplace_url|escapejs }}',
+            maxQty: {{ available_quantity }}
+        },
+        qty: 1,
+        showBar: false,
+        get inCart() { return this.$store.cart.quantityOf(this.product.id); },
+        get remaining() { return Math.max(this.product.maxQty - this.inCart, 0); },
+        dec() { this.qty = Math.max(1, this.qty - 1); },
+        inc() { this.qty = Math.min(Math.max(this.remaining, 1), this.qty + 1); },
+        setQty(value) {
+            const n = Math.floor(Number(value)) || 1;
+            this.qty = Math.min(Math.max(n, 1), Math.max(this.remaining, 1));
+        },
+        add(count) {
+            if (!this.remaining) return;
+            this.$store.cart.add(this.product, Math.min(count || this.qty, this.remaining));
+            this.qty = 1;
+        }
+    }"
+    x-init="
+        if ('IntersectionObserver' in window && $refs.buyActions) {
+            new IntersectionObserver(([entry]) => {
+                showBar = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+            }).observe($refs.buyActions);
+        }
+    "
+>
+    <nav class="breadcrumbs py-0 text-sm text-base-content/60" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="{% url 'marketplace:index' %}" class="link link-hover">Marketplace</a></li>
+            {% if product.category %}
+                <li>
+                    <a href="{% url 'marketplace:index' %}?category={{ product.category.slug }}" class="link link-hover">
+                        {{ product.category.name }}
+                    </a>
+                </li>
+            {% endif %}
+            <li class="min-w-0"><span class="truncate text-base-content/80" aria-current="page">{{ product.name }}</span></li>
+        </ul>
+    </nav>
+
+    <section
+        class="mt-3 grid gap-6 sm:mt-4 lg:grid-cols-12 lg:items-start lg:gap-10 xl:gap-14"
+        aria-labelledby="product-title"
+    >
+        {# Gallery #}
+        <div
+            class="min-w-0 lg:sticky lg:top-5 lg:col-span-7"
+            {% if gallery|length > 1 %}
+            x-data="{
+                active: 0,
+                count: {{ gallery|length }},
+                touchX: null,
+                select(i) { this.active = ((i % this.count) + this.count) % this.count; },
+                onTouchEnd(e) {
+                    if (this.touchX === null) return;
+                    const dx = e.changedTouches[0].clientX - this.touchX;
+                    if (Math.abs(dx) > 40) this.select(this.active + (dx < 0 ? 1 : -1));
+                    this.touchX = null;
+                }
+            }"
+            @keydown.arrow-right="select(active + 1)"
+            @keydown.arrow-left="select(active - 1)"
+            {% endif %}
+        >
+            {% if gallery %}
+                <div
+                    class="mp-gallery product-image-well"
+                    {% if gallery|length > 1 %}
+                    @touchstart.passive="touchX = $event.touches[0].clientX"
+                    @touchend="onTouchEnd($event)"
+                    :aria-label="'Image ' + (active + 1) + ' of {{ gallery|length }}'"
+                    role="region"
+                    aria-roledescription="carousel"
+                    {% endif %}
+                >
+                    {% for item in gallery %}
+                        {% image item.image max-1200x1200 as slide %}
+                        <img
+                            class="mp-gallery__img"
+                            src="{{ slide.url }}"
+                            alt="{{ item.alt }}"
+                            width="{{ slide.width }}"
+                            height="{{ slide.height }}"
+                            draggable="false"
+                            {% if forloop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %}
+                            {% if gallery|length > 1 %}
+                            x-show="active === {{ forloop.counter0 }}"
+                            x-transition.opacity.duration.200ms
+                            {% if not forloop.first %}x-cloak{% endif %}
+                            {% endif %}
+                        />
+                    {% endfor %}
+
+                    {% if gallery|length > 1 %}
+                        <button type="button" class="mp-gallery__nav mp-gallery__nav--prev" @click="select(active - 1)" aria-label="Previous image">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <button type="button" class="mp-gallery__nav mp-gallery__nav--next" @click="select(active + 1)" aria-label="Next image">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <div class="mp-gallery__dots sm:hidden" aria-hidden="true">
+                            {% for item in gallery %}
+                                <span :class="active === {{ forloop.counter0 }} && 'is-active'"></span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if gallery|length > 1 %}
+                    <ul class="mt-3 hidden gap-2 overflow-x-auto pb-1 sm:flex" aria-label="Product images">
+                        {% for item in gallery %}
+                            {% image item.image max-160x160 as thumb %}
+                            <li class="shrink-0">
+                                <button
+                                    type="button"
+                                    class="product-gallery-thumb product-image-well product-image-well--thumb flex size-16 items-center justify-center p-1.5 transition outline-none lg:size-20"
+                                    :aria-selected="active === {{ forloop.counter0 }}"
+                                    :aria-current="active === {{ forloop.counter0 }}"
+                                    @click="select({{ forloop.counter0 }})"
+                                    aria-label="Show image {{ forloop.counter }} of {{ gallery|length }}"
+                                >
+                                    <img class="max-h-full max-w-full object-contain" src="{{ thumb.url }}" alt="" width="{{ thumb.width }}" height="{{ thumb.height }}" draggable="false" loading="lazy" />
+                                </button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% else %}
+                <div class="mp-gallery product-image-well">
+                    <span class="product-image-well__empty text-sm">No image</span>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Buy box #}
+        <div class="min-w-0 lg:col-span-5">
+            {% if product.brand_name or business %}
+                <p class="mp-detail__brand">
+                    {% if business %}
+                        <a href="{{ business.get_absolute_url }}" class="link link-hover">{% firstof product.brand_name business.name %}</a>
+                    {% else %}
+                        {{ product.brand_name }}
+                    {% endif %}
+                </p>
+            {% endif %}
+
+            <h1 id="product-title" class="mp-detail__title">{{ product.name }}</h1>
+
+            <ul class="mt-3 flex flex-wrap gap-1.5" aria-label="Product highlights">
+                {% if product.origin_type %}
+                    <li>
+                        <a href="/product-classification/" class="mp-tag mp-tag--origin">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" /></svg>
+                            {{ product.get_origin_type_display }}
+                        </a>
+                    </li>
+                {% endif %}
+                {% if product.verified_at %}
+                    <li>
+                        <span class="mp-tag mp-tag--verified" title="Verified {{ product.verified_at|date:'j M Y' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.403 12.652a3 3 0 0 0 0-5.304 3 3 0 0 0-3.75-3.751 3 3 0 0 0-5.305 0 3 3 0 0 0-3.751 3.75 3 3 0 0 0 0 5.305 3 3 0 0 0 3.75 3.751 3 3 0 0 0 5.305 0 3 3 0 0 0 3.751-3.75Zm-2.546-4.46a.75.75 0 0 0-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" /></svg>
+                            Verified product
+                        </span>
+                    </li>
+                {% endif %}
+                {% if product.featured %}
+                    <li><span class="mp-tag mp-tag--featured">Featured</span></li>
+                {% endif %}
+            </ul>
+
+            <div class="mt-5 flex flex-wrap items-end gap-x-3 gap-y-1">
+                <p class="mp-detail__price"><span class="sr-only">Price</span>${{ product.price }}</p>
+                {% if product.size_value or product.size_unit %}
+                    <p class="pb-1 text-sm text-base-content/55">
+                        {% if product.size_value %}{{ product.size_value|floatformat:"-2" }}{% endif %}{% if product.size_unit %} {{ product.size_unit }}{% endif %}
+                    </p>
+                {% endif %}
+            </div>
+
+            <p class="mp-stock {% if not in_stock %}mp-stock--out{% elif low_stock %}mp-stock--low{% endif %}">
+                <span class="mp-stock__dot" aria-hidden="true"></span>
+                {% if not in_stock %}
+                    Out of stock
+                {% elif low_stock %}
+                    Only {{ available_quantity }} left in stock
+                {% else %}
+                    In stock
+                {% endif %}
+            </p>
+
+            {% if product.short_description %}
+                <p class="mt-4 max-w-prose text-[0.95rem] leading-relaxed text-base-content/75">{{ product.short_description }}</p>
+            {% endif %}
+
+            <div class="mp-buy" x-ref="buyActions">
+                {% if in_stock %}
+                    <div class="flex items-stretch gap-2.5">
+                        <div class="mp-qty" role="group" aria-label="Quantity">
+                            <button type="button" class="mp-qty__btn" @click="dec()" :disabled="qty <= 1" aria-label="Decrease quantity">−</button>
+                            <input
+                                type="number"
+                                inputmode="numeric"
+                                min="1"
+                                :max="Math.max(remaining, 1)"
+                                class="mp-qty__input"
+                                :value="qty"
+                                @change="setQty($event.target.value); $event.target.value = qty"
+                                aria-label="Quantity"
+                            />
+                            <button type="button" class="mp-qty__btn" @click="inc()" :disabled="qty >= remaining" aria-label="Increase quantity">+</button>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-lg mp-buy__cta"
+                            @click="add()"
+                            :disabled="remaining === 0"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true">
+                                <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
+                                <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                                <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
+                            </svg>
+                            <span x-text="remaining === 0 ? 'Maximum in cart' : 'Add to cart'">Add to cart</span>
+                        </button>
+                    </div>
+                    <p class="mp-buy__note" x-show="inCart > 0" x-cloak>
+                        <span x-text="inCart + (inCart === 1 ? ' item' : ' items') + ' in your cart'"></span>
+                        <span aria-hidden="true">·</span>
+                        <label for="cart-drawer" class="link link-primary cursor-pointer font-medium">View cart</label>
+                    </p>
+                {% else %}
+                    <button type="button" class="btn btn-lg btn-disabled w-full rounded-full" disabled>Out of stock</button>
+                    {% if business.email or business.phone %}
+                        <p class="mp-buy__note">
+                            Ask the maker about restocks:
+                            {% if business.phone %}<a href="tel:{{ business.phone }}" class="link link-primary">{{ business.phone }}</a>{% endif %}
+                            {% if business.phone and business.email %}·{% endif %}
+                            {% if business.email %}<a href="mailto:{{ business.email }}?subject={{ product.name|urlencode }}" class="link link-primary">Email</a>{% endif %}
+                        </p>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            {% if business %}
+                <a href="{{ business.get_absolute_url }}" class="mp-seller">
+                    {% if business.logo %}
+                        {% image business.logo max-96x96 as logo %}
+                        <span class="mp-seller__logo">
+                            <img class="max-h-full max-w-full object-contain" src="{{ logo.url }}" alt="" width="{{ logo.width }}" height="{{ logo.height }}" draggable="false" />
+                        </span>
+                    {% else %}
+                        <span class="mp-seller__logo mp-seller__logo--fallback">{{ business.name|slice:":1"|upper }}</span>
+                    {% endif %}
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-xs text-base-content/55">Sold by</span>
+                        <span class="block truncate font-semibold text-base-content">{{ business.name }}</span>
+                        <span class="mt-0.5 block truncate text-xs text-base-content/55">
+                            {% if business.town_or_city %}{{ business.town_or_city }}{% endif %}
+                            {% if business.town_or_city and business.verification_status == "verified" %}·{% endif %}
+                            {% if business.verification_status == "verified" %}<span class="text-success">Verified maker</span>{% endif %}
+                        </span>
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 shrink-0 text-base-content/35" aria-hidden="true"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
+                </a>
+            {% endif %}
+        </div>
+    </section>
+
+    {# Details + specs #}
+    <div class="mt-12 grid gap-10 sm:mt-14 lg:grid-cols-12 lg:gap-14">
+        {% if product.description %}
+            <section class="lg:col-span-7" aria-labelledby="product-about">
+                <h2 id="product-about" class="mp-section-title">About this product</h2>
+                <div class="prose mt-3 max-w-none text-[0.95rem] leading-relaxed text-base-content/75">
+                    {{ product.description|linebreaks }}
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="{% if product.description %}lg:col-span-5{% else %}lg:col-span-7{% endif %}" aria-labelledby="product-specs">
+            <h2 id="product-specs" class="mp-section-title">Details</h2>
+            <dl class="mp-specs">
+                {% if product.brand_name %}
+                    <div><dt>Brand</dt><dd>{{ product.brand_name }}</dd></div>
+                {% endif %}
+                {% if business %}
+                    <div><dt>Maker</dt><dd><a href="{{ business.get_absolute_url }}" class="link link-hover">{{ business.name }}</a></dd></div>
+                {% endif %}
+                {% if product.category %}
+                    <div><dt>Category</dt><dd>{{ product.category.name }}</dd></div>
+                {% endif %}
+                <div>
+                    <dt>Origin</dt>
+                    <dd><a href="/product-classification/" class="link link-hover">{{ product.get_origin_type_display }}</a></dd>
+                </div>
+                {% if product.size_value or product.size_unit %}
+                    <div><dt>Size</dt><dd>{% if product.size_value %}{{ product.size_value|floatformat:"-2" }}{% endif %}{% if product.size_unit %} {{ product.size_unit }}{% endif %}</dd></div>
+                {% endif %}
+                {% if product.sku %}
+                    <div><dt>SKU</dt><dd>{{ product.sku }}</dd></div>
+                {% endif %}
+                {% if product.barcode %}
+                    <div><dt>Barcode</dt><dd>{{ product.barcode }}</dd></div>
+                {% endif %}
+            </dl>
+            <a href="{{ product.get_absolute_url }}" class="mt-4 inline-flex text-sm text-base-content/60 link link-hover">
+                View directory listing →
+            </a>
+        </section>
+    </div>
+
+    {% if related_products %}
+        <section class="mt-14 sm:mt-16" aria-labelledby="product-related">
+            <div class="mb-4 flex items-baseline justify-between gap-3">
+                <h2 id="product-related" class="mp-section-title">You may also like</h2>
+                <a href="{% url 'marketplace:index' %}{% if product.category %}?category={{ product.category.slug }}{% endif %}" class="link link-hover shrink-0 text-sm text-base-content/55">
+                    Shop all →
+                </a>
+            </div>
+            <ul class="mp-grid" role="list">
+                {% for product in related_products %}
+                    <li class="min-w-0">{% include "marketplace/partials/product_card.html" %}</li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {# Mobile sticky purchase bar — appears once the main Add to cart scrolls away #}
+    {% if in_stock %}
+        <div
+            class="mp-sticky-bar lg:hidden"
+            x-show="showBar"
+            x-cloak
+            x-transition:enter="transition duration-200 ease-out"
+            x-transition:enter-start="translate-y-full opacity-0"
+            x-transition:leave="transition duration-150 ease-in"
+            x-transition:leave-end="translate-y-full opacity-0"
+        >
+            <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium">{{ product.name }}</p>
+                <p class="text-base font-semibold">${{ product.price }}</p>
+            </div>
+            <button type="button" class="btn btn-primary rounded-full px-5" @click="add(1)" :disabled="remaining === 0">
+                <span x-text="remaining === 0 ? 'In cart' : 'Add to cart'">Add to cart</span>
+            </button>
+        </div>
+    {% endif %}
+</article>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/ld+json">{{ product_json_ld }}</script>
+{% endblock %}

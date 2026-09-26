@@ -1,8 +1,30 @@
-from django.db.models import F, Q
+from decimal import Decimal, InvalidOperation
 
+from django.db.models import Count, F, Q
+
+from businesses.models import Business
+from categories.models import Category
 from products.models import Product
 
 from .models import Cart, CartItem
+
+SORT_OPTIONS = (
+    ("featured", "Featured"),
+    ("newest", "Newest"),
+    ("price_asc", "Price: low to high"),
+    ("price_desc", "Price: high to low"),
+    ("name", "Name: A–Z"),
+)
+
+SORT_ORDERING = {
+    "featured": ("-featured", "name"),
+    "newest": ("-created_at", "name"),
+    "price_asc": ("price", "name"),
+    "price_desc": ("-price", "name"),
+    "name": ("name",),
+}
+
+RELATED_PRODUCT_LIMIT = 8
 
 
 def get_marketplace_products():
@@ -34,6 +56,85 @@ def filter_marketplace_products(queryset, search_query):
         | Q(business__name__icontains=search_query)
         | Q(category__name__icontains=search_query)
     ).distinct()
+
+
+def parse_price(value):
+    try:
+        price = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    return price if price >= 0 else None
+
+
+def apply_marketplace_filters(queryset, filters):
+    """filters: dict from MarketplaceFilterMixin.get_filters()."""
+    if filters.get("category"):
+        slug = filters["category"]
+        queryset = queryset.filter(Q(category__slug=slug) | Q(category__parent__slug=slug))
+    if filters.get("maker"):
+        queryset = queryset.filter(business__slug=filters["maker"])
+    if filters.get("origin"):
+        queryset = queryset.filter(origin_type=filters["origin"])
+    if filters.get("min_price") is not None:
+        queryset = queryset.filter(price__gte=filters["min_price"])
+    if filters.get("max_price") is not None:
+        queryset = queryset.filter(price__lte=filters["max_price"])
+    if filters.get("verified"):
+        queryset = queryset.filter(business__verification_status="verified")
+    return queryset
+
+
+def sort_marketplace_products(queryset, sort_key):
+    return queryset.order_by(*SORT_ORDERING.get(sort_key, SORT_ORDERING["featured"]))
+
+
+def _facet_counts(queryset, field):
+    return {
+        row[field]: row["count"]
+        for row in queryset.order_by()
+        .values(field)
+        .annotate(count=Count("pk", distinct=True))
+    }
+
+
+def get_marketplace_categories(queryset):
+    """Categories that currently have sellable products, with product counts."""
+    counts = _facet_counts(queryset, "category_id")
+    categories = list(
+        Category.objects.filter(pk__in=counts.keys()).order_by("sort_order", "name")
+    )
+    for category in categories:
+        category.marketplace_count = counts.get(category.pk, 0)
+    return categories
+
+
+def get_marketplace_makers(queryset):
+    counts = _facet_counts(queryset, "business_id")
+    makers = list(Business.objects.filter(pk__in=counts.keys()).order_by("name"))
+    for maker in makers:
+        maker.marketplace_count = counts.get(maker.pk, 0)
+    return makers
+
+
+def get_marketplace_origins(queryset):
+    counts = _facet_counts(queryset, "origin_type")
+    return [
+        {"value": value, "label": label, "count": counts[value]}
+        for value, label in Product.OriginType.choices
+        if value in counts
+    ]
+
+
+def get_related_marketplace_products(product, limit=RELATED_PRODUCT_LIMIT):
+    """Same maker first, then same category — only items that can be bought now."""
+    base = get_marketplace_products().exclude(pk=product.pk)
+    related = list(base.filter(business_id=product.business_id)[:limit])
+    if len(related) < limit and product.category_id:
+        related += list(
+            base.filter(category_id=product.category_id)
+            .exclude(pk__in=[item.pk for item in related])[: limit - len(related)]
+        )
+    return related
 
 
 def get_user_cart(user):

@@ -693,18 +693,20 @@ body {
 }
 
 /*
- * Directory / companies filters: fixed to the viewport so page scroll never
+ * Directory / companies / marketplace filters: fixed to the viewport so page scroll never
  * opens a gap above the dock. Bottom edge sits on the dock; filter list scrolls inside.
  */
 .template-directory .drawer.drawer-open > .drawer-side,
-.template-business-list .drawer.drawer-open > .drawer-side {
+.template-business-list .drawer.drawer-open > .drawer-side,
+.template-marketplace .drawer.drawer-open > .drawer-side {
     overflow: hidden;
     background-color: var(--color-base-200);
 }
 
 @media (min-width: 1024px) {
     .template-directory .drawer.drawer-open > .drawer-side,
-    .template-business-list .drawer.drawer-open > .drawer-side {
+    .template-business-list .drawer.drawer-open > .drawer-side,
+    .template-marketplace .drawer.drawer-open > .drawer-side {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
@@ -719,7 +721,8 @@ body {
     }
 
     .template-directory .drawer.drawer-open > .drawer-side > .directory-filters-panel,
-    .template-business-list .drawer.drawer-open > .drawer-side > .directory-filters-panel {
+    .template-business-list .drawer.drawer-open > .drawer-side > .directory-filters-panel,
+    .template-marketplace .drawer.drawer-open > .drawer-side > .directory-filters-panel {
         width: 100%;
         max-width: none;
         height: 100%;
@@ -730,7 +733,8 @@ body {
 
     /* Sidebar is out of flow when fixed — keep main content clear of it */
     .template-directory .drawer.drawer-open > .drawer-content,
-    .template-business-list .drawer.drawer-open > .drawer-content {
+    .template-business-list .drawer.drawer-open > .drawer-content,
+    .template-marketplace .drawer.drawer-open > .drawer-content {
         margin-left: 20rem;
     }
 }
@@ -1346,6 +1350,708 @@ body {
     top: 0.9rem;
     color: var(--color-primary);
     font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ */
+/* Marketplace — shop index, product cards, product detail             */
+/* ------------------------------------------------------------------ */
+
+.marketplace-results {
+    transition: opacity 0.15s ease;
+}
+
+#marketplace-filters.htmx-request .marketplace-results,
+.marketplace-results:has(.htmx-request) {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.mp-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.mp-toolbar__count {
+    min-width: 0;
+    font-size: 0.875rem;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+}
+
+.mp-sort {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mp-sort__label {
+    font-size: 0.8125rem;
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+
+.mp-sort__select.select {
+    width: auto;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+}
+
+.mp-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.75rem 0.75rem;
+    list-style: none;
+}
+
+@media (min-width: 640px) {
+    .mp-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 2.25rem 1.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .mp-grid {
+        gap: 2.5rem 1.5rem;
+    }
+
+    .template-marketplace-product .mp-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .mp-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1600px) {
+    .template-marketplace .mp-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+/* Product card — whole card is clickable via the stretched title link */
+.mp-card {
+    position: relative;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+}
+
+.mp-card__media {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    padding: 0.85rem;
+    transition:
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
+}
+
+@media (min-width: 640px) {
+    .mp-card__media {
+        padding: 1.25rem;
+    }
+}
+
+.mp-card:hover .mp-card__media {
+    box-shadow: 0 14px 32px -20px color-mix(in oklab, #000000 45%, transparent);
+}
+
+.mp-card__img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.mp-card:hover .mp-card__img {
+    transform: scale(1.05);
+}
+
+.mp-card__badges {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.mp-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.mp-badge--featured {
+    background-color: var(--color-primary);
+    color: var(--color-primary-content);
+}
+
+.mp-badge--low {
+    background-color: #fff4e0;
+    color: #92400e;
+    border: 1px solid #fcd9a4;
+}
+
+.mp-card__in-cart {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem 0.2rem 0.4rem;
+    border-radius: 999px;
+    background-color: color-mix(in oklab, #157913 92%, transparent);
+    color: #ffffff;
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.mp-card__in-cart svg {
+    width: 0.8rem;
+    height: 0.8rem;
+}
+
+.mp-card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 0.75rem 0.15rem 0;
+}
+
+.mp-card__brand {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+
+.mp-card__name {
+    margin-top: 0.15rem;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+}
+
+.mp-card__link {
+    color: inherit;
+    text-decoration: none;
+    outline: none;
+}
+
+.mp-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-box, 1rem);
+}
+
+.mp-card__link:focus-visible::after {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 40%, transparent);
+}
+
+.mp-card:hover .mp-card__link {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.mp-card__meta {
+    display: flex;
+    min-width: 0;
+    gap: 0.3rem;
+    margin-top: 0.2rem;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+
+.mp-card__meta span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mp-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.6rem;
+}
+
+.mp-card__price {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+    .mp-card__price {
+        font-size: 1.125rem;
+    }
+}
+
+.mp-card__add.btn {
+    position: relative;
+    z-index: 1;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0;
+    border-radius: 999px;
+}
+
+@media (min-width: 640px) {
+    .mp-card__add.btn {
+        width: auto;
+        padding: 0 0.9rem;
+    }
+}
+
+.mp-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4rem 1rem;
+    text-align: center;
+}
+
+.mp-empty__icon {
+    display: inline-flex;
+    width: 3.5rem;
+    height: 3.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+}
+
+.mp-empty__icon svg {
+    width: 1.6rem;
+    height: 1.6rem;
+}
+
+.mp-empty__title {
+    margin-top: 1rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.mp-empty__body {
+    margin-top: 0.3rem;
+    max-width: 24rem;
+    font-size: 0.9rem;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+}
+
+/* Product detail */
+.template-marketplace-product .mp-detail {
+    padding-bottom: 7rem;
+}
+
+@media (min-width: 1024px) {
+    .template-marketplace-product .mp-detail {
+        padding-bottom: 3rem;
+    }
+}
+
+.mp-gallery {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    border-radius: 1.25rem;
+    touch-action: pan-y;
+}
+
+.mp-gallery__img {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    padding: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .mp-gallery__img {
+        padding: 2.5rem;
+    }
+}
+
+.mp-gallery__nav {
+    position: absolute;
+    top: 50%;
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgb(0 0 0 / 0.08);
+    background-color: rgb(255 255 255 / 0.9);
+    color: #1f2937;
+    box-shadow: 0 4px 14px -6px rgb(0 0 0 / 0.3);
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    cursor: pointer;
+}
+
+.mp-gallery__nav svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.mp-gallery__nav--prev {
+    left: 0.75rem;
+}
+
+.mp-gallery__nav--next {
+    right: 0.75rem;
+}
+
+.mp-gallery:hover .mp-gallery__nav,
+.mp-gallery__nav:focus-visible {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .mp-gallery__nav {
+        display: none;
+    }
+}
+
+.mp-gallery__dots {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 50%;
+    display: flex;
+    gap: 0.35rem;
+    transform: translateX(-50%);
+}
+
+.mp-gallery__dots span {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background-color: rgb(0 0 0 / 0.2);
+    transition:
+        width 0.2s ease,
+        background-color 0.2s ease;
+}
+
+.mp-gallery__dots span.is-active {
+    width: 1.1rem;
+    background-color: rgb(0 0 0 / 0.65);
+}
+
+.mp-detail__brand {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-primary);
+}
+
+.mp-detail__title {
+    margin-top: 0.3rem;
+    font-size: clamp(1.625rem, 4vw, 2.5rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+}
+
+.mp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 1.75rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.mp-tag svg {
+    width: 0.85rem;
+    height: 0.85rem;
+}
+
+.mp-tag--origin {
+    color: color-mix(in oklab, var(--color-primary) 60%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-primary) 18%, transparent);
+}
+
+a.mp-tag--origin:hover {
+    background-color: color-mix(in oklab, var(--color-primary) 16%, transparent);
+}
+
+.mp-tag--verified {
+    color: color-mix(in oklab, var(--color-info, #0284c7) 45%, var(--color-base-content));
+    background-color: color-mix(in oklab, var(--color-info, #0284c7) 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-info, #0284c7) 18%, transparent);
+}
+
+.mp-tag--featured {
+    color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
+}
+
+.mp-detail__price {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+    .mp-detail__price {
+        font-size: 2.25rem;
+    }
+}
+
+.mp-stock {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: color-mix(in oklab, var(--color-success) 55%, var(--color-base-content));
+}
+
+.mp-stock__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background-color: var(--color-success);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-success) 22%, transparent);
+}
+
+.mp-stock--low {
+    color: color-mix(in oklab, var(--color-warning, #d97706) 60%, var(--color-base-content));
+}
+
+.mp-stock--low .mp-stock__dot {
+    background-color: var(--color-warning, #d97706);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-warning, #d97706) 22%, transparent);
+}
+
+.mp-stock--out {
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+
+.mp-stock--out .mp-stock__dot {
+    background-color: color-mix(in oklab, var(--color-base-content) 35%, transparent);
+    box-shadow: none;
+}
+
+.mp-buy {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 9%, transparent);
+}
+
+.mp-buy__cta.btn {
+    flex: 1;
+    min-width: 0;
+    border-radius: 999px;
+    font-size: 1rem;
+}
+
+.mp-buy__note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+}
+
+/* Quantity stepper — product detail + cart drawer */
+.mp-qty {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 16%, transparent);
+    background-color: var(--color-base-100);
+}
+
+.mp-qty__btn {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 100%;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.mp-qty__btn:hover:not(:disabled) {
+    background-color: color-mix(in oklab, var(--color-base-content) 7%, transparent);
+}
+
+.mp-qty__btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.mp-qty__btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 28%, transparent);
+}
+
+.mp-qty__input {
+    width: 2.5rem;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.mp-qty__input::-webkit-outer-spin-button,
+.mp-qty__input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.mp-qty--sm .mp-qty__btn {
+    width: 2rem;
+    min-height: 2rem;
+    font-size: 1rem;
+}
+
+.mp-qty__value {
+    min-width: 1.75rem;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.mp-seller {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 1.5rem;
+    padding: 0.85rem 1rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-200) 55%, var(--color-base-100));
+    text-decoration: none;
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.mp-seller:hover {
+    border-color: color-mix(in oklab, var(--color-primary) 30%, transparent);
+}
+
+.mp-seller__logo {
+    display: flex;
+    width: 3rem;
+    height: 3rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in oklab, #000000 8%, transparent);
+    background-color: #ffffff;
+    padding: 0.3rem;
+}
+
+.mp-seller__logo--fallback {
+    color: color-mix(in oklab, #000000 40%, transparent);
+    font-weight: 600;
+}
+
+.mp-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+    .mp-section-title {
+        font-size: 1.25rem;
+    }
+}
+
+.mp-specs {
+    margin-top: 0.75rem;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 9%, transparent);
+}
+
+.mp-specs > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 9%, transparent);
+    font-size: 0.9rem;
+}
+
+.mp-specs dt {
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+
+.mp-specs dd {
+    min-width: 0;
+    text-align: right;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.mp-sticky-bar {
+    position: fixed;
+    right: 0;
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.9rem;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    background-color: color-mix(in oklab, var(--color-base-100) 94%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 /*

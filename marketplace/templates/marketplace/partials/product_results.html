@@ -1,110 +1,78 @@
-{% load wagtailimages_tags %}
+<div class="mp-toolbar">
+    <p class="mp-toolbar__count" aria-live="polite">
+        {% with total=page_obj.paginator.count %}
+            <span class="font-semibold text-base-content">{{ total }}</span>
+            product{{ total|pluralize }}
+            {% if q %}for “{{ q }}”{% endif %}
+        {% endwith %}
+    </p>
+    <label class="mp-sort">
+        <span class="sr-only sm:not-sr-only mp-sort__label">Sort by</span>
+        <select name="sort" class="select select-sm mp-sort__select" aria-label="Sort products">
+            {% for value, label in sort_options %}
+                <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+</div>
 
 {% if products %}
-    <p class="mb-3 text-xs tracking-wide text-base-content/60">
-        {% if q %}
-            Results for “{{ q }}” · {{ page_obj.paginator.count }} found
-        {% else %}
-            {{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}
-        {% endif %}
-    </p>
-
-    <ul class="grid gap-3 sm:grid-cols-2">
+    <ul class="mp-grid" role="list">
         {% for product in products %}
-            {% if product.image %}
-                {% image product.image fill-320x200 as thumb %}
-                {% image product.image fill-64x64 as cart_thumb %}
-            {% endif %}
-            <li class="card border-base-300 bg-base-100 border shadow-sm">
-                <figure class="px-4 pt-4">
-                    {% if product.image %}
-                        <img
-                            class="aspect-[16/10] w-full rounded-box object-cover"
-                            src="{{ thumb.url }}"
-                            alt="{{ product.name }}"
-                            width="320"
-                            height="200"
-                        />
-                    {% else %}
-                        <div class="bg-base-200 flex aspect-[16/10] w-full items-center justify-center rounded-box text-sm text-base-content/50">
-                            No image
-                        </div>
-                    {% endif %}
-                </figure>
-                <div class="card-body gap-2 p-4">
-                    <h2 class="card-title text-base">
-                        <a href="{{ product.get_absolute_url }}" class="link link-hover">
-                            {{ product.name }}
-                        </a>
-                    </h2>
-                    <p class="text-xs uppercase font-semibold text-base-content/60">
-                        {% if product.business %}
-                            <a href="{{ product.business.get_absolute_url }}" class="link link-hover">
-                                {{ product.business.name }}
-                            </a>
-                        {% endif %}
-                        {% if product.business and product.category %} · {% endif %}
-                        {% if product.category %}{{ product.category.name }}{% endif %}
-                    </p>
-                    {% if product.short_description %}
-                        <p class="text-sm text-base-content/70 line-clamp-2">{{ product.short_description }}</p>
-                    {% endif %}
-                    <div class="mt-1 flex items-center justify-between gap-2">
-                        <span class="text-lg font-semibold">${{ product.price }}</span>
-                        <button
-                            type="button"
-                            class="btn btn-primary btn-sm"
-                            @click="$store.cart.add({
-                                id: {{ product.pk }},
-                                name: '{{ product.name|escapejs }}',
-                                price: '{{ product.price }}',
-                                imageUrl: '{% if product.image %}{{ cart_thumb.url }}{% endif %}',
-                                maxQty: {{ product.inventory.available_quantity }}
-                            })"
-                        >
-                            Add to cart
-                        </button>
-                    </div>
-                </div>
+            <li class="min-w-0">
+                {% include "marketplace/partials/product_card.html" %}
             </li>
         {% endfor %}
     </ul>
 
     {% if page_obj.has_other_pages %}
-        <div class="join mt-6 flex justify-center">
+        <nav class="mt-10 flex items-center justify-center gap-2" aria-label="Pagination">
             {% if page_obj.has_previous %}
-                <button
-                    type="button"
-                    class="join-item btn btn-sm"
-                    hx-get="{% url 'marketplace:results' %}?q={{ q|urlencode }}&page={{ page_obj.previous_page_number }}"
+                <a
+                    href="{% url 'marketplace:index' %}?{% if filter_querystring %}{{ filter_querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                    class="btn btn-ghost btn-sm rounded-full"
+                    hx-get="{% url 'marketplace:index' %}?{% if filter_querystring %}{{ filter_querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"
                     hx-target="#marketplace-results"
-                    hx-swap="innerHTML"
+                    hx-swap="innerHTML show:#marketplace-results:top"
+                    hx-push-url="true"
                 >
-                    Previous
-                </button>
+                    ← Previous
+                </a>
             {% endif %}
-            <span class="join-item btn btn-sm btn-disabled">
+            <span class="px-2 text-sm text-base-content/60">
                 Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
             </span>
             {% if page_obj.has_next %}
-                <button
-                    type="button"
-                    class="join-item btn btn-sm"
-                    hx-get="{% url 'marketplace:results' %}?q={{ q|urlencode }}&page={{ page_obj.next_page_number }}"
+                <a
+                    href="{% url 'marketplace:index' %}?{% if filter_querystring %}{{ filter_querystring }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    class="btn btn-ghost btn-sm rounded-full"
+                    hx-get="{% url 'marketplace:index' %}?{% if filter_querystring %}{{ filter_querystring }}&{% endif %}page={{ page_obj.next_page_number }}"
                     hx-target="#marketplace-results"
-                    hx-swap="innerHTML"
+                    hx-swap="innerHTML show:#marketplace-results:top"
+                    hx-push-url="true"
                 >
-                    Next
-                </button>
+                    Next →
+                </a>
             {% endif %}
-        </div>
+        </nav>
     {% endif %}
 {% else %}
-    <div class="py-12 text-center text-base-content/60">
-        {% if q %}
-            No products match “{{ q }}”.
+    <div class="mp-empty">
+        <span class="mp-empty__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
+                <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
+            </svg>
+        </span>
+        {% if filters_active %}
+            <p class="mp-empty__title">No products match these filters</p>
+            <p class="mp-empty__body">Try a different search, or remove a filter.</p>
+            <a href="{% url 'marketplace:index' %}" class="btn btn-primary btn-sm mt-5 rounded-full">Show all products</a>
         {% else %}
-            No products available in the marketplace yet.
+            <p class="mp-empty__title">The marketplace is stocking up</p>
+            <p class="mp-empty__body">Products from Zimbabwean makers will appear here as soon as they’re available.</p>
+            <a href="{% url 'directory:index' %}" class="btn btn-ghost btn-sm mt-5 rounded-full">Browse the directory</a>
         {% endif %}
     </div>
 {% endif %}

@@ -1,0 +1,167 @@
+<div class="form-control w-full" x-data="{ open: {{ filters.category|yesno:'true,false' }} }">
+    <span class="label py-1"><span class="label-text text-xs">Category</span></span>
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="open = !open"
+            :aria-expanded="open.toString()"
+            aria-controls="marketplace-category-list"
+        >
+            <span>All Categories</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150" :class="{ 'rotate-90': open }" aria-hidden="true">
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+        <div id="marketplace-category-list" x-show="open" x-cloak class="border-base-300 border-t px-2 py-2">
+            <ul class="flex w-full flex-col gap-0.5 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input type="radio" name="category" value="" class="radio radio-xs directory-filter-radio" {% if not filters.category %}checked{% endif %} />
+                        <span class="text-sm font-medium">All categories</span>
+                    </label>
+                </li>
+                {% for category in categories %}
+                    <li class="px-1">
+                        <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                            <input type="radio" name="category" value="{{ category.slug }}" class="radio radio-xs directory-filter-radio" {% if filters.category == category.slug %}checked{% endif %} />
+                            <span class="min-w-0 flex-1 truncate text-sm">{{ category.name }}</span>
+                            <span class="badge badge-ghost badge-xs shrink-0">{{ category.marketplace_count }}</span>
+                        </label>
+                    </li>
+                {% empty %}
+                    <li class="px-3 py-2 text-sm text-base-content/60">No categories yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="form-control w-full" x-data="{ open: {{ filters.maker|yesno:'true,false' }} }">
+    <span class="label py-1"><span class="label-text text-xs">Maker</span></span>
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="open = !open"
+            :aria-expanded="open.toString()"
+            aria-controls="marketplace-maker-list"
+        >
+            <span>All Makers</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150" :class="{ 'rotate-90': open }" aria-hidden="true">
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+        <div id="marketplace-maker-list" x-show="open" x-cloak class="border-base-300 border-t px-2 py-2">
+            <ul class="flex w-full flex-col gap-0.5 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input type="radio" name="maker" value="" class="radio radio-xs directory-filter-radio" {% if not filters.maker %}checked{% endif %} />
+                        <span class="text-sm font-medium">All makers</span>
+                    </label>
+                </li>
+                {% for maker in makers %}
+                    <li class="px-1">
+                        <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                            <input type="radio" name="maker" value="{{ maker.slug }}" class="radio radio-xs directory-filter-radio" {% if filters.maker == maker.slug %}checked{% endif %} />
+                            <span class="min-w-0 flex-1 truncate text-sm">{{ maker.name }}</span>
+                            <span class="badge badge-ghost badge-xs shrink-0">{{ maker.marketplace_count }}</span>
+                        </label>
+                    </li>
+                {% empty %}
+                    <li class="px-3 py-2 text-sm text-base-content/60">No makers yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="form-control w-full" x-data="{ open: {{ filters.origin|yesno:'true,false' }} }">
+    <span class="label py-1"><span class="label-text text-xs">Product type</span></span>
+    <div class="bg-base-100 border-base-300 w-full rounded-box border">
+        <button
+            type="button"
+            class="hover:bg-base-200 flex w-full items-center justify-between gap-2 rounded-box px-3 py-2 text-left text-sm font-medium"
+            @click="open = !open"
+            :aria-expanded="open.toString()"
+            aria-controls="marketplace-origin-list"
+        >
+            <span>All Product Types</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 shrink-0 text-base-content/70 transition-transform duration-150" :class="{ 'rotate-90': open }" aria-hidden="true">
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+        <div id="marketplace-origin-list" x-show="open" x-cloak class="border-base-300 border-t px-2 py-2">
+            <ul class="flex w-full flex-col gap-0.5 p-0">
+                <li class="px-1">
+                    <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                        <input type="radio" name="origin" value="" class="radio radio-xs directory-filter-radio" {% if not filters.origin %}checked{% endif %} />
+                        <span class="text-sm font-medium">All product types</span>
+                    </label>
+                </li>
+                {% for origin in origins %}
+                    <li class="px-1">
+                        <label class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5">
+                            <input type="radio" name="origin" value="{{ origin.value }}" class="radio radio-xs directory-filter-radio" {% if filters.origin == origin.value %}checked{% endif %} />
+                            <span class="min-w-0 flex-1 truncate text-sm">{{ origin.label }}</span>
+                            <span class="badge badge-ghost badge-xs shrink-0">{{ origin.count }}</span>
+                        </label>
+                    </li>
+                {% empty %}
+                    <li class="px-3 py-2 text-sm text-base-content/60">No product types yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="form-control w-full">
+    <span class="label py-1"><span class="label-text text-xs">Price (USD)</span></span>
+    <div class="flex items-center gap-2">
+        <label class="input input-sm bg-base-100 w-full">
+            <span class="text-base-content/50">$</span>
+            <input
+                type="number"
+                name="min_price"
+                min="0"
+                step="0.01"
+                inputmode="decimal"
+                placeholder="Min"
+                value="{% if filters.min_price is not None %}{{ filters.min_price }}{% endif %}"
+                aria-label="Minimum price"
+            />
+        </label>
+        <span class="text-base-content/40" aria-hidden="true">–</span>
+        <label class="input input-sm bg-base-100 w-full">
+            <span class="text-base-content/50">$</span>
+            <input
+                type="number"
+                name="max_price"
+                min="0"
+                step="0.01"
+                inputmode="decimal"
+                placeholder="Max"
+                value="{% if filters.max_price is not None %}{{ filters.max_price }}{% endif %}"
+                aria-label="Maximum price"
+            />
+        </label>
+    </div>
+</div>
+
+<div class="form-control w-full gap-2">
+    <label class="label cursor-pointer justify-start gap-2 py-1">
+        <input type="checkbox" name="verified" value="true" class="checkbox checkbox-xs" {% if filters.verified %}checked{% endif %} />
+        <span class="label-text text-sm">Verified makers only</span>
+    </label>
+</div>
+
+<a
+    href="{% url 'marketplace:index' %}"
+    class="btn btn-sm mt-2 w-full"
+    :class="clearActive ? 'btn-primary' : 'btn-ghost btn-disabled pointer-events-none text-base-content/40'"
+    :tabindex="clearActive ? 0 : -1"
+    :aria-disabled="(!clearActive).toString()"
+    @click="if (!clearActive) $event.preventDefault()"
+>
+    Clear filters
+</a>

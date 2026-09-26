@@ -52,6 +52,26 @@ document.addEventListener("alpine:init", function () {
             return this.items.length === 0;
         },
 
+        get subtotal() {
+            return this.items
+                .reduce(function (total, item) {
+                    return total + Number(item.price || 0) * Number(item.quantity || 0);
+                }, 0)
+                .toFixed(2);
+        },
+
+        quantityOf(id) {
+            const itemId = Number(id);
+            const item = this.items.find(function (entry) {
+                return Number(entry.id) === itemId;
+            });
+            return item ? Number(item.quantity) : 0;
+        },
+
+        lineTotal(item) {
+            return (Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2);
+        },
+
         init() {
             const root = document.documentElement;
             this.canSync = root.dataset.cartSync === "1";
@@ -67,9 +87,10 @@ document.addEventListener("alpine:init", function () {
             this.sync();
         },
 
-        add(product) {
+        add(product, quantity) {
             const id = Number(product.id);
             const maxQty = Number(product.maxQty || 99);
+            const addQty = Math.max(1, Math.floor(Number(quantity) || 1));
             const existing = this.items.find(function (item) {
                 return Number(item.id) === id;
             });
@@ -80,11 +101,12 @@ document.addEventListener("alpine:init", function () {
                         return item;
                     }
                     return Object.assign({}, item, {
-                        quantity: Math.min(Number(item.quantity) + 1, maxQty),
+                        quantity: Math.min(Number(item.quantity) + addQty, maxQty),
                         maxQty: maxQty,
                         name: product.name,
                         price: product.price,
                         imageUrl: product.imageUrl || item.imageUrl || "",
+                        url: product.url || item.url || "",
                     });
                 });
             } else {
@@ -94,8 +116,9 @@ document.addEventListener("alpine:init", function () {
                         name: product.name,
                         price: product.price,
                         imageUrl: product.imageUrl || "",
+                        url: product.url || "",
                         maxQty: maxQty,
-                        quantity: 1,
+                        quantity: Math.min(addQty, maxQty),
                     },
                 ]);
             }
