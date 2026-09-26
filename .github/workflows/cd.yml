@@ -36,11 +36,5 @@ jobs:
             echo "Starting containers"
             docker compose up -d
 
-            echo "Waiting for collectstatic..."
-            # entrypoint runs migrate + collectstatic before uvicorn; give it a moment
-            sleep 8
-            docker compose ps
-            docker compose logs web --tail 40
-
             echo "Cleanup"
             docker system prune -f
