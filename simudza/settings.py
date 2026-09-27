@@ -48,7 +48,7 @@ DEBUG = env_bool("DJANGO_DEBUG", DJANGO_ENV != "production")
 ALLOWED_HOSTS = env_list(
     "DJANGO_ALLOWED_HOSTS",
     # In development accept any Host so container IPs / LAN addresses work too.
-    "*" if DEBUG else "localhost,127.0.0.1,[::1]",
+    "*" if DEBUG else "simudza.com,localhost,127.0.0.1,[::1]",
 )
 
 CSRF_TRUSTED_ORIGINS = [
