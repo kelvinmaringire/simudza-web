@@ -2,6 +2,8 @@ from django.urls import path
 
 from .views import (
     DashboardView,
+    OwnerConfirmView,
+    VerifyListingView,
     MemberLoginView,
     MemberLogoutView,
     MemberPasswordChangeDoneView,
@@ -20,6 +22,16 @@ urlpatterns = [
     path("sign-up/", MemberSignUpView.as_view(), name="signup"),
     path("sign-out/", MemberLogoutView.as_view(), name="logout"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path(
+        "dashboard/verify-listing/",
+        VerifyListingView.as_view(),
+        name="verify_listing",
+    ),
+    path(
+        "dashboard/confirm-listing/",
+        OwnerConfirmView.as_view(),
+        name="owner_confirm",
+    ),
     path(
         "password-reset/",
         MemberPasswordResetView.as_view(),

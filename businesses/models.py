@@ -6,6 +6,14 @@ from django.utils.text import slugify
 
 from wagtail.images import get_image_model
 
+from .verification import (
+    VerificationLevel,
+    freshness_for,
+    is_trusted_level,
+    level_meta,
+    search_cutoff,
+)
+
 
 def unique_business_slug(name, *, exclude_pk=None):
     base = slugify(name) or "business"
@@ -20,6 +28,14 @@ def unique_business_slug(name, *, exclude_pk=None):
     return candidate
 
 
+class BusinessQuerySet(models.QuerySet):
+    def visible_in_search(self):
+        cutoff = search_cutoff()
+        return self.filter(verified_at__gte=cutoff).exclude(
+            verification_level=VerificationLevel.DISCONTINUED,
+        )
+
+
 class Business(models.Model):
     class BusinessType(models.TextChoices):
         MANUFACTURER = "manufacturer", "Manufacturer"
@@ -30,12 +46,6 @@ class Business(models.Model):
         SERVICE = "service", "Service"
         BRAND = "brand", "Brand"
         OTHER = "other", "Other"
-
-    class VerificationStatus(models.TextChoices):
-        UNVERIFIED = "unverified", "Unverified"
-        PENDING = "pending", "Pending"
-        VERIFIED = "verified", "Verified"
-        REJECTED = "rejected", "Rejected"
 
     name = models.CharField(max_length=200, db_index=True)
 
@@ -77,16 +87,37 @@ class Business(models.Model):
         blank=True,
     )
 
-    verification_status = models.CharField(
-        max_length=20,
-        choices=VerificationStatus.choices,
-        default=VerificationStatus.VERIFIED,
+    verification_level = models.CharField(
+        max_length=30,
+        choices=VerificationLevel.choices,
+        default=VerificationLevel.UNVERIFIED,
+        db_index=True,
+    )
+
+    verification_reference = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Source name or URL when level is Verified source.",
     )
 
     verified_at = models.DateTimeField(
         blank=True,
         null=True,
         default=timezone.now,
+    )
+
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    verification_reminder_sent_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Last time the owner was emailed to re-confirm listings.",
     )
 
     owner = models.ForeignKey(
@@ -109,11 +140,25 @@ class Business(models.Model):
         auto_now=True,
     )
 
+    objects = BusinessQuerySet.as_manager()
+
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+    @property
+    def freshness(self):
+        return freshness_for(self.verified_at)
+
+    @property
+    def level_meta(self):
+        return level_meta(self.verification_level)
+
+    @property
+    def is_trusted(self):
+        return is_trusted_level(self.verification_level)
 
     def get_absolute_url(self):
         return reverse(

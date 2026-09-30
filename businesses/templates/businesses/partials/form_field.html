@@ -1,6 +1,9 @@
-<label class="form-control w-full">
+{% if field.is_hidden %}
+    {{ field }}
+{% else %}
+<label class="form-control w-full {{ wrapper_class }}">
     <span class="label py-1">
-        <span class="label-text">{{ label|default:field.label }}</span>
+        <span class="label-text text-sm font-medium">{{ label|default:field.label }}{% if field.field.required %} <span class="text-error">*</span>{% endif %}</span>
     </span>
     {{ field }}
     {% if field.help_text %}
@@ -14,3 +17,4 @@
         </span>
     {% endif %}
 </label>
+{% endif %}

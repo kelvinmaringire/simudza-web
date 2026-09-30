@@ -1,0 +1,108 @@
+<section id="my-listings" class="mt-8 scroll-mt-24">
+    <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-semibold tracking-tight">My listings</h2>
+            <p class="text-sm text-base-content/65">
+                Confirm your details are still accurate. Listings not confirmed within 12 months are hidden from search.
+            </p>
+        </div>
+        {% if owner_action_count %}
+            <span class="badge badge-warning gap-1">{{ owner_action_count }} need{{ owner_action_count|pluralize:"s," }} your attention</span>
+        {% else %}
+            <span class="badge badge-success badge-soft gap-1">All up to date</span>
+        {% endif %}
+    </div>
+
+    <div class="space-y-4">
+        {% for row in owner_listings %}
+            <div class="card border-base-300 bg-base-100 border shadow-sm {% if row.needs_action %}border-l-4 border-l-warning{% endif %}">
+                <div class="card-body gap-4 p-4 sm:p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h3 class="flex flex-wrap items-center gap-2 text-base font-semibold">
+                                <a href="{{ row.obj.get_absolute_url }}" class="link link-hover">{{ row.obj.name }}</a>
+                                {% include "partials/verification_level_badge.html" with level_meta=row.level_meta verification_reference=row.obj.verification_reference %}
+                                <span class="badge badge-sm {{ row.freshness.badge_class }} gap-1">
+                                    <span aria-hidden="true">{{ row.freshness.emoji }}</span>
+                                    {{ row.freshness.label }}
+                                </span>
+                                {% if row.open_report_count %}
+                                    <span class="badge badge-warning badge-sm">{{ row.open_report_count }} customer report{{ row.open_report_count|pluralize }}</span>
+                                {% endif %}
+                            </h3>
+                            <p class="text-xs text-base-content/60">
+                                Company profile last verified
+                                {% if row.verified_at %}{{ row.verified_at|date:"j F Y" }}{% else %}never{% endif %}
+                                · {{ row.products|length }} product{{ row.products|length|pluralize }}
+                                {% if row.due_product_count %}· <span class="text-warning font-medium">{{ row.due_product_count }} due</span>{% endif %}
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <a href="{% url 'businesses:submit_company' %}" class="btn btn-ghost btn-sm">Update details</a>
+                            <form method="post" action="{% url 'accounts:owner_confirm' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="kind" value="all" />
+                                <input type="hidden" name="business" value="{{ row.obj.pk }}" />
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    ✓ Confirm everything is accurate
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% if row.products %}
+                        <div class="overflow-x-auto rounded-box border border-base-300">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Level</th>
+                                        <th>Freshness</th>
+                                        <th>Last verified</th>
+                                        <th class="text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for product_row in row.products %}
+                                        <tr>
+                                            <td class="font-medium">
+                                                {{ product_row.obj.name }}
+                                                {% if product_row.open_report_count %}
+                                                    <span class="badge badge-warning badge-xs ml-1">{{ product_row.open_report_count }} report{{ product_row.open_report_count|pluralize }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% include "partials/verification_level_badge.html" with level_meta=product_row.level_meta verification_reference=product_row.obj.verification_reference %}
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-sm {{ product_row.freshness.badge_class }} gap-1">
+                                                    <span aria-hidden="true">{{ product_row.freshness.emoji }}</span>
+                                                    {{ product_row.freshness.label }}
+                                                </span>
+                                            </td>
+                                            <td class="text-xs whitespace-nowrap text-base-content/70">
+                                                {% if product_row.own_verified_at %}{{ product_row.own_verified_at|date:"j M Y" }}{% else %}Never{% endif %}
+                                            </td>
+                                            <td class="text-right">
+                                                <div class="flex flex-wrap justify-end gap-1">
+                                                    <a href="{% url 'businesses:submit_product_update' product_row.obj.pk %}" class="btn btn-ghost btn-xs">Update</a>
+                                                    <form method="post" action="{% url 'accounts:owner_confirm' %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="kind" value="product" />
+                                                        <input type="hidden" name="business" value="{{ row.obj.pk }}" />
+                                                        <input type="hidden" name="pk" value="{{ product_row.obj.pk }}" />
+                                                        <button type="submit" class="btn btn-outline btn-primary btn-xs">Still accurate</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>

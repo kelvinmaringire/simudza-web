@@ -62,6 +62,7 @@
                                 {{ product.category.name }}
                             </p>
                         {% endif %}
+                        {% include "partials/verified_badge.html" with level_meta=product.level_meta verification_reference=product.verification_reference verified_at=product.effective_verified_at %}
                     </div>
                 </a>
             {% endwith %}

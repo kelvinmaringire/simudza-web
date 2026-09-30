@@ -1,0 +1,8 @@
+<div class="flex flex-wrap items-center gap-2{% if class %} {{ class }}{% endif %}">
+    {% include "partials/verification_level_badge.html" with level_meta=level_meta verification_reference=verification_reference %}
+    {% if verified_at %}
+        <p class="text-xs text-base-content/70">
+            <span aria-hidden="true">✓</span> Verified {{ verified_at|date:"j F Y" }}
+        </p>
+    {% endif %}
+</div>

@@ -52,7 +52,10 @@ class MarketplaceProductQuerysetMixin:
         return sort if sort in SORT_ORDERING else "featured"
 
     def get_queryset(self):
-        qs = filter_marketplace_products(get_marketplace_products(), self.get_search_query())
+        qs = filter_marketplace_products(
+            get_marketplace_products().visible_in_search(),
+            self.get_search_query(),
+        )
         qs = apply_marketplace_filters(qs, self.get_filters())
         return sort_marketplace_products(qs, self.get_sort_key())
 
@@ -61,7 +64,7 @@ class MarketplaceProductQuerysetMixin:
         query = self.request.GET.copy()
         query.pop("page", None)
         filters = self.get_filters()
-        catalogue = get_marketplace_products()
+        catalogue = get_marketplace_products().visible_in_search()
         context.update(
             {
                 "q": self.get_search_query(),

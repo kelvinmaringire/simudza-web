@@ -12,6 +12,7 @@ from .models import (
     RetailLocation,
     unique_business_slug,
 )
+from .verification import VerificationLevel
 
 
 def _wagtail_image_from_upload(upload, *, title, user):
@@ -43,7 +44,7 @@ def apply_submission(submission, *, reviewer=None):
         if creating:
             business = Business(
                 owner=user,
-                verification_status=Business.VerificationStatus.PENDING,
+                verification_level=VerificationLevel.UNVERIFIED,
                 verified_at=None,
                 is_active=True,
             )
@@ -70,6 +71,14 @@ def apply_submission(submission, *, reviewer=None):
         )
         if logo:
             business.logo = logo
+        if user is not None and business.owner_id == user.pk:
+            business.verified_at = timezone.now()
+            business.verified_by = user
+            business.verification_level = VerificationLevel.VERIFIED_MANUFACTURER
+            business.verification_reference = ""
+            business.verification_reminder_sent_at = None
+        elif reviewer is not None:
+            business.verification_level = VerificationLevel.COMMUNITY_REPORTED
         business.save()
         submission.business = business
 
@@ -103,6 +112,12 @@ def apply_submission(submission, *, reviewer=None):
         )
         if image:
             product.image = image
+        if user is not None and submission.business.owner_id == user.pk:
+            product.verified_at = timezone.now()
+            product.verified_by = user
+            product.verification_level = VerificationLevel.VERIFIED_MANUFACTURER
+        elif reviewer is not None and submission.business.owner_id != user.pk:
+            product.verification_level = VerificationLevel.COMMUNITY_REPORTED
         product.save()
         submission.product = product
 
@@ -131,6 +146,13 @@ def apply_submission(submission, *, reviewer=None):
         )
         if image:
             product.image = image
+        if user is not None and product.business.owner_id == user.pk:
+            product.verified_at = timezone.now()
+            product.verified_by = user
+            product.verification_level = VerificationLevel.VERIFIED_MANUFACTURER
+            product.verification_reference = ""
+        elif reviewer is not None and product.business.owner_id != user.pk:
+            product.verification_level = VerificationLevel.COMMUNITY_REPORTED
         product.save()
 
     elif kind == ManufacturerSubmission.Kind.RETAIL_LOCATION:

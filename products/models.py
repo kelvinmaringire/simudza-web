@@ -2,6 +2,17 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
+
+from django.conf import settings
+
+from businesses.verification import (
+    VerificationLevel,
+    freshness_for,
+    is_trusted_level,
+    level_meta,
+    older_verified_at,
+    search_cutoff,
+)
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 
@@ -11,6 +22,19 @@ from wagtail.images import get_image_model
 from wagtail.models import Orderable, Page
 
 from .streams import ProductClassificationStreamBlock
+
+
+class ProductQuerySet(models.QuerySet):
+    def visible_in_search(self):
+        cutoff = search_cutoff()
+        return self.filter(
+            verified_at__gte=cutoff,
+            business__verified_at__gte=cutoff,
+        ).exclude(
+            verification_level=VerificationLevel.DISCONTINUED,
+        ).exclude(
+            business__verification_level=VerificationLevel.DISCONTINUED,
+        )
 
 
 class Product(ClusterableModel):
@@ -154,6 +178,27 @@ class Product(ClusterableModel):
         default=timezone.now,
     )
 
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    verification_level = models.CharField(
+        max_length=30,
+        choices=VerificationLevel.choices,
+        default=VerificationLevel.UNVERIFIED,
+        db_index=True,
+    )
+
+    verification_reference = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Source name or URL when level is Verified source.",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -162,11 +207,56 @@ class Product(ClusterableModel):
         auto_now=True,
     )
 
+    objects = ProductQuerySet.as_manager()
+
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+    @property
+    def effective_verified_at(self):
+        business_at = None
+        if self.business_id:
+            business_at = self.business.verified_at
+        return older_verified_at(self.verified_at, business_at)
+
+    @property
+    def freshness(self):
+        return freshness_for(self.effective_verified_at)
+
+    @property
+    def effective_level(self):
+        if self.business_id and (
+            self.business.verification_level
+            == VerificationLevel.DISCONTINUED
+        ):
+            return VerificationLevel.DISCONTINUED
+        return self.verification_level
+
+    @property
+    def level_meta(self):
+        return level_meta(self.effective_level)
+
+    @property
+    def is_trusted(self):
+        return is_trusted_level(self.effective_level)
+
+    @property
+    def inherits_business_status(self):
+        if not self.business_id:
+            return False
+        product_at = self.verified_at
+        business_at = self.business.verified_at
+        effective = older_verified_at(product_at, business_at)
+        if effective is None:
+            return False
+        if business_at is None:
+            return False
+        if product_at is None:
+            return True
+        return business_at <= product_at and business_at == effective
 
     def get_absolute_url(self):
         return reverse(

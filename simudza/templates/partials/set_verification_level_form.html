@@ -1,0 +1,20 @@
+<form method="post" action="{% url 'accounts:verify_listing' %}" class="flex flex-wrap items-end justify-end gap-1">
+    {% csrf_token %}
+    <input type="hidden" name="kind" value="{{ kind }}" />
+    <input type="hidden" name="pk" value="{{ pk }}" />
+    <select name="level" class="select select-bordered select-xs max-w-[11rem]" required>
+        {% for item in verification_level_choices %}
+            <option value="{{ item.level }}"{% if item.level == current_level %} selected{% endif %}>
+                {{ item.emoji }} {{ item.label }}
+            </option>
+        {% endfor %}
+    </select>
+    <input
+        type="text"
+        name="reference"
+        value="{{ reference|default:'' }}"
+        placeholder="Source ref (optional)"
+        class="input input-bordered input-xs w-28 max-w-[8rem]"
+    />
+    <button type="submit" class="btn btn-primary btn-xs">Set level</button>
+</form>

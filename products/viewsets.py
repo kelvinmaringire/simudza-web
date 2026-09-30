@@ -13,8 +13,11 @@ from wagtail.admin.views.generic.chooser import ChooseResultsView, ChooseView
 from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_import_export import ImportExportViewSetMixin
+
 from .forms import ProductForm
 from .models import Product
+from .resources import ProductResource
 
 
 class ProductChooserFilterForm(BaseFilterForm):
@@ -78,8 +81,9 @@ class ProductChooserViewSet(ChooserViewSet):
 product_chooser_viewset = ProductChooserViewSet("product_chooser")
 
 
-class ProductViewSet(ModelViewSet):
+class ProductViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = Product
+    resource_class = ProductResource
 
     name = "product"
     menu_label = "Products"
@@ -93,6 +97,9 @@ class ProductViewSet(ModelViewSet):
         "category",
         "origin_type",
         "status",
+        "verified_at",
+        "verification_level",
+        "verification_reference",
         "featured",
     ]
 
@@ -151,6 +158,8 @@ class ProductViewSet(ModelViewSet):
                     FieldPanel("status"),
                     FieldPanel("featured"),
                     FieldPanel("verified_at"),
+                    FieldPanel("verification_level"),
+                    FieldPanel("verification_reference"),
                 ],
                 heading="Publishing",
             ),
@@ -179,6 +188,9 @@ class ProductViewSet(ModelViewSet):
         "featured",
         "image",
         "verified_at",
+        "verification_level",
+        "verification_reference",
+        "verified_by",
         "created_at",
         "updated_at",
     ]

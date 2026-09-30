@@ -48,8 +48,10 @@ class BusinessForm(WagtailAdminModelForm):
             "phone",
             "address",
             "town_or_city",
-            "verification_status",
+            "verification_level",
+            "verification_reference",
             "verified_at",
+            "owner",
             "is_active",
         ]
 

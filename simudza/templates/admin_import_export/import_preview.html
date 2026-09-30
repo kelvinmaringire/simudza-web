@@ -1,0 +1,65 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% trans "Import preview" %} — {{ model_verbose_name }}{% endblock %}
+
+{% block content %}
+    {% include "wagtailadmin/shared/header.html" with title=_("Import preview") subtitle=model_verbose_name icon_name="upload" %}
+
+    <div class="nice-padding">
+        <dl class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+            <div class="rounded-box border border-base-300 px-3 py-2">
+                <dt class="text-xs text-base-content/60">{% trans "New" %}</dt>
+                <dd class="text-xl font-semibold">{{ result.totals.new|default:0 }}</dd>
+            </div>
+            <div class="rounded-box border border-base-300 px-3 py-2">
+                <dt class="text-xs text-base-content/60">{% trans "Updates" %}</dt>
+                <dd class="text-xl font-semibold">{{ result.totals.update|default:0 }}</dd>
+            </div>
+            <div class="rounded-box border border-base-300 px-3 py-2">
+                <dt class="text-xs text-base-content/60">{% trans "Skipped" %}</dt>
+                <dd class="text-xl font-semibold">{{ result.totals.skip|default:0 }}</dd>
+            </div>
+            <div class="rounded-box border border-base-300 px-3 py-2">
+                <dt class="text-xs text-base-content/60">{% trans "Errors" %}</dt>
+                <dd class="text-xl font-semibold {% if result.totals.error %}text-error{% endif %}">{{ result.totals.error|default:0 }}</dd>
+            </div>
+        </dl>
+
+        {% if error_rows %}
+            <div class="mb-6 overflow-x-auto rounded-box border border-error/30">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Row" %}</th>
+                            <th>{% trans "Errors" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in error_rows %}
+                            <tr>
+                                <td>{{ row.row_number }}</td>
+                                <td class="text-sm">
+                                    {% for err in row.errors %}
+                                        <div>{{ err.error }}</div>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+        <form method="post" action="{{ confirm_url }}">
+            {% csrf_token %}
+            <button type="submit" class="button button-longrunning" {% if result.totals.error %}disabled{% endif %}>
+                {% trans "Confirm import" %}
+            </button>
+            <a href="{% url index_url_name %}" class="button button-secondary ml-2">{% trans "Cancel" %}</a>
+        </form>
+        {% if result.totals.error %}
+            <p class="mt-2 text-sm text-error">{% trans "Fix errors in your file and upload again." %}</p>
+        {% endif %}
+    </div>
+{% endblock %}

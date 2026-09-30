@@ -1,12 +1,16 @@
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
 
+from simudza.admin_import_export import ImportExportViewSetMixin
+
 from .forms import CartForm, CheckoutForm, OrderForm
 from .models import Cart, Checkout, Order
+from .resources import CartResource, CheckoutResource, OrderResource
 
 
-class CartViewSet(ModelViewSet):
+class CartViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = Cart
+    resource_class = CartResource
 
     name = "cart"
     menu_label = "Carts"
@@ -49,8 +53,9 @@ class CartViewSet(ModelViewSet):
     ]
 
 
-class OrderViewSet(ModelViewSet):
+class OrderViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = Order
+    resource_class = OrderResource
 
     name = "order"
     menu_label = "Orders"
@@ -107,8 +112,9 @@ class OrderViewSet(ModelViewSet):
     ]
 
 
-class CheckoutViewSet(ModelViewSet):
+class CheckoutViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = Checkout
+    resource_class = CheckoutResource
 
     name = "checkout"
     menu_label = "Checkouts"

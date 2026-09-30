@@ -1,7 +1,7 @@
 import django_filters
 from django.db.models import Q
 
-from businesses.models import Business
+from businesses.verification import TRUSTED_LEVELS, search_cutoff
 from categories.models import Category
 from products.models import Product
 
@@ -9,9 +9,12 @@ from .models import DirectoryListing
 
 
 def _directory_base_qs():
+    cutoff = search_cutoff()
     return DirectoryListing.objects.filter(
         show_in_directory=True,
         product__status=Product.ProductStatus.PUBLISHED,
+        product__verified_at__gte=cutoff,
+        product__business__verified_at__gte=cutoff,
     )
 
 
@@ -192,8 +195,6 @@ class DirectoryListingFilter(django_filters.FilterSet):
     def filter_verified(self, queryset, name, value):
         if value is True:
             return queryset.filter(
-                product__business__verification_status=(
-                    Business.VerificationStatus.VERIFIED
-                )
+                product__business__verification_level__in=TRUSTED_LEVELS,
             )
         return queryset

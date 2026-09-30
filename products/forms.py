@@ -2,6 +2,8 @@ from django.utils.text import slugify
 from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.forms.models import formfield_for_dbfield
 
+from businesses.verification import VerificationLevel
+
 from .models import Product
 
 
@@ -42,7 +44,18 @@ class ProductForm(WagtailAdminModelForm):
             "featured",
             "image",
             "verified_at",
+            "verification_level",
+            "verification_reference",
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "verification_level" in self.fields:
+            self.fields["verification_level"].required = False
+            if not self.initial.get("verification_level") and not (
+                self.instance and self.instance.verification_level
+            ):
+                self.initial["verification_level"] = VerificationLevel.UNVERIFIED
 
     def save(self, commit=True):
         # Slug is set once (and may refresh while draft). Once the product has
@@ -64,4 +77,10 @@ class ProductForm(WagtailAdminModelForm):
                 exclude_pk=self.instance.pk,
             )
 
-        return super().save(commit=commit)
+        product = super().save(commit=False)
+        if not product.verification_level:
+            product.verification_level = VerificationLevel.UNVERIFIED
+        if commit:
+            product.save()
+            self.save_m2m()
+        return product

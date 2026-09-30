@@ -1,0 +1,14 @@
+{% if level_meta %}
+    <span
+        class="badge badge-sm {{ level_meta.badge_class }} gap-1{% if class %} {{ class }}{% endif %}"
+        title="{{ level_meta.description }}"
+    >
+        <span aria-hidden="true">{{ level_meta.emoji }}</span>
+        {{ level_meta.label }}
+    </span>
+    {% if level_meta.level == "verified_source" and verification_reference %}
+        <span class="text-xs text-base-content/60{% if class %} {{ class }}{% endif %}">
+            · {{ verification_reference }}
+        </span>
+    {% endif %}
+{% endif %}

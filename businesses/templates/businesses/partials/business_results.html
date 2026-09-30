@@ -34,7 +34,7 @@
                             {{ business.name|slice:":1"|upper }}
                         </span>
                     {% endif %}
-                    {% if business.verification_status == "verified" %}
+                    {% if business.is_trusted %}
                         <span class="business-card__badge">Verified</span>
                     {% endif %}
                 </div>
@@ -55,6 +55,7 @@
                             {% endif %}
                         </p>
                     {% endif %}
+                    {% include "partials/verified_badge.html" with level_meta=business.level_meta verification_reference=business.verification_reference verified_at=business.verified_at %}
                 </div>
             </a>
         {% endfor %}

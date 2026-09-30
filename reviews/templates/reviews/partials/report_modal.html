@@ -1,0 +1,61 @@
+<button type="button" class="btn btn-ghost btn-xs h-auto min-h-0 gap-1 px-1 py-0.5 text-xs font-normal text-base-content/60 hover:text-base-content" onclick="document.getElementById('report-modal-{{ report_kind }}-{{ report_pk }}').showModal()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>
+    Report outdated information
+</button>
+
+<dialog id="report-modal-{{ report_kind }}-{{ report_pk }}" class="modal">
+    <div class="modal-box max-w-md" id="report-modal-{{ report_kind }}-{{ report_pk }}-content">
+        <h3 class="text-lg font-semibold">Report outdated information</h3>
+        <p class="mt-1 text-sm text-base-content/65">
+            Help us keep {{ listing_label }} accurate. Reports are reviewed by staff only.
+        </p>
+
+        <form
+            method="post"
+            action="{{ report_url }}"
+            class="mt-4 flex flex-col gap-4"
+            hx-post="{{ report_url }}"
+            hx-target="#report-modal-{{ report_kind }}-{{ report_pk }}-content"
+            hx-swap="innerHTML"
+        >
+            {% csrf_token %}
+            <input type="text" name="website" value="" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+            <fieldset class="space-y-2">
+                <legend class="mb-1 text-sm font-medium">What seems wrong?</legend>
+                {% for value, label in reason_choices %}
+                    <label class="flex cursor-pointer items-start gap-2 rounded-lg border border-base-content/10 px-3 py-2 text-sm hover:bg-base-200/50">
+                        <input type="radio" name="reason" value="{{ value }}" class="radio radio-primary radio-sm mt-0.5" required />
+                        <span>{{ label }}</span>
+                    </label>
+                {% endfor %}
+            </fieldset>
+
+            <label class="form-control w-full">
+                <span class="label-text mb-1 text-sm font-medium">Additional details (optional)</span>
+                <textarea name="details" maxlength="1000" rows="3" class="textarea textarea-bordered w-full text-sm" placeholder="Anything else we should know…"></textarea>
+            </label>
+
+            {% if not user.is_authenticated %}
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="form-control w-full">
+                        <span class="label-text mb-1 text-sm">Your name (optional)</span>
+                        <input type="text" name="guest_name" maxlength="120" class="input input-bordered input-sm w-full" />
+                    </label>
+                    <label class="form-control w-full">
+                        <span class="label-text mb-1 text-sm">Your email (optional)</span>
+                        <input type="email" name="guest_email" class="input input-bordered input-sm w-full" />
+                    </label>
+                </div>
+            {% endif %}
+
+            <div class="modal-action mt-2">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('report-modal-{{ report_kind }}-{{ report_pk }}').close()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">Submit report</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button type="submit" aria-label="Close">close</button>
+    </form>
+</dialog>

@@ -2,12 +2,16 @@ from django.urls import path
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_import_export import ImportExportViewSetMixin
+
 from .forms import DirectoryListingForm
 from .models import DirectoryListing
+from .resources import DirectoryListingResource
 
 
-class DirectoryListingViewSet(ModelViewSet):
+class DirectoryListingViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = DirectoryListing
+    resource_class = DirectoryListingResource
 
     name = "directory_listing"
     menu_label = "Directory"
@@ -73,7 +77,7 @@ class DirectoryListingViewSet(ModelViewSet):
 
     def get_urlpatterns(self):
         conv = self.pk_path_converter
-        return [
+        patterns = [
             path("", self.index_view, name="index"),
             path("results/", self.index_results_view, name="index_results"),
             path(f"edit/<{conv}:pk>/", self.edit_view, name="edit"),
@@ -86,3 +90,5 @@ class DirectoryListingViewSet(ModelViewSet):
             path(f"usage/<{conv}:pk>/", self.usage_view, name="usage"),
             path(f"inspect/<{conv}:pk>/", self.inspect_view, name="inspect"),
         ]
+        patterns.extend(self.import_export_urlpatterns())
+        return patterns

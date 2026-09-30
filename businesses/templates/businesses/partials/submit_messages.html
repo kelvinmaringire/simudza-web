@@ -1,0 +1,7 @@
+{% if messages %}
+    <div class="mb-4 space-y-2">
+        {% for message in messages %}
+            <div class="alert alert-soft {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} text-sm" role="alert">{{ message }}</div>
+        {% endfor %}
+    </div>
+{% endif %}

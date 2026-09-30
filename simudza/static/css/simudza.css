@@ -11,6 +11,44 @@
     display: block;
 }
 
+/* Homepage: header flows straight into the hero (both bg-base-300) */
+.template-homepage > .drawer > .drawer-content > .navbar {
+    border-bottom-color: transparent;
+    box-shadow: none;
+}
+
+/* Homepage hero: faint dot grid that fades out towards the bottom */
+.simudza-hero-dots {
+    background-image: radial-gradient(
+        color-mix(in oklab, var(--color-base-content) 12%, transparent) 1px,
+        transparent 1px
+    );
+    background-size: 18px 18px;
+    mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+}
+
+/* Zimbabwe flag colours as a thin stripe */
+.simudza-flag-stripe {
+    background: linear-gradient(
+        90deg,
+        #319208 0 25%,
+        #ffd200 25% 50%,
+        #de2010 50% 75%,
+        #000000 75% 100%
+    );
+}
+
+[data-theme="dark"] .simudza-flag-stripe {
+    /* Black segment would vanish on dark surfaces */
+    background: linear-gradient(
+        90deg,
+        #319208 0 25%,
+        #ffd200 25% 50%,
+        #de2010 50% 75%,
+        #f5f5f5 75% 100%
+    );
+}
+
 /* Compact radios in the directory filter sidebar */
 .directory-filter-radio.radio {
     width: 0.875rem;
@@ -736,6 +774,26 @@ body {
     .template-business-list .drawer.drawer-open > .drawer-content,
     .template-marketplace .drawer.drawer-open > .drawer-content {
         margin-left: 20rem;
+    }
+}
+
+/* Account dashboard: sidebar sticks to the top on scroll and ends at the dock. */
+.dashboard-layout > .drawer-side > .dashboard-sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-layout > .drawer-side {
+        position: sticky;
+        top: 0;
+        height: calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px));
+        max-height: calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px));
+    }
+
+    .dashboard-layout > .drawer-side > .dashboard-sidebar {
+        height: 100%;
+        min-height: 0;
     }
 }
 

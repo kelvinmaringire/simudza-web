@@ -2,12 +2,16 @@ from django.urls import path
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_import_export import ImportExportViewSetMixin
+
 from .forms import InventoryForm
 from .models import Inventory
+from .resources import InventoryResource
 
 
-class InventoryViewSet(ModelViewSet):
+class InventoryViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = Inventory
+    resource_class = InventoryResource
 
     name = "inventory"
     menu_label = "Inventory"
@@ -77,7 +81,7 @@ class InventoryViewSet(ModelViewSet):
 
     def get_urlpatterns(self):
         conv = self.pk_path_converter
-        return [
+        patterns = [
             path("", self.index_view, name="index"),
             path("results/", self.index_results_view, name="index_results"),
             path(f"edit/<{conv}:pk>/", self.edit_view, name="edit"),
@@ -90,3 +94,5 @@ class InventoryViewSet(ModelViewSet):
             path(f"usage/<{conv}:pk>/", self.usage_view, name="usage"),
             path(f"inspect/<{conv}:pk>/", self.inspect_view, name="inspect"),
         ]
+        patterns.extend(self.import_export_urlpatterns())
+        return patterns

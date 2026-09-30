@@ -5,37 +5,175 @@
 {% block body_class %}template-accounts-signup{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-md px-4 py-10">
-    <header class="mb-6 text-center">
-        <h1 class="text-2xl font-semibold">Create account</h1>
-        <p class="mt-2 text-sm text-base-content/70">Join Simudza to shop and explore</p>
-    </header>
+<section class="relative isolate overflow-hidden bg-base-300">
+    <div class="simudza-hero-dots pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -top-40 left-1/2 -z-10 size-[32rem] -translate-x-1/2 rounded-full bg-primary/20 blur-3xl lg:left-1/4" aria-hidden="true"></div>
 
-    {% if form.non_field_errors %}
-        <div class="alert alert-error mb-4 text-sm" role="alert">
-            {% for error in form.non_field_errors %}
-                <span>{{ error }}</span>
-            {% endfor %}
+    <div class="mx-auto grid min-h-[calc(100dvh-8rem)] w-full max-w-5xl content-center items-center gap-6 px-4 py-6 sm:py-8 lg:grid-cols-2 lg:gap-14 lg:px-8">
+        <header class="mx-auto max-w-md text-center lg:mx-0 lg:text-left">
+            <p class="mb-3 inline-flex items-center gap-2 rounded-full border border-base-content/10 bg-base-100/70 py-1 pr-3 pl-1.5 text-xs font-medium tracking-wide text-base-content/80 shadow-sm backdrop-blur">
+                <span class="overflow-hidden rounded-full ring-1 ring-base-content/10">
+                    {% include "home/includes/zw_flag.html" with class="block h-3.5 w-6" %}
+                </span>
+                Proudly Zimbabwean
+            </p>
+            <h1 class="text-2xl font-semibold tracking-tight text-balance sm:text-3xl lg:text-4xl">Create your account</h1>
+            <div class="simudza-flag-stripe mt-3 hidden h-1 w-14 rounded-full lg:block" aria-hidden="true"></div>
+            <p class="mt-2 text-sm text-base-content/65 lg:mt-4 lg:text-base">Join Simudza to discover, buy and sell products made in Zimbabwe.</p>
+
+            <ul class="mt-6 hidden space-y-3 text-sm text-base-content/75 lg:block">
+                <li class="flex items-center gap-3">
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    </span>
+                    Shop products made, grown and packaged locally
+                </li>
+                <li class="flex items-center gap-3">
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg>
+                    </span>
+                    List your company and products in the directory
+                </li>
+                <li class="flex items-center gap-3">
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                    </span>
+                    Every purchase helps build Zimbabwe
+                </li>
+            </ul>
+        </header>
+
+        <div class="relative mx-auto w-full max-w-md overflow-hidden rounded-box border border-base-content/10 bg-base-100 shadow-xl shadow-base-content/5 lg:mx-0 lg:justify-self-end">
+            <div class="simudza-flag-stripe h-1 w-full" aria-hidden="true"></div>
+
+            <div class="p-5 sm:p-6">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error alert-soft mb-4 py-2.5 text-sm" role="alert">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+                        <div>
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'accounts:signup' %}" class="flex flex-col gap-4" x-data="{ showPassword: false }">
+                    {% csrf_token %}
+
+                    <div>
+                        <label for="{{ form.username.id_for_label }}" class="mb-1 block text-sm font-medium">Username</label>
+                        <label class="input h-11 w-full gap-2.5 rounded-field bg-base-200/50 transition-colors focus-within:bg-base-100{% if form.username.errors %} input-error{% endif %}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem] shrink-0 opacity-50" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path></svg>
+                            <input
+                                type="text"
+                                name="{{ form.username.html_name }}"
+                                id="{{ form.username.id_for_label }}"
+                                value="{{ form.username.value|default:'' }}"
+                                autocomplete="username"
+                                autocapitalize="none"
+                                spellcheck="false"
+                                required
+                                autofocus
+                                placeholder="Choose a username"
+                                class="grow"
+                            />
+                        </label>
+                        {% if form.username.errors %}
+                            <p class="mt-1.5 text-xs text-error">{{ form.username.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.email.id_for_label }}" class="mb-1 block text-sm font-medium">Email</label>
+                        <label class="input h-11 w-full gap-2.5 rounded-field bg-base-200/50 transition-colors focus-within:bg-base-100{% if form.email.errors %} input-error{% endif %}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem] shrink-0 opacity-50" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-10 6L2 7"></path></svg>
+                            <input
+                                type="email"
+                                name="{{ form.email.html_name }}"
+                                id="{{ form.email.id_for_label }}"
+                                value="{{ form.email.value|default:'' }}"
+                                autocomplete="email"
+                                inputmode="email"
+                                autocapitalize="none"
+                                spellcheck="false"
+                                required
+                                placeholder="you@example.com"
+                                class="grow"
+                            />
+                        </label>
+                        {% if form.email.errors %}
+                            <p class="mt-1.5 text-xs text-error">{{ form.email.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2 sm:gap-3">
+                        <div>
+                            <label for="{{ form.password1.id_for_label }}" class="mb-1 block text-sm font-medium">Password</label>
+                            <label class="input h-11 w-full gap-2.5 rounded-field bg-base-200/50 transition-colors focus-within:bg-base-100{% if form.password1.errors %} input-error{% endif %}">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem] shrink-0 opacity-50" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+                                <input
+                                    :type="showPassword ? 'text' : 'password'"
+                                    type="password"
+                                    name="{{ form.password1.html_name }}"
+                                    id="{{ form.password1.id_for_label }}"
+                                    autocomplete="new-password"
+                                    required
+                                    placeholder="Password"
+                                    class="min-w-0 grow"
+                                />
+                            </label>
+                            {% if form.password1.errors %}
+                                <p class="mt-1.5 text-xs text-error">{{ form.password1.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label for="{{ form.password2.id_for_label }}" class="mb-1 block text-sm font-medium">Confirm password</label>
+                            <label class="input h-11 w-full gap-2.5 rounded-field bg-base-200/50 transition-colors focus-within:bg-base-100{% if form.password2.errors %} input-error{% endif %}">
+                                <input
+                                    :type="showPassword ? 'text' : 'password'"
+                                    type="password"
+                                    name="{{ form.password2.html_name }}"
+                                    id="{{ form.password2.id_for_label }}"
+                                    autocomplete="new-password"
+                                    required
+                                    placeholder="Repeat password"
+                                    class="min-w-0 grow"
+                                />
+                                <button
+                                    type="button"
+                                    class="btn btn-ghost btn-xs btn-circle -mr-1 opacity-60 hover:opacity-100"
+                                    @click="showPassword = !showPassword"
+                                    :aria-label="showPassword ? 'Hide passwords' : 'Show passwords'"
+                                    aria-label="Show passwords"
+                                >
+                                    <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem]" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    <svg x-show="showPassword" x-cloak xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem]" aria-hidden="true"><path d="M3 3l18 18"></path><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.9 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.4 3.4"></path><path d="M6.1 6.1A18.2 18.2 0 0 0 2 12s3.5 7 10 7a10.3 10.3 0 0 0 4.3-.9"></path></svg>
+                                </button>
+                            </label>
+                            {% if form.password2.errors %}
+                                <p class="mt-1.5 text-xs text-error">{{ form.password2.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <p class="-mt-2 text-xs text-base-content/55 sm:col-span-2">
+                            At least 8 characters. Avoid common words, only numbers, or anything too similar to your username.
+                        </p>
+                    </div>
+
+                    <button type="submit" class="group btn btn-primary h-11 w-full gap-2 rounded-full text-base font-semibold shadow-lg shadow-primary/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/35">
+                        Create account
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.64l-3.22-3.22a.75.75 0 1 1 1.06-1.06l4.5 4.5a.75.75 0 0 1 0 1.06l-4.5 4.5a.75.75 0 1 1-1.06-1.06l3.22-3.22H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+                    </button>
+                </form>
+            </div>
+
+            <div class="border-t border-base-content/10 bg-base-200/40 px-5 py-3 text-center text-sm text-base-content/70 sm:px-6">
+                Already have an account?
+                <a href="{% url 'accounts:login' %}" class="font-semibold text-primary hover:underline">Sign in</a>
+            </div>
         </div>
-    {% endif %}
-
-    <form method="post" action="{% url 'accounts:signup' %}" class="flex flex-col gap-4">
-        {% csrf_token %}
-
-        {% include "accounts/partials/text_field.html" with field=form.username label="Username" autocomplete="username" required=True autofocus=True placeholder="Username" %}
-
-        {% include "accounts/partials/text_field.html" with field=form.email label="Email" type="email" autocomplete="email" inputmode="email" required=True placeholder="Email address" %}
-
-        {% include "accounts/partials/password_field.html" with field=form.password1 label="Password" autocomplete="new-password" required=True placeholder="Password" help_text=form.password1.help_text %}
-
-        {% include "accounts/partials/password_field.html" with field=form.password2 label="Confirm password" autocomplete="new-password" required=True placeholder="Confirm password" %}
-
-        <button type="submit" class="btn btn-primary w-full">Create account</button>
-    </form>
-
-    <p class="mt-6 text-center text-sm text-base-content/70">
-        Already have an account?
-        <a href="{% url 'accounts:login' %}" class="link link-hover font-medium">Sign in</a>
-    </p>
-</div>
+    </div>
+</section>
 {% endblock %}

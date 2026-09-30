@@ -1,0 +1,318 @@
+<section id="verification" class="mt-8 scroll-mt-24">
+    <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-semibold tracking-tight">Listing verification</h2>
+            <p class="text-sm text-base-content/65">
+                Staff only. Manufacturers confirm their own listings, customers report problems and the daily monitor emails owners. You only handle the exceptions below.
+            </p>
+        </div>
+    </div>
+
+    <ol class="mb-6 grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
+        <li class="rounded-box border border-base-300 bg-base-100 px-3 py-2"><span class="font-semibold">1. Manufacturer</span> <span class="text-base-content/60">verifies</span></li>
+        <li class="rounded-box border border-base-300 bg-base-100 px-3 py-2"><span class="font-semibold">2. Customer</span> <span class="text-base-content/60">reports</span></li>
+        <li class="rounded-box border border-base-300 bg-base-100 px-3 py-2"><span class="font-semibold">3. System</span> <span class="text-base-content/60">monitors &amp; reminds</span></li>
+        <li class="rounded-box border border-primary/40 bg-primary/5 px-3 py-2"><span class="font-semibold">4. Simudza staff</span> <span class="text-base-content/60">investigate exceptions</span></li>
+    </ol>
+
+    <div class="mb-6 overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm">
+        <div class="border-base-300 flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+            <div>
+                <h3 class="text-base font-semibold">Exceptions to investigate</h3>
+                <p class="text-xs text-base-content/60">Customer reports, owner-vs-customer conflicts, listings with no owner account and owners who ignored reminders.</p>
+            </div>
+            <span class="badge {% if verification_exceptions %}badge-error{% else %}badge-success badge-soft{% endif %}">{{ verification_exceptions|length }}</span>
+        </div>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Listing</th>
+                    <th>Why</th>
+                    <th>Level</th>
+                    <th>Freshness</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in verification_exceptions %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-sm {% if row.severity == 'high' %}badge-error{% elif row.severity == 'medium' %}badge-warning{% else %}badge-ghost{% endif %}">{{ row.severity|capfirst }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ row.public_url }}" class="link link-hover font-medium">{{ row.name }}</a>
+                            <span class="badge badge-ghost badge-xs ml-1">{{ row.kind }}</span>
+                            {% if row.business_name %}<p class="text-xs text-base-content/55">{{ row.business_name }}</p>{% endif %}
+                        </td>
+                        <td>
+                            <ul class="space-y-0.5 text-xs">
+                                {% for reason in row.reasons %}<li>{{ reason }}</li>{% endfor %}
+                            </ul>
+                        </td>
+                        <td class="whitespace-nowrap">
+                            {% include "partials/verification_level_badge.html" with level_meta=row.level_meta verification_reference=row.verification_reference %}
+                        </td>
+                        <td class="whitespace-nowrap">
+                            <span class="badge badge-sm {{ row.freshness.badge_class }} gap-1">
+                                <span aria-hidden="true">{{ row.freshness.emoji }}</span>
+                                {{ row.freshness.label }}
+                            </span>
+                            <p class="mt-0.5 text-xs text-base-content/55">
+                                {% if row.verified_at %}{{ row.verified_at|date:"j M Y" }}{% else %}Never{% endif %}
+                            </p>
+                        </td>
+                        <td class="text-right">
+                            <div class="flex flex-wrap justify-end gap-1">
+                                <a href="{{ row.admin_url }}" class="btn btn-ghost btn-xs">Edit</a>
+                                {% include "partials/set_verification_level_form.html" with kind=row.kind pk=row.obj.pk current_level=row.obj.verification_level reference=row.verification_reference verification_level_choices=verification_level_choices %}
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6" class="text-center text-sm text-base-content/60">Nothing needs a human right now. 🎉</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card border-base-300 bg-base-100 mb-6 border shadow-sm">
+        <div class="card-body gap-4 p-4 sm:p-5">
+            <h3 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Verification levels</h3>
+            <ul class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {% for item in verification_level_legend %}
+                    <li class="flex items-start gap-2 text-sm">
+                        <span aria-hidden="true">{{ item.emoji }}</span>
+                        <span>
+                            <span class="font-medium">{{ item.label }}</span>
+                            <span class="block text-xs text-base-content/60">{{ item.description }}</span>
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+            <div class="grid gap-4 lg:grid-cols-2">
+                <div>
+                    <h4 class="mb-2 text-sm font-semibold">Businesses by level</h4>
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {% for row in business_level_rows %}
+                            <div class="rounded-lg bg-base-200/60 px-3 py-2 text-center">
+                                <p class="text-xs text-base-content/60">{{ row.meta.emoji }} {{ row.meta.label }}</p>
+                                <p class="text-xl font-semibold">{{ row.count }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <h4 class="mb-2 text-sm font-semibold">Products by level</h4>
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {% for row in product_level_rows %}
+                            <div class="rounded-lg bg-base-200/60 px-3 py-2 text-center">
+                                <p class="text-xs text-base-content/60">{{ row.meta.emoji }} {{ row.meta.label }}</p>
+                                <p class="text-xl font-semibold">{{ row.count }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <details class="collapse collapse-arrow border-base-300 bg-base-200/40 border">
+    <summary class="collapse-title text-sm font-semibold">Full freshness overview, all flagged listings and open reports</summary>
+    <div class="collapse-content">
+    <div class="card border-base-300 bg-base-100 mb-6 border shadow-sm">
+        <div class="card-body gap-4 p-4 sm:p-5">
+            <h3 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Freshness legend</h3>
+            <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {% for item in verification_legend %}
+                    <li class="flex items-start gap-2 text-sm">
+                        <span aria-hidden="true">{{ item.emoji }}</span>
+                        <span>
+                            <span class="font-medium">{{ item.label }}</span>
+                            <span class="block text-xs text-base-content/60">{{ item.range_text }}</span>
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="mb-6 grid gap-4 lg:grid-cols-2">
+        <div class="card border-base-300 bg-base-100 border shadow-sm">
+            <div class="card-body p-4 sm:p-5">
+                <h3 class="card-title mb-2 text-base">Businesses</h3>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {% for row in business_tier_rows %}
+                        <div class="rounded-lg bg-base-200/60 px-3 py-2 text-center">
+                            <p class="text-xs text-base-content/60">{{ row.freshness.emoji }} {{ row.freshness.label }}</p>
+                            <p class="text-xl font-semibold">{{ row.count }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="card border-base-300 bg-base-100 border shadow-sm">
+            <div class="card-body p-4 sm:p-5">
+                <h3 class="card-title mb-2 text-base">Products</h3>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {% for row in product_tier_rows %}
+                        <div class="rounded-lg bg-base-200/60 px-3 py-2 text-center">
+                            <p class="text-xs text-base-content/60">{{ row.freshness.emoji }} {{ row.freshness.label }}</p>
+                            <p class="text-xl font-semibold">{{ row.count }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Business</th>
+                        <th>Level</th>
+                        <th>Freshness</th>
+                        <th>Last verified</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in flagged_businesses %}
+                        <tr>
+                            <td class="font-medium">
+                                {{ row.name }}
+                                {% if row.open_report_count %}
+                                    <span class="badge badge-warning badge-sm ml-1">{{ row.open_report_count }} report{{ row.open_report_count|pluralize }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% include "partials/verification_level_badge.html" with level_meta=row.level_meta verification_reference=row.verification_reference %}
+                            </td>
+                            <td>
+                                <span class="badge badge-sm {{ row.freshness.badge_class }} gap-1">
+                                    <span aria-hidden="true">{{ row.freshness.emoji }}</span>
+                                    {{ row.freshness.label }}
+                                </span>
+                            </td>
+                            <td class="text-xs whitespace-nowrap text-base-content/70">
+                                {% if row.verified_at %}
+                                    {{ row.verified_at|date:"j M Y" }}
+                                    {% if row.age_days is not None %}<span class="text-base-content/50">({{ row.age_days }}d)</span>{% endif %}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </td>
+                            <td class="text-right">
+                                <div class="flex flex-wrap justify-end gap-1">
+                                    <a href="{{ row.admin_url }}" class="btn btn-ghost btn-xs">Edit</a>
+                                    {% include "partials/set_verification_level_form.html" with kind="business" pk=row.obj.pk current_level=row.verification_level reference=row.verification_reference verification_level_choices=verification_level_choices %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="text-center text-sm text-base-content/60">All businesses are current.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Level</th>
+                        <th>Freshness</th>
+                        <th>Last verified</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in flagged_products %}
+                        <tr>
+                            <td>
+                                <p class="font-medium">
+                                    {{ row.name }}
+                                    {% if row.open_report_count %}
+                                        <span class="badge badge-warning badge-sm ml-1">{{ row.open_report_count }} report{{ row.open_report_count|pluralize }}</span>
+                                    {% endif %}
+                                </p>
+                                {% if row.business_name %}
+                                    <p class="text-xs text-base-content/55">{{ row.business_name }}</p>
+                                {% endif %}
+                                {% if row.via_business %}
+                                    <p class="text-xs text-warning">Via business</p>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% include "partials/verification_level_badge.html" with level_meta=row.level_meta verification_reference=row.verification_reference %}
+                            </td>
+                            <td>
+                                <span class="badge badge-sm {{ row.freshness.badge_class }} gap-1">
+                                    <span aria-hidden="true">{{ row.freshness.emoji }}</span>
+                                    {{ row.freshness.label }}
+                                </span>
+                            </td>
+                            <td class="text-xs whitespace-nowrap text-base-content/70">
+                                {% if row.verified_at %}
+                                    {{ row.verified_at|date:"j M Y" }}
+                                    {% if row.age_days is not None %}<span class="text-base-content/50">({{ row.age_days }}d)</span>{% endif %}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </td>
+                            <td class="text-right">
+                                <div class="flex flex-wrap justify-end gap-1">
+                                    <a href="{{ row.admin_url }}" class="btn btn-ghost btn-xs">Edit</a>
+                                    {% include "partials/set_verification_level_form.html" with kind="product" pk=row.obj.pk current_level=row.verification_level reference=row.verification_reference verification_level_choices=verification_level_choices %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="text-center text-sm text-base-content/60">All products are current.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-6 overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm">
+        <div class="border-base-300 border-b px-4 py-3">
+            <h3 class="text-base font-semibold">Open customer reports</h3>
+            <p class="text-xs text-base-content/60">Visitor reports on outdated listings — second verification signal.</p>
+        </div>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Listing</th>
+                    <th>Reason</th>
+                    <th>Reporter</th>
+                    <th>Date</th>
+                    <th class="text-right">Admin</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in open_reports %}
+                    <tr>
+                        <td>
+                            <a href="{{ row.listing_url }}" class="link link-hover font-medium">{{ row.listing_name }}</a>
+                            <span class="badge badge-ghost badge-xs ml-1">{{ row.kind }}</span>
+                        </td>
+                        <td class="text-sm">{{ row.reason }}</td>
+                        <td class="text-sm text-base-content/70">{{ row.reporter }}</td>
+                        <td class="text-xs whitespace-nowrap text-base-content/60">{{ row.created_at|date:"j M Y" }}</td>
+                        <td class="text-right">
+                            <a href="{{ row.admin_url }}" class="btn btn-ghost btn-xs">Open in admin</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="text-center text-sm text-base-content/60">No open reports.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    </div>
+    </details>
+</section>

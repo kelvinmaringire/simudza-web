@@ -1,5 +1,6 @@
+from django.contrib import messages
 from django.contrib.auth import login
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import (
     LoginView,
     LogoutView,
@@ -10,10 +11,34 @@ from django.contrib.auth.views import (
     PasswordResetDoneView,
     PasswordResetView,
 )
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.views import View
 from django.views.generic import FormView, TemplateView
 
+from businesses.models import Business
+from businesses.verification import VerificationLevel, level_legend
+from businesses.verification_dashboard import (
+    business_level_counts,
+    business_tier_counts,
+    flagged_businesses,
+    flagged_products,
+    freshness_legend,
+    level_count_rows,
+    open_reports,
+    product_level_counts,
+    product_tier_counts,
+    tier_count_rows,
+)
+from businesses.verification_workflow import (
+    owner_confirm_business,
+    owner_confirm_products,
+    owner_listings,
+    staff_set_level,
+    verification_exceptions,
+)
 from marketplace.models import Cart
+from products.models import Product
 
 from .forms import (
     MemberLoginForm,
@@ -114,4 +139,108 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         )
         context["cart_item_count"] = cart_item_count
         context["order_count"] = user.orders.count()
+
+        listings = owner_listings(user)
+        context["owner_listings"] = listings
+        context["owner_action_count"] = sum(1 for row in listings if row["needs_action"])
+
+        if user.is_staff:
+            context["verification_level_legend"] = level_legend()
+            context["verification_level_choices"] = level_legend()
+            context["verification_legend"] = freshness_legend()
+            context["business_level_rows"] = level_count_rows(
+                business_level_counts(),
+            )
+            context["product_level_rows"] = level_count_rows(
+                product_level_counts(),
+            )
+            business_counts = business_tier_counts()
+            product_counts = product_tier_counts()
+            context["business_tier_rows"] = tier_count_rows(business_counts)
+            context["product_tier_rows"] = tier_count_rows(product_counts)
+            context["flagged_businesses"] = flagged_businesses()
+            context["flagged_products"] = flagged_products()
+            context["open_reports"] = open_reports()
+            exceptions = verification_exceptions()
+            context["verification_exceptions"] = exceptions
+            context["verification_attention_count"] = len(exceptions)
+
         return context
+
+
+class OwnerConfirmView(LoginRequiredMixin, View):
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        kind = request.POST.get("kind", "").strip()
+        business = get_object_or_404(
+            Business,
+            pk=request.POST.get("business"),
+            owner=request.user,
+        )
+        if kind == "business":
+            owner_confirm_business(business, request.user)
+            messages.success(request, f'Thanks — "{business.name}" is confirmed as accurate.')
+        elif kind == "products":
+            count = owner_confirm_products(business, request.user)
+            messages.success(request, f"Confirmed {count} product{'s' if count != 1 else ''} as accurate.")
+        elif kind == "all":
+            owner_confirm_business(business, request.user)
+            count = owner_confirm_products(business, request.user)
+            messages.success(
+                request,
+                f'Confirmed "{business.name}" and {count} product{"s" if count != 1 else ""}.',
+            )
+        elif kind == "product":
+            product = get_object_or_404(
+                Product,
+                pk=request.POST.get("pk"),
+                business=business,
+            )
+            owner_confirm_products(
+                business,
+                request.user,
+                Product.objects.filter(pk=product.pk),
+            )
+            messages.success(request, f'Confirmed "{product.name}" as accurate.')
+        else:
+            messages.error(request, "Unknown listing type.")
+        return redirect(reverse("accounts:dashboard") + "#my-listings")
+
+
+class VerifyListingView(LoginRequiredMixin, UserPassesTestMixin, View):
+    http_method_names = ["post"]
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def post(self, request, *args, **kwargs):
+        kind = request.POST.get("kind", "").strip()
+        pk = request.POST.get("pk")
+        level = request.POST.get("level", "").strip()
+        reference = request.POST.get("reference", "").strip()
+
+        valid_levels = {choice.value for choice in VerificationLevel}
+        if level not in valid_levels:
+            messages.error(request, "Choose a valid verification level.")
+            return redirect(reverse("accounts:dashboard") + "#verification")
+
+        if kind == "business":
+            business = get_object_or_404(Business, pk=pk)
+            staff_set_level(business, request.user, level, reference)
+            messages.success(
+                request,
+                f'Set "{business.name}" to {business.get_verification_level_display()}.',
+            )
+        elif kind == "product":
+            product = get_object_or_404(Product, pk=pk)
+            staff_set_level(product, request.user, level, reference)
+            messages.success(
+                request,
+                f'Set "{product.name}" to {product.get_verification_level_display()}.',
+            )
+        else:
+            messages.error(request, "Unknown listing type.")
+            return redirect(reverse("accounts:dashboard") + "#verification")
+
+        return redirect(reverse("accounts:dashboard") + "#verification")

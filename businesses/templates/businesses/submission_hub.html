@@ -1,110 +1,153 @@
-{% extends "base.html" %}
+{% extends "accounts/dashboard_base.html" %}
 
 {% block title %}Manufacturer submissions{% endblock %}
 
-{% block body_class %}template-business-submit{% endblock %}
+{% block dashboard_body_class %}template-business-submit{% endblock %}
 
-{% block content %}
-<div class="mx-auto max-w-3xl px-4 py-6">
-    <header class="mb-6">
-        <h1 class="text-2xl font-semibold sm:text-3xl">Submit to Simudza</h1>
-        <p class="mt-2 text-sm leading-relaxed text-base-content/80">
-            Update your company profile, add products and images, or list retail
-            locations. Changes for companies you own are applied automatically;
-            other submissions stay pending for review.
-        </p>
-    </header>
+{% block dashboard_heading %}Manufacturer submissions{% endblock %}
 
-    {% if messages %}
-        <div class="mb-4 flex flex-col gap-2">
-            {% for message in messages %}
-                <div class="alert text-sm {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
+{% block dashboard_subheading %}
+<p class="hidden truncate text-sm text-base-content/60 sm:block">Keep your company, products and stockists up to date on Simudza.</p>
+{% endblock %}
+
+{% block dashboard_content %}
+{% include "businesses/partials/submit_messages.html" %}
+
+<div class="mb-6 grid gap-4 sm:grid-cols-3">
+    <a href="{% url 'businesses:submit_company' %}" class="card border-base-300 bg-base-100 group border shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
+        <div class="card-body gap-2 p-4 sm:p-5">
+            <span class="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg>
+            </span>
+            <h2 class="font-semibold">Company profile</h2>
+            <p class="text-sm text-base-content/65">Description, logo, contact details and address.</p>
+            <span class="text-primary mt-1 text-sm font-medium group-hover:underline">Submit or update →</span>
         </div>
-    {% endif %}
+    </a>
+    <a href="{% url 'businesses:submit_product' %}" class="card border-base-300 bg-base-100 group border shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
+        <div class="card-body gap-2 p-4 sm:p-5">
+            <span class="bg-secondary/10 text-secondary flex size-10 items-center justify-center rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"></path><path d="m3 8 9 5 9-5"></path><path d="M12 13v8"></path></svg>
+            </span>
+            <h2 class="font-semibold">New product</h2>
+            <p class="text-sm text-base-content/65">Add a product with an image, price and details.</p>
+            <span class="text-primary mt-1 text-sm font-medium group-hover:underline">Add product →</span>
+        </div>
+    </a>
+    <a href="{% url 'businesses:submit_location' %}" class="card border-base-300 bg-base-100 group border shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
+        <div class="card-body gap-2 p-4 sm:p-5">
+            <span class="bg-accent/10 text-accent flex size-10 items-center justify-center rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+            </span>
+            <h2 class="font-semibold">Retail location</h2>
+            <p class="text-sm text-base-content/65">Tell shoppers where they can buy your products.</p>
+            <span class="text-primary mt-1 text-sm font-medium group-hover:underline">Add location →</span>
+        </div>
+    </a>
+</div>
 
-    <div class="grid gap-3 sm:grid-cols-3">
-        <a href="{% url 'businesses:submit_company' %}" class="btn btn-primary">
-            Company profile
-        </a>
-        <a href="{% url 'businesses:submit_product' %}" class="btn btn-primary btn-outline">
-            New product
-        </a>
-        <a href="{% url 'businesses:submit_location' %}" class="btn btn-primary btn-outline">
-            Retail location
-        </a>
+<div class="grid gap-6 xl:grid-cols-5">
+    <div class="space-y-6 xl:col-span-3">
+        <section class="overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm">
+            <div class="border-base-300 flex items-center justify-between gap-2 border-b px-4 py-3">
+                <h2 class="text-base font-semibold">Your companies</h2>
+                <span class="badge badge-ghost badge-sm">{{ owned_businesses|length }}</span>
+            </div>
+            {% if owned_businesses %}
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for business in owned_businesses %}
+                            <tr>
+                                <td>
+                                    <a href="{{ business.get_absolute_url }}" class="link link-hover font-medium">{{ business.name }}</a>
+                                    {% if business.town_or_city %}<p class="text-xs text-base-content/55">{{ business.town_or_city }}</p>{% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-sm {{ business.freshness.badge_class }} gap-1">
+                                        <span aria-hidden="true">{{ business.freshness.emoji }}</span>
+                                        {{ business.freshness.label }}
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <a href="{% url 'businesses:submit_company' %}" class="btn btn-ghost btn-xs">Update</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="px-4 py-6 text-center text-sm text-base-content/60">
+                    No company linked yet.
+                    <a href="{% url 'businesses:submit_company' %}" class="link link-primary">Submit a company profile</a>.
+                </div>
+            {% endif %}
+        </section>
+
+        {% if owned_products %}
+            <section class="overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm">
+                <div class="border-base-300 flex items-center justify-between gap-2 border-b px-4 py-3">
+                    <h2 class="text-base font-semibold">Your products</h2>
+                    <span class="badge badge-ghost badge-sm">{{ owned_products|length }}</span>
+                </div>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Listing</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in owned_products %}
+                            <tr>
+                                <td>
+                                    <a href="{{ product.get_absolute_url }}" class="link link-hover font-medium">{{ product.name }}</a>
+                                    <p class="text-xs text-base-content/55">{{ product.business.name }}{% if product.category %} · {{ product.category.name }}{% endif %}</p>
+                                </td>
+                                <td>
+                                    <span class="badge badge-sm {% if product.status == 'published' %}badge-success badge-soft{% else %}badge-ghost{% endif %}">{{ product.get_status_display }}</span>
+                                </td>
+                                <td class="text-right">
+                                    <a href="{% url 'businesses:submit_product_update' product.pk %}" class="btn btn-ghost btn-xs">Update</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
     </div>
 
-    <section class="mt-8">
-        <h2 class="text-sm font-semibold tracking-wide uppercase text-base-content/70">Your companies</h2>
-        {% if owned_businesses %}
-            <ul class="mt-3 space-y-2 text-sm">
-                {% for business in owned_businesses %}
-                    <li class="flex flex-wrap items-center justify-between gap-2">
-                        <a href="{{ business.get_absolute_url }}" class="link link-hover font-medium">
-                            {{ business.name }}
-                        </a>
-                        <a href="{% url 'businesses:submit_company' %}" class="link link-hover text-xs text-base-content/70">
-                            Update
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="mt-3 text-sm text-base-content/60">
-                No company linked yet.
-                <a href="{% url 'businesses:submit_company' %}" class="link link-hover">Submit a company profile</a>.
-            </p>
-        {% endif %}
-    </section>
-
-    {% if owned_products %}
-        <section class="mt-8">
-            <h2 class="text-sm font-semibold tracking-wide uppercase text-base-content/70">Your products</h2>
-            <ul class="mt-3 space-y-2 text-sm">
-                {% for product in owned_products %}
-                    <li class="flex flex-wrap items-center justify-between gap-2">
-                        <span>
-                            <a href="{{ product.get_absolute_url }}" class="link link-hover font-medium">
-                                {{ product.name }}
-                            </a>
-                            <span class="text-base-content/60"> · {{ product.get_status_display }}</span>
-                        </span>
-                        <a
-                            href="{% url 'businesses:submit_product_update' product.pk %}"
-                            class="link link-hover text-xs text-base-content/70"
-                        >
-                            Update
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </section>
-    {% endif %}
-
-    <section class="mt-8">
-        <h2 class="text-sm font-semibold tracking-wide uppercase text-base-content/70">Recent submissions</h2>
+    <section class="overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm xl:col-span-2 xl:self-start">
+        <div class="border-base-300 border-b px-4 py-3">
+            <h2 class="text-base font-semibold">Recent submissions</h2>
+            <p class="text-xs text-base-content/60">Your last 20 submissions and their review status.</p>
+        </div>
         {% if submissions %}
-            <ul class="mt-3 space-y-2 text-sm">
+            <ul class="divide-base-300 divide-y">
                 {% for submission in submissions %}
-                    <li class="flex flex-wrap items-center justify-between gap-2 border-base-300 border-b py-2">
-                        <span>
-                            {{ submission.get_kind_display }}
-                            {% if submission.company_name or submission.product_name or submission.location_name %}
-                                ·
-                                {{ submission.company_name|default:submission.product_name|default:submission.location_name }}
-                            {% endif %}
-                        </span>
-                        <span class="badge badge-sm {% if submission.status == 'applied' %}badge-success{% elif submission.status == 'rejected' %}badge-error{% else %}badge-warning{% endif %}">
+                    <li class="flex items-center justify-between gap-3 px-4 py-2.5">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium">
+                                {{ submission.company_name|default:submission.product_name|default:submission.location_name|default:submission.get_kind_display }}
+                            </p>
+                            <p class="text-xs text-base-content/55">{{ submission.get_kind_display }} · {{ submission.created_at|date:"j M Y" }}</p>
+                        </div>
+                        <span class="badge badge-sm shrink-0 {% if submission.status == 'applied' %}badge-success{% elif submission.status == 'rejected' %}badge-error{% else %}badge-warning{% endif %}">
                             {{ submission.get_status_display }}
                         </span>
                     </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p class="mt-3 text-sm text-base-content/60">No submissions yet.</p>
+            <p class="px-4 py-6 text-center text-sm text-base-content/60">No submissions yet.</p>
         {% endif %}
     </section>
 </div>

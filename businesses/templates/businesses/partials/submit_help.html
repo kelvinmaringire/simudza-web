@@ -1,0 +1,24 @@
+<aside class="space-y-4">
+    <div class="card border-base-300 bg-base-100 border shadow-sm">
+        <div class="card-body gap-3 p-4 sm:p-5">
+            <h2 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">How it works</h2>
+            <ul class="space-y-3 text-sm">
+                <li class="flex gap-3">
+                    <span class="bg-success/15 text-success flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">✓</span>
+                    <span><span class="font-medium">Your own company:</span> changes are applied straight away and count as a fresh verification.</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="bg-warning/15 text-warning flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">…</span>
+                    <span><span class="font-medium">Anything else:</span> stays pending until the Simudza team reviews it.</span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="bg-primary/15 text-primary flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">i</span>
+                    <span>Fields marked <span class="text-error">*</span> are required.</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    {% if tip %}
+        <div class="alert alert-soft alert-info text-sm">{{ tip }}</div>
+    {% endif %}
+</aside>

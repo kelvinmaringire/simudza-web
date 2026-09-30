@@ -77,7 +77,7 @@ INSTALLED_APPS = [
     "wagtail.contrib.redirects",
     "wagtail.embeds",
     "wagtail.sites",
-    "wagtail.users",
+    "accounts.apps.SimudzaUsersAppConfig",
     "wagtail.snippets",
     "wagtail.documents",
     "wagtail.images",
@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     "modelcluster",
     "taggit",
     "django_filters",
+    "import_export",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -293,3 +294,7 @@ WAGTAILDOCS_EXTENSIONS = ['csv', 'docx', 'key', 'odt', 'pdf', 'pptx', 'rtf', 'tx
 
 # Maximum upload size for documents in bytes.
 WAGTAILDOCS_MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
+IMPORT_EXPORT_TMP_STORAGE_CLASS = "import_export.tmp_storages.MediaStorage"
+IMPORT_EXPORT_IMPORT_PERMISSION_CODE = "add"
+IMPORT_EXPORT_EXPORT_PERMISSION_CODE = "view"

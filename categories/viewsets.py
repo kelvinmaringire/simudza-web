@@ -8,8 +8,11 @@ from wagtail.admin.views.generic.chooser import ChooseResultsView, ChooseView
 from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_import_export import ImportExportViewSetMixin
+
 from .forms import CategoryForm
 from .models import Category
+from .resources import CategoryResource
 
 
 class CategoryChooserFilterForm(BaseFilterForm):
@@ -71,8 +74,9 @@ class CategoryChooserViewSet(ChooserViewSet):
 category_chooser_viewset = CategoryChooserViewSet("category_chooser")
 
 
-class CategoryViewSet(ModelViewSet):
+class CategoryViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = Category
+    resource_class = CategoryResource
 
     name = "category"
     menu_label = "Categories"

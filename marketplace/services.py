@@ -80,7 +80,9 @@ def apply_marketplace_filters(queryset, filters):
     if filters.get("max_price") is not None:
         queryset = queryset.filter(price__lte=filters["max_price"])
     if filters.get("verified"):
-        queryset = queryset.filter(business__verification_status="verified")
+        from businesses.verification import TRUSTED_LEVELS
+
+        queryset = queryset.filter(business__verification_level__in=TRUSTED_LEVELS)
     return queryset
 
 
@@ -127,7 +129,7 @@ def get_marketplace_origins(queryset):
 
 def get_related_marketplace_products(product, limit=RELATED_PRODUCT_LIMIT):
     """Same maker first, then same category — only items that can be bought now."""
-    base = get_marketplace_products().exclude(pk=product.pk)
+    base = get_marketplace_products().visible_in_search().exclude(pk=product.pk)
     related = list(base.filter(business_id=product.business_id)[:limit])
     if len(related) < limit and product.category_id:
         related += list(

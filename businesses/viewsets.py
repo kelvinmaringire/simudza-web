@@ -8,8 +8,11 @@ from wagtail.admin.views.generic.chooser import ChooseResultsView, ChooseView
 from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_import_export import ImportExportViewSetMixin
+
 from .forms import BusinessForm
 from .models import Business
+from .resources import BusinessResource
 
 
 class BusinessChooserFilterForm(BaseFilterForm):
@@ -71,8 +74,9 @@ class BusinessChooserViewSet(ChooserViewSet):
 business_chooser_viewset = BusinessChooserViewSet("business_chooser")
 
 
-class BusinessViewSet(ModelViewSet):
+class BusinessViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = Business
+    resource_class = BusinessResource
 
     name = "business"
     menu_label = "Businesses"
@@ -83,14 +87,16 @@ class BusinessViewSet(ModelViewSet):
     list_display = [
         "name",
         "business_type",
-        "verification_status",
+        "verification_level",
+        "verified_at",
+        "verification_reference",
         "town_or_city",
         "is_active",
     ]
 
     list_filter = [
         "business_type",
-        "verification_status",
+        "verification_level",
         "is_active",
     ]
 
@@ -129,8 +135,10 @@ class BusinessViewSet(ModelViewSet):
             ),
             MultiFieldPanel(
                 [
-                    FieldPanel("verification_status"),
+                    FieldPanel("verification_level"),
+                    FieldPanel("verification_reference"),
                     FieldPanel("verified_at"),
+                    FieldPanel("owner"),
                     FieldPanel("is_active"),
                 ],
                 heading="Verification",
@@ -152,8 +160,11 @@ class BusinessViewSet(ModelViewSet):
         "phone",
         "address",
         "town_or_city",
-        "verification_status",
+        "verification_level",
+        "verification_reference",
         "verified_at",
+        "verified_by",
+        "verification_reminder_sent_at",
         "owner",
         "is_active",
         "created_at",

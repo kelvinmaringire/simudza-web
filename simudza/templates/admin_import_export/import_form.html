@@ -1,0 +1,22 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% trans "Import" %} {{ model_verbose_name }}{% endblock %}
+
+{% block content %}
+    {% include "wagtailadmin/shared/header.html" with title=_("Import") subtitle=model_verbose_name icon_name="upload" %}
+
+    <div class="nice-padding">
+        <form method="post" enctype="multipart/form-data" class="w-max-md">
+            {% csrf_token %}
+            <p class="text-base-content/70 mb-4">
+                {% blocktrans with fmt=format|upper %}Upload a {{ fmt }} file. You will see a preview before anything is saved.{% endblocktrans %}
+            </p>
+            <input type="file" name="import_file" accept="{% if format == 'csv' %}.csv,text/csv{% else %}.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet{% endif %}" required class="file-input file-input-bordered w-full max-w-md" />
+            <div class="mt-4 flex gap-2">
+                <button type="submit" class="button button-longrunning">{% trans "Upload and preview" %}</button>
+                <a href="{% url index_url_name %}" class="button button-secondary">{% trans "Cancel" %}</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

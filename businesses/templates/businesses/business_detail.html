@@ -49,13 +49,22 @@
                     <span class="text-base-content/25" aria-hidden="true">·</span>
                     <span>{{ business.town_or_city }}</span>
                 {% endif %}
-                {% if business.verification_status == "verified" %}
-                    <span class="text-base-content/25" aria-hidden="true">·</span>
-                    <span class="text-success">
-                        Verified{% if business.verified_at %} {{ business.verified_at|date:"j M Y" }}{% endif %}
-                    </span>
-                {% endif %}
             </p>
+            {% if business.verification_level == "discontinued" %}
+                <p class="mt-2 rounded-box border border-error/30 bg-error/10 px-3 py-2 text-sm text-error">
+                    This listing is discontinued or withdrawn and may no longer be active.
+                </p>
+            {% endif %}
+            <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                {% include "partials/verified_badge.html" with level_meta=business.level_meta verification_reference=business.verification_reference verified_at=business.verified_at %}
+                {% load review_report_tags %}
+                {% business_report_reason_choices as reason_choices %}
+                {% url 'reviews:report_business' business.slug as report_url %}
+                {% include "reviews/partials/report_modal.html" with report_kind="business" report_pk=business.pk report_url=report_url listing_label=business.name reason_choices=reason_choices %}
+            </div>
+            {% if request.GET.reported %}
+                <p class="mt-2 text-sm text-success" role="status">Thanks — your report was submitted.</p>
+            {% endif %}
 
             {% if business.phone or business.email or business.website %}
                 <div class="mt-5 flex flex-wrap items-center gap-2">

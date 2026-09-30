@@ -1,12 +1,25 @@
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
+from wagtail.admin.ui.tables import Column
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
+
+from simudza.admin_import_export import ImportExportViewSetMixin
 
 from .forms import BusinessReviewForm, ProductReviewForm
 from .models import BusinessReview, ProductReview
+from .resources import BusinessReviewResource, ProductReviewResource
 
 
-class ProductReviewViewSet(ModelViewSet):
+def _reporter_column():
+    return Column(
+        "reporter_display",
+        label="Reporter",
+        accessor="reporter_display",
+    )
+
+
+class ProductReviewViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = ProductReview
+    resource_class = ProductReviewResource
 
     name = "product_review"
     menu_label = "Product reviews"
@@ -14,14 +27,17 @@ class ProductReviewViewSet(ModelViewSet):
     add_to_admin_menu = False
 
     list_display = [
-        "user",
         "product",
+        "reason",
+        "status",
+        _reporter_column(),
         "rating",
-        "is_published",
         "created_at",
     ]
 
     list_filter = [
+        "reason",
+        "status",
         "rating",
         "is_published",
     ]
@@ -29,6 +45,8 @@ class ProductReviewViewSet(ModelViewSet):
     search_fields = [
         "title",
         "body",
+        "guest_name",
+        "guest_email",
         "user__username",
         "user__email",
         "user__first_name",
@@ -40,14 +58,24 @@ class ProductReviewViewSet(ModelViewSet):
         [
             MultiFieldPanel(
                 [
-                    FieldPanel("user"),
                     FieldPanel("product"),
+                    FieldPanel("user"),
                     FieldPanel("rating"),
                     FieldPanel("title"),
                     FieldPanel("body"),
                     FieldPanel("is_published"),
                 ],
-                heading="Product review",
+                heading="Review",
+            ),
+            MultiFieldPanel(
+                [
+                    FieldPanel("reason"),
+                    FieldPanel("status"),
+                    FieldPanel("guest_name"),
+                    FieldPanel("guest_email"),
+                    FieldPanel("resolved_at"),
+                ],
+                heading="Report",
             ),
         ],
         base_form_class=ProductReviewForm,
@@ -61,14 +89,21 @@ class ProductReviewViewSet(ModelViewSet):
         "rating",
         "title",
         "body",
+        "reason",
+        "status",
+        "guest_name",
+        "guest_email",
+        "ip_address",
+        "resolved_at",
         "is_published",
         "created_at",
         "updated_at",
     ]
 
 
-class BusinessReviewViewSet(ModelViewSet):
+class BusinessReviewViewSet(ImportExportViewSetMixin, ModelViewSet):
     model = BusinessReview
+    resource_class = BusinessReviewResource
 
     name = "business_review"
     menu_label = "Business reviews"
@@ -76,14 +111,17 @@ class BusinessReviewViewSet(ModelViewSet):
     add_to_admin_menu = False
 
     list_display = [
-        "user",
         "business",
+        "reason",
+        "status",
+        _reporter_column(),
         "rating",
-        "is_published",
         "created_at",
     ]
 
     list_filter = [
+        "reason",
+        "status",
         "rating",
         "is_published",
     ]
@@ -91,6 +129,8 @@ class BusinessReviewViewSet(ModelViewSet):
     search_fields = [
         "title",
         "body",
+        "guest_name",
+        "guest_email",
         "user__username",
         "user__email",
         "user__first_name",
@@ -102,14 +142,24 @@ class BusinessReviewViewSet(ModelViewSet):
         [
             MultiFieldPanel(
                 [
-                    FieldPanel("user"),
                     FieldPanel("business"),
+                    FieldPanel("user"),
                     FieldPanel("rating"),
                     FieldPanel("title"),
                     FieldPanel("body"),
                     FieldPanel("is_published"),
                 ],
-                heading="Business review",
+                heading="Review",
+            ),
+            MultiFieldPanel(
+                [
+                    FieldPanel("reason"),
+                    FieldPanel("status"),
+                    FieldPanel("guest_name"),
+                    FieldPanel("guest_email"),
+                    FieldPanel("resolved_at"),
+                ],
+                heading="Report",
             ),
         ],
         base_form_class=BusinessReviewForm,
@@ -123,6 +173,12 @@ class BusinessReviewViewSet(ModelViewSet):
         "rating",
         "title",
         "body",
+        "reason",
+        "status",
+        "guest_name",
+        "guest_email",
+        "ip_address",
+        "resolved_at",
         "is_published",
         "created_at",
         "updated_at",

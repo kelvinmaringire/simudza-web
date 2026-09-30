@@ -1,51 +1,147 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Sign in{% endblock %}
 
 {% block body_class %}template-accounts-login{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-md px-4 py-10">
-    <header class="mb-6 text-center">
-        <h1 class="text-2xl font-semibold">Sign in</h1>
-        <p class="mt-2 text-sm text-base-content/70">Access your Simudza account</p>
-    </header>
+<section class="relative isolate overflow-hidden bg-base-300">
+    <div class="simudza-hero-dots pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -top-40 left-1/2 -z-10 size-[32rem] -translate-x-1/2 rounded-full bg-primary/20 blur-3xl lg:left-1/4" aria-hidden="true"></div>
 
-    {% if form.non_field_errors %}
-        <div class="alert alert-error mb-4 text-sm" role="alert">
-            {% for error in form.non_field_errors %}
-                <span>{{ error }}</span>
-            {% endfor %}
+    <div class="mx-auto grid min-h-[calc(100dvh-8rem)] w-full max-w-5xl content-center items-center gap-6 px-4 py-6 sm:py-8 lg:grid-cols-2 lg:gap-14 lg:px-8">
+        <header class="mx-auto max-w-md text-center lg:mx-0 lg:text-left">
+            <p class="mb-3 inline-flex items-center gap-2 rounded-full border border-base-content/10 bg-base-100/70 py-1 pr-3 pl-1.5 text-xs font-medium tracking-wide text-base-content/80 shadow-sm backdrop-blur">
+                <span class="overflow-hidden rounded-full ring-1 ring-base-content/10">
+                    {% include "home/includes/zw_flag.html" with class="block h-3.5 w-6" %}
+                </span>
+                Proudly Zimbabwean
+            </p>
+            <h1 class="text-2xl font-semibold tracking-tight text-balance sm:text-3xl lg:text-4xl">Welcome back</h1>
+            <div class="simudza-flag-stripe mt-3 hidden h-1 w-14 rounded-full lg:block" aria-hidden="true"></div>
+            <p class="mt-2 text-sm text-base-content/65 lg:mt-4 lg:text-base">Sign in to your Simudza account to shop local and manage your business.</p>
+
+            <ul class="mt-6 hidden space-y-3 text-sm text-base-content/75 lg:block">
+                <li class="flex items-center gap-3">
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    </span>
+                    Shop products made, grown and packaged locally
+                </li>
+                <li class="flex items-center gap-3">
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg>
+                    </span>
+                    List your company and products in the directory
+                </li>
+                <li class="flex items-center gap-3">
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                    </span>
+                    Every purchase helps build Zimbabwe
+                </li>
+            </ul>
+        </header>
+
+        <div class="relative mx-auto w-full max-w-md overflow-hidden rounded-box border border-base-content/10 bg-base-100 shadow-xl shadow-base-content/5 lg:mx-0 lg:justify-self-end">
+            <div class="simudza-flag-stripe h-1 w-full" aria-hidden="true"></div>
+
+            <div class="p-5 sm:p-6">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error alert-soft mb-4 py-2.5 text-sm" role="alert">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+                        <div>
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'accounts:login' %}" class="flex flex-col gap-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next }}" />
+
+                    <div>
+                        <label for="{{ form.username.id_for_label }}" class="mb-1 block text-sm font-medium">Username or email</label>
+                        <label class="input h-11 w-full gap-2.5 rounded-field bg-base-200/50 transition-colors focus-within:bg-base-100{% if form.username.errors %} input-error{% endif %}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem] shrink-0 opacity-50" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path></svg>
+                            <input
+                                type="text"
+                                name="{{ form.username.html_name }}"
+                                id="{{ form.username.id_for_label }}"
+                                value="{{ form.username.value|default:'' }}"
+                                autocomplete="username"
+                                inputmode="email"
+                                autocapitalize="none"
+                                spellcheck="false"
+                                required
+                                autofocus
+                                placeholder="you@example.com"
+                                class="grow"
+                            />
+                        </label>
+                        {% if form.username.errors %}
+                            <p class="mt-1.5 text-xs text-error">{{ form.username.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div x-data="{ showPassword: false }">
+                        <div class="mb-1 flex items-baseline justify-between gap-2">
+                            <label for="{{ form.password.id_for_label }}" class="text-sm font-medium">Password</label>
+                            <a href="{% url 'accounts:password_reset' %}" class="text-xs font-medium text-primary hover:underline sm:text-sm">Forgot password?</a>
+                        </div>
+                        <label class="input h-11 w-full gap-2.5 rounded-field bg-base-200/50 transition-colors focus-within:bg-base-100{% if form.password.errors %} input-error{% endif %}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem] shrink-0 opacity-50" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+                            <input
+                                :type="showPassword ? 'text' : 'password'"
+                                type="password"
+                                name="{{ form.password.html_name }}"
+                                id="{{ form.password.id_for_label }}"
+                                autocomplete="current-password"
+                                required
+                                placeholder="Enter your password"
+                                class="grow"
+                            />
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-xs btn-circle -mr-1 opacity-60 hover:opacity-100"
+                                @click="showPassword = !showPassword"
+                                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                                aria-label="Show password"
+                            >
+                                <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem]" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <svg x-show="showPassword" x-cloak xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-[1.1rem]" aria-hidden="true"><path d="M3 3l18 18"></path><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.9 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.4 3.4"></path><path d="M6.1 6.1A18.2 18.2 0 0 0 2 12s3.5 7 10 7a10.3 10.3 0 0 0 4.3-.9"></path></svg>
+                            </button>
+                        </label>
+                        {% if form.password.errors %}
+                            <p class="mt-1.5 text-xs text-error">{{ form.password.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <label class="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-base-content/80 select-none">
+                        <input
+                            type="checkbox"
+                            name="{{ form.remember_me.name }}"
+                            class="checkbox checkbox-primary checkbox-sm rounded-md"
+                            {% if form.remember_me.value %}checked{% endif %}
+                        />
+                        Keep me signed in for 30 days
+                    </label>
+
+                    <button type="submit" class="group btn btn-primary h-11 w-full gap-2 rounded-full text-base font-semibold shadow-lg shadow-primary/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/35">
+                        Sign in
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.64l-3.22-3.22a.75.75 0 1 1 1.06-1.06l4.5 4.5a.75.75 0 0 1 0 1.06l-4.5 4.5a.75.75 0 1 1-1.06-1.06l3.22-3.22H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+                    </button>
+                </form>
+            </div>
+
+            <div class="border-t border-base-content/10 bg-base-200/40 px-5 py-3 text-center text-sm text-base-content/70 sm:px-6">
+                New to Simudza?
+                <a href="{% url 'accounts:signup' %}" class="font-semibold text-primary hover:underline">Create an account</a>
+            </div>
         </div>
-    {% endif %}
-
-    <form method="post" action="{% url 'accounts:login' %}" class="flex flex-col gap-4">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}" />
-
-        {% include "accounts/partials/text_field.html" with field=form.username label="Username or email" autocomplete="username" inputmode="email" required=True autofocus=True placeholder="Username or email" %}
-
-        {% include "accounts/partials/password_field.html" with field=form.password label="Password" autocomplete="current-password" required=True placeholder="Password" %}
-
-        <div class="flex items-center justify-between gap-2">
-            <label class="label cursor-pointer justify-start gap-2 p-0">
-                <input
-                    type="checkbox"
-                    name="{{ form.remember_me.name }}"
-                    class="checkbox checkbox-sm"
-                    {% if form.remember_me.value %}checked{% endif %}
-                />
-                <span class="label-text">Remember me</span>
-            </label>
-            <a href="{% url 'accounts:password_reset' %}" class="link link-hover text-sm">Forgot password?</a>
-        </div>
-
-        <button type="submit" class="btn btn-primary w-full">Sign in</button>
-    </form>
-
-    <p class="mt-6 text-center text-sm text-base-content/70">
-        New here?
-        <a href="{% url 'accounts:signup' %}" class="link link-hover font-medium">Create an account</a>
-    </p>
-</div>
+    </div>
+</section>
 {% endblock %}

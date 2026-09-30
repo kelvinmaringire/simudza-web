@@ -91,6 +91,7 @@ class BusinessListQuerysetMixin(BusinessQuerysetMixin):
     def get_town_choices(self):
         return list(
             self.get_base_queryset()
+            .visible_in_search()
             .exclude(town_or_city="")
             .values_list("town_or_city", flat=True)
             .distinct()
@@ -98,7 +99,7 @@ class BusinessListQuerysetMixin(BusinessQuerysetMixin):
         )
 
     def get_queryset(self):
-        queryset = self.get_base_queryset()
+        queryset = self.get_base_queryset().visible_in_search()
         q = self.get_search_query()
         if len(q) >= 2:
             queryset = queryset.filter(
@@ -117,8 +118,10 @@ class BusinessListQuerysetMixin(BusinessQuerysetMixin):
             queryset = queryset.filter(town_or_city__iexact=town)
 
         if self.get_verified_only():
+            from businesses.verification import TRUSTED_LEVELS
+
             queryset = queryset.filter(
-                verification_status=Business.VerificationStatus.VERIFIED
+                verification_level__in=TRUSTED_LEVELS,
             )
         return queryset
 
