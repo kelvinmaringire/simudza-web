@@ -1,3 +1,4 @@
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.db.models import Count, F, Min, Q
 from django.urls import reverse
@@ -218,6 +219,12 @@ class Product(ClusterableModel):
 
     class Meta:
         ordering = ["name"]
+        indexes = [
+            GinIndex(
+                fields=["quality_issues"],
+                name="product_quality_issues_gin",
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -367,6 +374,14 @@ class ProductVariant(ClusterableModel, Orderable):
         verbose_name = "product variant"
         verbose_name_plural = "product variants"
         constraints = [
+            models.CheckConstraint(
+                condition=Q(price__isnull=True) | Q(price__gte=0),
+                name="productvariant_price_not_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(size_value__isnull=True) | Q(size_value__gt=0),
+                name="productvariant_size_value_positive",
+            ),
             models.UniqueConstraint(
                 fields=["barcode"],
                 condition=~Q(barcode=""),

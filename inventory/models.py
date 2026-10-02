@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import F, Q
 
 
 class Inventory(models.Model):
@@ -36,6 +37,12 @@ class Inventory(models.Model):
     class Meta:
         ordering = ["variant__product__name", "variant__sort_order"]
         verbose_name_plural = "inventory"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(reserved_quantity__lte=F("quantity")),
+                name="inventory_reserved_not_above_quantity",
+            ),
+        ]
 
     def __str__(self):
         return (

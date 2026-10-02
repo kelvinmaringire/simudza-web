@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -154,6 +155,12 @@ class Business(ClusterableModel):
 
     class Meta:
         ordering = ["name"]
+        indexes = [
+            GinIndex(
+                fields=["quality_issues"],
+                name="business_quality_issues_gin",
+            ),
+        ]
 
     def __str__(self):
         return self.name
