@@ -33,6 +33,13 @@ def _style_fields(form):
 
 
 class BusinessForm(WagtailAdminModelForm):
+    change_reason = forms.CharField(
+        required=False,
+        max_length=500,
+        label="Reason for change",
+        help_text="Optional note stored in change history.",
+    )
+
     class Meta:
         model = Business
         # Required so Wagtail widget overrides (image chooser, date picker)
@@ -72,8 +79,12 @@ class BusinessForm(WagtailAdminModelForm):
         ):
             business.owner = user
 
-        if commit:
-            business.save()
+        from history.context import change_context
+
+        reason = (self.cleaned_data.get("change_reason") or "").strip()
+        with change_context(reason=reason):
+            if commit:
+                business.save()
 
         return business
 
@@ -196,11 +207,13 @@ class ProductSubmissionForm(forms.ModelForm):
             self.fields["category"].initial = product.category_id
             self.fields["origin_type"].initial = product.origin_type
             self.fields["brand_name"].initial = product.brand_name
-            self.fields["sku"].initial = product.sku
-            self.fields["barcode"].initial = product.barcode
-            self.fields["size_value"].initial = product.size_value
-            self.fields["size_unit"].initial = product.size_unit
-            self.fields["price"].initial = product.price
+            variant = product.variants.order_by("sort_order", "pk").first()
+            if variant:
+                self.fields["sku"].initial = variant.sku
+                self.fields["barcode"].initial = variant.barcode
+                self.fields["size_value"].initial = variant.size_value
+                self.fields["size_unit"].initial = variant.size_unit
+                self.fields["price"].initial = variant.price
             self.fields["product"].widget = forms.HiddenInput()
             self.fields["business"].widget = forms.HiddenInput()
             _style_fields(self)

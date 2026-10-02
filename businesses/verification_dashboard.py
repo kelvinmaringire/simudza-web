@@ -270,17 +270,27 @@ def open_reports(limit=OPEN_REPORTS_LIMIT):
 
 
 def resolve_open_reports_for_business(business, *, resolved_at):
-    BusinessReview.objects.filter(business=business).filter(OPEN_REPORT_FILTER).update(
-        status=ReportStatus.RESOLVED,
-        resolved_at=resolved_at,
-    )
+    from history.context import change_context
+    from history.services import update_with_history
+
+    with change_context(reason="Resolved by verification"):
+        update_with_history(
+            BusinessReview.objects.filter(business=business).filter(OPEN_REPORT_FILTER),
+            status=ReportStatus.RESOLVED,
+            resolved_at=resolved_at,
+        )
 
 
 def resolve_open_reports_for_product(product, *, resolved_at):
-    ProductReview.objects.filter(product=product).filter(OPEN_REPORT_FILTER).update(
-        status=ReportStatus.RESOLVED,
-        resolved_at=resolved_at,
-    )
+    from history.context import change_context
+    from history.services import update_with_history
+
+    with change_context(reason="Resolved by verification"):
+        update_with_history(
+            ProductReview.objects.filter(product=product).filter(OPEN_REPORT_FILTER),
+            status=ReportStatus.RESOLVED,
+            resolved_at=resolved_at,
+        )
 
 
 def freshness_legend():

@@ -1,6 +1,7 @@
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
 
+from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
 from simudza.admin_import_export import ImportExportViewSetMixin
 
 from .forms import CartForm, CheckoutForm, OrderForm
@@ -53,9 +54,13 @@ class CartViewSet(ImportExportViewSetMixin, ModelViewSet):
     ]
 
 
-class OrderViewSet(ImportExportViewSetMixin, ModelViewSet):
+class OrderViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
     model = Order
     resource_class = OrderResource
+
+    bulk_edit_fields = [
+        BulkEditField("status"),
+    ]
 
     name = "order"
     menu_label = "Orders"
@@ -112,9 +117,13 @@ class OrderViewSet(ImportExportViewSetMixin, ModelViewSet):
     ]
 
 
-class CheckoutViewSet(ImportExportViewSetMixin, ModelViewSet):
+class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
     model = Checkout
     resource_class = CheckoutResource
+
+    bulk_edit_fields = [
+        BulkEditField("status"),
+    ]
 
     name = "checkout"
     menu_label = "Checkouts"

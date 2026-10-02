@@ -2,6 +2,7 @@ from django.urls import path
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
 from simudza.admin_import_export import ImportExportViewSetMixin
 
 from .forms import InventoryForm
@@ -9,9 +10,13 @@ from .models import Inventory
 from .resources import InventoryResource
 
 
-class InventoryViewSet(ImportExportViewSetMixin, ModelViewSet):
+class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
     model = Inventory
     resource_class = InventoryResource
+
+    bulk_edit_fields = [
+        BulkEditField("low_stock_threshold"),
+    ]
 
     name = "inventory"
     menu_label = "Inventory"
@@ -21,7 +26,7 @@ class InventoryViewSet(ImportExportViewSetMixin, ModelViewSet):
     copy_view_enabled = False
 
     list_display = [
-        "product",
+        "variant",
         "quantity",
         "reserved_quantity",
         "available_quantity",
@@ -30,17 +35,17 @@ class InventoryViewSet(ImportExportViewSetMixin, ModelViewSet):
     ]
 
     list_filter = [
-        "product__status",
-        "product__category",
-        "product__business",
+        "variant__product__status",
+        "variant__product__category",
+        "variant__product__business",
     ]
 
     search_fields = [
-        "product__name",
-        "product__slug",
-        "product__sku",
-        "product__brand_name",
-        "product__business__name",
+        "variant__product__name",
+        "variant__product__slug",
+        "variant__sku",
+        "variant__product__brand_name",
+        "variant__product__business__name",
     ]
 
     # Inventory is auto-created with each product — edit stock only.
@@ -48,7 +53,7 @@ class InventoryViewSet(ImportExportViewSetMixin, ModelViewSet):
         [
             MultiFieldPanel(
                 [
-                    FieldPanel("product", read_only=True),
+                    FieldPanel("variant", read_only=True),
                     FieldPanel("quantity"),
                     FieldPanel("reserved_quantity"),
                     FieldPanel("low_stock_threshold"),
@@ -62,7 +67,7 @@ class InventoryViewSet(ImportExportViewSetMixin, ModelViewSet):
     inspect_view_enabled = True
 
     inspect_view_fields = [
-        "product",
+        "variant",
         "quantity",
         "reserved_quantity",
         "available_quantity",

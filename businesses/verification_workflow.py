@@ -18,6 +18,8 @@ from django.db.models.functions import Least
 from django.urls import reverse
 from django.utils import timezone
 
+from history.context import change_context
+from history.services import update_with_history
 from products.models import Product
 from reviews.models import BusinessReview, ProductReview
 
@@ -48,20 +50,22 @@ def _site_url(path):
 # --- Verifying --------------------------------------------------------------
 
 
-def mark_verified(obj, *, user=None, level, reference="", when=None):
+def mark_verified(obj, *, user=None, level, reference="", when=None, reason=None):
     when = when or timezone.now()
     obj.verified_at = when
     obj.verified_by = user
     obj.verification_level = level
     obj.verification_reference = reference or ""
-    obj.save(
-        update_fields=[
-            "verified_at",
-            "verified_by",
-            "verification_level",
-            "verification_reference",
-        ]
-    )
+    log_reason = reason if reason is not None else (reference or "Verification level set")
+    with change_context(user=user, reason=log_reason):
+        obj.save(
+            update_fields=[
+                "verified_at",
+                "verified_by",
+                "verification_level",
+                "verification_reference",
+            ]
+        )
     return when
 
 
@@ -70,21 +74,25 @@ def owner_confirm_business(business, user):
         business,
         user=user,
         level=VerificationLevel.VERIFIED_MANUFACTURER,
+        reason="Owner confirmed listing",
     )
-    business.verification_reminder_sent_at = None
-    business.save(update_fields=["verification_reminder_sent_at"])
+    with change_context(user=user, reason="Owner confirmed listing"):
+        business.verification_reminder_sent_at = None
+        business.save(update_fields=["verification_reminder_sent_at"])
     return when
 
 
 def owner_confirm_products(business, user, products=None):
     when = timezone.now()
     queryset = products if products is not None else business.products.all()
-    count = queryset.update(
-        verified_at=when,
-        verified_by=user,
-        verification_level=VerificationLevel.VERIFIED_MANUFACTURER,
-        verification_reference="",
-    )
+    with change_context(user=user, reason="Owner confirmed listing"):
+        count = update_with_history(
+            queryset,
+            verified_at=when,
+            verified_by=user,
+            verification_level=VerificationLevel.VERIFIED_MANUFACTURER,
+            verification_reference="",
+        )
     return count
 
 
@@ -106,6 +114,15 @@ def staff_verify_business(business, user, *, level=None, reference=""):
 def staff_verify_product(product, user, *, level=None, reference=""):
     level = level or VerificationLevel.SIMUDZA_CHECKED
     return staff_set_level(product, user, level, reference)
+
+
+def bulk_set_level(objects, user, level, reference=""):
+    """Apply staff_set_level to each object (bulk admin edits)."""
+    count = 0
+    for obj in objects:
+        staff_set_level(obj, user, level, reference=reference)
+        count += 1
+    return count
 
 
 # --- Owner view -------------------------------------------------------------

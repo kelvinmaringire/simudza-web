@@ -1,0 +1,87 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% trans "Data quality" %}{% endblock %}
+
+{% block content %}
+    {% include "wagtailadmin/shared/header.html" with title=_("Needs attention") subtitle=_("Data quality queues") icon="warning" %}
+
+    <div class="nice-padding">
+        <h2>{% trans "Products" %}</h2>
+        <table class="listing">
+            <thead>
+                <tr>
+                    <th>{% trans "Issue" %}</th>
+                    <th>{% trans "Count" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for label, count, code in product_issue_rows %}
+                    <tr>
+                        <td>{{ label }}</td>
+                        <td><a href="{{ product_index_url }}?issue={{ code }}">{{ count }}</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p>
+            {% trans "Score bands:" %}
+            <a href="{{ product_index_url }}?quality_score_max=3">0–3 ({{ product_score_bands.0_3 }})</a>,
+            <a href="{{ product_index_url }}?quality_score_min=4&quality_score_max=6">4–6 ({{ product_score_bands.4_6 }})</a>,
+            <a href="{{ product_index_url }}?quality_score_min=7&quality_score_max=8">7–8 ({{ product_score_bands.7_8 }})</a>,
+            <a href="{{ product_index_url }}?quality_score_min=9">9–10 ({{ product_score_bands.9_10 }})</a>
+        </p>
+
+        <h2>{% trans "Businesses" %}</h2>
+        <table class="listing">
+            <thead>
+                <tr>
+                    <th>{% trans "Issue" %}</th>
+                    <th>{% trans "Count" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for label, count, code in business_issue_rows %}
+                    <tr>
+                        <td>{{ label }}</td>
+                        <td><a href="{{ business_index_url }}?issue={{ code }}">{{ count }}</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p>
+            {% trans "Score bands:" %}
+            <a href="{{ business_index_url }}?quality_score_max=3">0–3 ({{ business_score_bands.0_3 }})</a>,
+            <a href="{{ business_index_url }}?quality_score_min=4&quality_score_max=6">4–6 ({{ business_score_bands.4_6 }})</a>,
+            <a href="{{ business_index_url }}?quality_score_min=7&quality_score_max=8">7–8 ({{ business_score_bands.7_8 }})</a>,
+            <a href="{{ business_index_url }}?quality_score_min=9">9–10 ({{ business_score_bands.9_10 }})</a>
+        </p>
+
+        <h2>{% trans "Categories" %}</h2>
+        <p>
+            <a href="{{ category_index_url }}?needs_attention=yes">
+                {% blocktrans count counter=categories_needing_attention %}
+                    {{ counter }} category needs attention
+                {% plural %}
+                    {{ counter }} categories need attention
+                {% endblocktrans %}
+            </a>
+        </p>
+        <table class="listing">
+            <thead>
+                <tr>
+                    <th>{% trans "Issue" %}</th>
+                    <th>{% trans "Count" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for label, count, code in category_issue_rows %}
+                    <tr>
+                        <td>{{ label }}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

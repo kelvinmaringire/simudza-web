@@ -1,4 +1,4 @@
-const CART_STORAGE_KEY = "simudza_cart";
+const CART_STORAGE_KEY = "simudza_cart_v2";
 
 function readCartStorage() {
     try {
@@ -87,9 +87,9 @@ document.addEventListener("alpine:init", function () {
             this.sync();
         },
 
-        add(product, quantity) {
-            const id = Number(product.id);
-            const maxQty = Number(product.maxQty || 99);
+        add(line, quantity) {
+            const id = Number(line.id);
+            const maxQty = Number(line.maxQty || 99);
             const addQty = Math.max(1, Math.floor(Number(quantity) || 1));
             const existing = this.items.find(function (item) {
                 return Number(item.id) === id;
@@ -103,20 +103,22 @@ document.addEventListener("alpine:init", function () {
                     return Object.assign({}, item, {
                         quantity: Math.min(Number(item.quantity) + addQty, maxQty),
                         maxQty: maxQty,
-                        name: product.name,
-                        price: product.price,
-                        imageUrl: product.imageUrl || item.imageUrl || "",
-                        url: product.url || item.url || "",
+                        name: line.name,
+                        variantLabel: line.variantLabel || item.variantLabel || "",
+                        price: line.price,
+                        imageUrl: line.imageUrl || item.imageUrl || "",
+                        url: line.url || item.url || "",
                     });
                 });
             } else {
                 this.items = this.items.concat([
                     {
                         id: id,
-                        name: product.name,
-                        price: product.price,
-                        imageUrl: product.imageUrl || "",
-                        url: product.url || "",
+                        name: line.name,
+                        variantLabel: line.variantLabel || "",
+                        price: line.price,
+                        imageUrl: line.imageUrl || "",
+                        url: line.url || "",
                         maxQty: maxQty,
                         quantity: Math.min(addQty, maxQty),
                     },
@@ -170,14 +172,12 @@ document.addEventListener("alpine:init", function () {
             const payload = {
                 items: this.items.map(function (item) {
                     return {
-                        product_id: Number(item.id),
+                        variant_id: Number(item.id),
                         quantity: Number(item.quantity),
                     };
                 }),
             };
 
-            // Silent backend store — no UI swap. Always send CSRF (do not rely on
-            // simudza.js; it loads after Alpine and can race with init sync).
             const csrfToken = getCsrfToken();
             if (window.htmx) {
                 htmx.ajax("POST", this.syncUrl, {

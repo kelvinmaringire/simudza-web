@@ -1,10 +1,10 @@
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, Prefetch, Q
 
 from businesses.models import Business
 from categories.models import Category
-from products.models import Product
+from products.models import Product, ProductVariant
 
 from .models import Cart, CartItem
 
@@ -19,28 +19,35 @@ SORT_OPTIONS = (
 SORT_ORDERING = {
     "featured": ("-featured", "name"),
     "newest": ("-created_at", "name"),
-    "price_asc": ("price", "name"),
-    "price_desc": ("-price", "name"),
+    "price_asc": ("from_price", "name"),
+    "price_desc": ("-from_price", "name"),
     "name": ("name",),
 }
 
 RELATED_PRODUCT_LIMIT = 8
 
+SELLABLE_VARIANTS_PREFETCH = Prefetch(
+    "variants",
+    queryset=(
+        ProductVariant.objects.sellable()
+        .select_related("inventory")
+        .order_by("sort_order", "pk")
+    ),
+    to_attr="sellable_variants_list",
+)
+
 
 def get_marketplace_products():
-    """Published products with a price and available inventory."""
+    """Published products with at least one sellable variant."""
     return (
-        Product.objects.filter(
-            status=Product.ProductStatus.PUBLISHED,
-            price__isnull=False,
-            inventory__quantity__gt=F("inventory__reserved_quantity"),
-        )
+        Product.objects.with_sellable_variants()
+        .filter(status=Product.ProductStatus.PUBLISHED)
         .select_related(
             "business",
             "category",
             "image",
-            "inventory",
         )
+        .prefetch_related(SELLABLE_VARIANTS_PREFETCH)
         .distinct()
         .order_by("-featured", "name")
     )
@@ -55,6 +62,7 @@ def filter_marketplace_products(queryset, search_query):
         | Q(short_description__icontains=search_query)
         | Q(business__name__icontains=search_query)
         | Q(category__name__icontains=search_query)
+        | Q(variants__sku__icontains=search_query)
     ).distinct()
 
 
@@ -76,9 +84,9 @@ def apply_marketplace_filters(queryset, filters):
     if filters.get("origin"):
         queryset = queryset.filter(origin_type=filters["origin"])
     if filters.get("min_price") is not None:
-        queryset = queryset.filter(price__gte=filters["min_price"])
+        queryset = queryset.filter(from_price__gte=filters["min_price"])
     if filters.get("max_price") is not None:
-        queryset = queryset.filter(price__lte=filters["max_price"])
+        queryset = queryset.filter(from_price__lte=filters["max_price"])
     if filters.get("verified"):
         from businesses.verification import TRUSTED_LEVELS
 
@@ -139,6 +147,15 @@ def get_related_marketplace_products(product, limit=RELATED_PRODUCT_LIMIT):
     return related
 
 
+def get_sellable_variants_for_product(product):
+    return list(
+        ProductVariant.objects.sellable()
+        .filter(product=product)
+        .select_related("inventory")
+        .order_by("sort_order", "pk")
+    )
+
+
 def get_user_cart(user):
     cart, _ = Cart.objects.get_or_create(user=user)
     return cart
@@ -146,42 +163,48 @@ def get_user_cart(user):
 
 def get_cart_with_items(user):
     cart, _ = Cart.objects.prefetch_related(
-        "items__product__image",
-        "items__product__inventory",
+        "items__variant__product__image",
+        "items__variant__inventory",
     ).get_or_create(user=user)
     return cart
+
+
+def _sellable_variants_by_id(variant_ids):
+    return {
+        variant.pk: variant
+        for variant in ProductVariant.objects.sellable()
+        .filter(pk__in=variant_ids)
+        .select_related("inventory", "product", "product__image")
+    }
 
 
 def sync_user_cart(user, items):
     """
     Quietly replace the user's DB cart to match client localStorage items.
-    items: iterable of {"product_id": int, "quantity": int}
+    items: iterable of {"variant_id": int, "quantity": int}
     """
     cart = get_user_cart(user)
-    product_ids = [
-        item["product_id"] for item in items if item.get("product_id")
+    variant_ids = [
+        item["variant_id"] for item in items if item.get("variant_id")
     ]
-    sellable = {
-        product.pk: product
-        for product in get_marketplace_products().filter(pk__in=product_ids)
-    }
+    sellable = _sellable_variants_by_id(variant_ids)
 
     wanted = {}
     for item in items:
-        product_id = item.get("product_id")
+        variant_id = item.get("variant_id")
         try:
             quantity = int(item.get("quantity", 0))
         except (TypeError, ValueError):
             quantity = 0
-        if product_id not in sellable or quantity <= 0:
+        if variant_id not in sellable or quantity <= 0:
             continue
-        available = sellable[product_id].inventory.available_quantity
-        wanted[product_id] = min(quantity, available)
+        available = sellable[variant_id].inventory.available_quantity
+        wanted[variant_id] = min(quantity, available)
 
-    existing = {row.product_id: row for row in cart.items.all()}
+    existing = {row.variant_id: row for row in cart.items.all()}
 
-    for product_id, quantity in wanted.items():
-        row = existing.pop(product_id, None)
+    for variant_id, quantity in wanted.items():
+        row = existing.pop(variant_id, None)
         if row:
             if row.quantity != quantity:
                 row.quantity = quantity
@@ -189,7 +212,7 @@ def sync_user_cart(user, items):
         else:
             CartItem.objects.create(
                 cart=cart,
-                product=sellable[product_id],
+                variant=sellable[variant_id],
                 quantity=quantity,
             )
 

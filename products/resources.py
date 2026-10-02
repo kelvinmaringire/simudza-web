@@ -6,7 +6,7 @@ from categories.models import Category
 from products.forms import unique_product_slug
 from simudza.import_export_mixins import ImportUserMixin, VerificationLevelMixin
 
-from .models import Product
+from .models import Product, ProductVariant
 
 
 class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelResource):
@@ -34,11 +34,6 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
             "description",
             "origin_type",
             "brand_name",
-            "sku",
-            "barcode",
-            "size_value",
-            "size_unit",
-            "price",
             "status",
             "featured",
             "verification_level",
@@ -60,3 +55,29 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
             should_set_slug = previous_status == Product.ProductStatus.DRAFT
         if should_set_slug:
             instance.slug = unique_product_slug(name, exclude_pk=instance.pk)
+
+
+class ProductVariantResource(resources.ModelResource):
+    product = fields.Field(
+        column_name="product",
+        attribute="product",
+        widget=ForeignKeyWidget(Product, "slug"),
+    )
+
+    class Meta:
+        model = ProductVariant
+        import_id_fields = ("product", "sku")
+        skip_unchanged = True
+        fields = (
+            "product",
+            "name",
+            "sku",
+            "barcode",
+            "size_value",
+            "size_unit",
+            "packaging",
+            "price",
+            "is_available",
+            "sort_order",
+        )
+        export_order = fields

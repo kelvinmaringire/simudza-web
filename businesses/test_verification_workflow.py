@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 from io import StringIO
 
 from django.contrib.auth import get_user_model
@@ -48,8 +49,10 @@ class VerificationWorkflowTests(TestCase):
             name="Owned Item",
             slug="owned-item",
             verified_at=days_ago(120),
-            price="10.00",
         )
+        from products.test_helpers import add_sellable_variant
+
+        self.variant = add_sellable_variant(self.product, price="10.00")
         self.orphan = Business.objects.create(
             name="Orphan Co",
             slug="orphan-co",
@@ -129,7 +132,9 @@ class VerificationWorkflowTests(TestCase):
         )
         apply_submission(submission)
         self.product.refresh_from_db()
+        self.variant.refresh_from_db()
         self.assertEqual(self.product.name, "Owned Item v2")
+        self.assertEqual(self.variant.price, Decimal("11.00"))
         self.assertGreater(self.product.verified_at, days_ago(1))
         self.assertEqual(
             self.product.verification_level,

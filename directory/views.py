@@ -61,7 +61,6 @@ class DirectoryListingQuerysetMixin:
                 "product__business",
                 "product__category",
                 "product__image",
-                "product__inventory",
             )
             .order_by("-featured", "product__name")
         )

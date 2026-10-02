@@ -11,3 +11,6 @@ def register_business_viewset():
 @hooks.register("register_admin_viewset")
 def register_business_chooser_viewset():
     return business_chooser_viewset
+
+
+hooks.register("register_bulk_action", BusinessViewSet.bulk_edit_action)

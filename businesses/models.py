@@ -4,8 +4,11 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 
+from modelcluster.fields import ParentalKey
+from modelcluster.models import ClusterableModel
 from wagtail.images import get_image_model
 
+from .videos import VideoLink
 from .verification import (
     VerificationLevel,
     freshness_for,
@@ -36,7 +39,7 @@ class BusinessQuerySet(models.QuerySet):
         )
 
 
-class Business(models.Model):
+class Business(ClusterableModel):
     class BusinessType(models.TextChoices):
         MANUFACTURER = "manufacturer", "Manufacturer"
         FARMER = "farmer", "Farmer"
@@ -140,6 +143,13 @@ class Business(models.Model):
         auto_now=True,
     )
 
+    quality_score = models.PositiveSmallIntegerField(
+        default=0,
+        db_index=True,
+    )
+    quality_issues = models.JSONField(default=list, blank=True)
+    quality_checked_at = models.DateTimeField(null=True, blank=True)
+
     objects = BusinessQuerySet.as_manager()
 
     class Meta:
@@ -165,6 +175,18 @@ class Business(models.Model):
             "businesses:detail",
             kwargs={"slug": self.slug},
         )
+
+
+class BusinessVideo(VideoLink):
+    business = ParentalKey(
+        Business,
+        on_delete=models.CASCADE,
+        related_name="videos",
+    )
+
+    class Meta(VideoLink.Meta):
+        verbose_name = "business video"
+        verbose_name_plural = "business videos"
 
 
 class RetailLocation(models.Model):

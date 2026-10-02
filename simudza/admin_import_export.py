@@ -236,14 +236,23 @@ class AdminImportConfirmView(PermissionCheckedMixin, View):
             messages.error(request, _("Could not reload file: %(error)s") % {"error": exc})
             return redirect(reverse(self.index_url_name))
 
+        from history.context import change_context
+        from history.models import ChangeLog
+
         resource = self.resource_class()
-        with transaction.atomic():
-            result = resource.import_data(
-                dataset,
-                dry_run=False,
-                raise_errors=False,
-                user=request.user,
-            )
+        filename = pending.get("storage_name", "upload")
+        with change_context(
+            user=request.user,
+            source=ChangeLog.Source.IMPORT,
+            reason=f"Import {filename}",
+        ):
+            with transaction.atomic():
+                result = resource.import_data(
+                    dataset,
+                    dry_run=False,
+                    raise_errors=False,
+                    user=request.user,
+                )
 
         try:
             storage.remove()

@@ -28,7 +28,11 @@
                                 <a :href="item.url || null" class="line-clamp-2 text-sm font-medium leading-snug hover:underline" x-text="item.name"></a>
                                 <p class="shrink-0 text-sm font-semibold">$<span x-text="$store.cart.lineTotal(item)"></span></p>
                             </div>
-                            <p class="mt-0.5 text-xs text-base-content/55">$<span x-text="item.price"></span> each</p>
+                            <p class="mt-0.5 text-xs text-base-content/55">
+                                <span x-show="item.variantLabel" x-text="item.variantLabel" x-cloak></span>
+                                <span x-show="item.variantLabel" aria-hidden="true"> · </span>
+                                $<span x-text="item.price"></span> each
+                            </p>
                             <div class="mt-2 flex items-center justify-between gap-2">
                                 <div class="mp-qty mp-qty--sm" role="group" :aria-label="'Quantity for ' + item.name">
                                     <button

@@ -1,5 +1,21 @@
 from django.db import models
+from django.db.models import Count, Q
 from django.urls import reverse
+
+
+class CategoryQuerySet(models.QuerySet):
+    def needing_attention(self):
+        return self.annotate(
+            published_count=Count(
+                "products",
+                filter=Q(products__status="published"),
+            ),
+            product_count=Count("products"),
+        ).filter(
+            Q(description="")
+            | Q(is_active=False, product_count__gt=0)
+            | Q(published_count=0)
+        )
 
 
 class Category(models.Model):
@@ -37,6 +53,8 @@ class Category(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True,
     )
+
+    objects = CategoryQuerySet.as_manager()
 
     class Meta:
         ordering = [

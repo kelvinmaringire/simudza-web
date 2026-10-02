@@ -71,7 +71,8 @@ INSTALLED_APPS = [
     "inventory",
     "marketplace",
     "reviews",
-
+    "history",
+    "duplicates",
 
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
@@ -102,6 +103,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "history.middleware.HistoryMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",

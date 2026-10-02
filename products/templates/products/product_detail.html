@@ -245,33 +245,37 @@
 
     {# Below: Specs · Manufacturer — quiet, directory-like #}
     <div class="mt-8 max-w-3xl space-y-8 sm:mt-10 sm:space-y-9">
-        {% if product.size_value or product.size_unit or product.sku or product.barcode %}
+        {% if product_variants %}
             <section aria-labelledby="product-specs">
-                <h2 id="product-specs" class="text-base font-semibold tracking-tight">Specs</h2>
-                <dl class="mt-2 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                    {% if product.size_value or product.size_unit %}
-                        <div class="flex gap-2">
-                            <dt class="shrink-0 text-base-content/45">Size</dt>
-                            <dd>
-                                {% if product.size_value %}{{ product.size_value }}{% endif %}{% if product.size_unit %} {{ product.size_unit }}{% endif %}
-                    </dd>
-                    </div>
-                {% endif %}
-                    {% if product.sku %}
-                        <div class="flex gap-2">
-                            <dt class="shrink-0 text-base-content/45">SKU</dt>
-                            <dd>{{ product.sku }}</dd>
-                    </div>
-                {% endif %}
-                    {% if product.barcode %}
-                        <div class="flex gap-2">
-                            <dt class="shrink-0 text-base-content/45">Barcode</dt>
-                            <dd>{{ product.barcode }}</dd>
-                    </div>
-                {% endif %}
-            </dl>
-        </section>
+                <h2 id="product-specs" class="text-base font-semibold tracking-tight">Variants</h2>
+                <div class="mt-2 overflow-x-auto">
+                    <table class="table table-sm text-sm">
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Size</th>
+                                <th>Packaging</th>
+                                <th>SKU</th>
+                                <th>Barcode</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for variant in product_variants %}
+                                <tr>
+                                    <td>{{ variant.label }}</td>
+                                    <td>{{ variant.size_display|default:"—" }}</td>
+                                    <td>{{ variant.packaging|default:"—" }}</td>
+                                    <td>{{ variant.sku|default:"—" }}</td>
+                                    <td>{{ variant.barcode|default:"—" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         {% endif %}
+
+        {% include "partials/video_links.html" with videos=videos section_id="product-videos" %}
 
         {% if business %}
             <section aria-labelledby="product-maker">

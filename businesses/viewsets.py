@@ -2,12 +2,23 @@ from django import forms
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from wagtail.admin.forms.choosers import BaseFilterForm
-from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
+from wagtail.admin.panels import (
+    FieldPanel,
+    InlinePanel,
+    MultiFieldPanel,
+    ObjectList,
+)
 from wagtail.admin.ui.tables import Column
 from wagtail.admin.views.generic.chooser import ChooseResultsView, ChooseView
 from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from duplicates.panels import PossibleDuplicatesPanel
+from history.panels import ChangeHistoryPanel
+
+from .admin_filters import BusinessQualityFilterSet
+from .panels import DataQualityPanel
+from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
 from simudza.admin_import_export import ImportExportViewSetMixin
 
 from .forms import BusinessForm
@@ -74,18 +85,40 @@ class BusinessChooserViewSet(ChooserViewSet):
 business_chooser_viewset = BusinessChooserViewSet("business_chooser")
 
 
-class BusinessViewSet(ImportExportViewSetMixin, ModelViewSet):
+def _business_quality_display(business):
+    return f"{business.quality_score}/10"
+
+
+class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
     model = Business
     resource_class = BusinessResource
+
+    bulk_edit_fields = [
+        BulkEditField(
+            "verification_level",
+            applier="verification",
+            companions=("verification_reference",),
+        ),
+        BulkEditField("business_type"),
+        BulkEditField("is_active"),
+        BulkEditField("town_or_city"),
+    ]
 
     name = "business"
     menu_label = "Businesses"
     menu_icon = "home"
 
     add_to_admin_menu = True
+    filterset_class = BusinessQualityFilterSet
 
     list_display = [
         "name",
+        Column(
+            "quality_score",
+            label=_("Data quality"),
+            accessor=_business_quality_display,
+            sort_key="quality_score",
+        ),
         "business_type",
         "verification_level",
         "verified_at",
@@ -98,6 +131,9 @@ class BusinessViewSet(ImportExportViewSetMixin, ModelViewSet):
         "business_type",
         "verification_level",
         "is_active",
+        "issue",
+        "quality_score_max",
+        "quality_score_min",
     ]
 
     search_fields = [
@@ -133,6 +169,12 @@ class BusinessViewSet(ImportExportViewSetMixin, ModelViewSet):
                 ],
                 heading="Contact",
             ),
+            InlinePanel(
+                "videos",
+                label="Video",
+                heading="Videos",
+                help_text="YouTube links, e.g. factory tours or producer interviews.",
+            ),
             MultiFieldPanel(
                 [
                     FieldPanel("verification_level"),
@@ -143,6 +185,10 @@ class BusinessViewSet(ImportExportViewSetMixin, ModelViewSet):
                 ],
                 heading="Verification",
             ),
+            PossibleDuplicatesPanel(heading="Possible duplicates"),
+            DataQualityPanel(heading="Data quality"),
+            FieldPanel("change_reason"),
+            ChangeHistoryPanel(),
         ],
         base_form_class=BusinessForm,
     )

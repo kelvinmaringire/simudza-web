@@ -1,0 +1,42 @@
+{% extends "wagtailadmin/bulk_actions/confirmation/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% trans "Bulk edit" %} — {{ model_opts.verbose_name_plural|capfirst }}{% endblock %}
+
+{% block header %}
+    {% include "wagtailadmin/shared/header.html" with title=_("Bulk edit") subtitle=model_opts.verbose_name_plural|capfirst icon=header_icon only %}
+{% endblock header %}
+
+{% block items_with_access %}
+    {% if items %}
+        <p>
+            {% blocktrans trimmed count counter=items|length %}
+                {{ counter }} item selected. Choose the fields to update, then preview changes before applying.
+            {% plural %}
+                {{ counter }} items selected. Choose the fields to update, then preview changes before applying.
+            {% endblocktrans %}
+        </p>
+        {% if items|length <= 20 %}
+            <ul>
+                {% for row in items %}
+                    <li><a href="{{ row.edit_url }}" target="_blank" rel="noreferrer">{{ row.item }}</a></li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endif %}
+{% endblock items_with_access %}
+
+{% block items_with_no_access %}
+    {% if items_with_no_access %}
+        {% trans "You don't have permission to change these items" as no_access_msg %}
+        {% include "wagtailadmin/bulk_actions/confirmation/list_items_with_no_access.html" with items=items_with_no_access no_access_msg=no_access_msg %}
+    {% endif %}
+{% endblock items_with_no_access %}
+
+{% block form_section %}
+    {% if items %}
+        {% include "wagtailadmin/bulk_actions/confirmation/form_with_fields.html" %}
+    {% else %}
+        {% include "wagtailadmin/bulk_actions/confirmation/go_back.html" %}
+    {% endif %}
+{% endblock form_section %}

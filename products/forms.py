@@ -1,10 +1,13 @@
+from django import forms
 from django.utils.text import slugify
+
+from history.context import change_context
 from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.forms.models import formfield_for_dbfield
 
 from businesses.verification import VerificationLevel
 
-from .models import Product
+from .models import Product, ProductVariant
 
 
 def unique_product_slug(name, *, exclude_pk=None):
@@ -22,6 +25,13 @@ def unique_product_slug(name, *, exclude_pk=None):
 
 
 class ProductForm(WagtailAdminModelForm):
+    change_reason = forms.CharField(
+        required=False,
+        max_length=500,
+        label="Reason for change",
+        help_text="Optional note stored in change history.",
+    )
+
     class Meta:
         model = Product
         # Required so Wagtail widget overrides (image chooser, etc.)
@@ -35,11 +45,6 @@ class ProductForm(WagtailAdminModelForm):
             "category",
             "origin_type",
             "brand_name",
-            "sku",
-            "barcode",
-            "size_value",
-            "size_unit",
-            "price",
             "status",
             "featured",
             "image",
@@ -80,7 +85,42 @@ class ProductForm(WagtailAdminModelForm):
         product = super().save(commit=False)
         if not product.verification_level:
             product.verification_level = VerificationLevel.UNVERIFIED
-        if commit:
-            product.save()
-            self.save_m2m()
+        reason = (self.cleaned_data.get("change_reason") or "").strip()
+        with change_context(reason=reason):
+            if commit:
+                product.save()
+                self.save_m2m()
         return product
+
+
+class ProductVariantForm(WagtailAdminModelForm):
+    change_reason = forms.CharField(
+        required=False,
+        max_length=500,
+        label="Reason for change",
+        help_text="Optional note stored in change history.",
+    )
+
+    class Meta:
+        model = ProductVariant
+        formfield_callback = formfield_for_dbfield
+        fields = [
+            "product",
+            "name",
+            "sku",
+            "barcode",
+            "size_value",
+            "size_unit",
+            "packaging",
+            "price",
+            "is_available",
+        ]
+
+    def save(self, commit=True):
+        variant = super().save(commit=False)
+        reason = (self.cleaned_data.get("change_reason") or "").strip()
+        with change_context(reason=reason):
+            if commit:
+                variant.save()
+                self.save_m2m()
+        return variant

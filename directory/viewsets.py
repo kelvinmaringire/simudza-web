@@ -2,6 +2,7 @@ from django.urls import path
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
 from simudza.admin_import_export import ImportExportViewSetMixin
 
 from .forms import DirectoryListingForm
@@ -9,9 +10,14 @@ from .models import DirectoryListing
 from .resources import DirectoryListingResource
 
 
-class DirectoryListingViewSet(ImportExportViewSetMixin, ModelViewSet):
+class DirectoryListingViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
     model = DirectoryListing
     resource_class = DirectoryListingResource
+
+    bulk_edit_fields = [
+        BulkEditField("featured"),
+        BulkEditField("show_in_directory"),
+    ]
 
     name = "directory_listing"
     menu_label = "Directory"

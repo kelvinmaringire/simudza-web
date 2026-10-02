@@ -4,11 +4,11 @@ from django.db import models
 
 class Inventory(models.Model):
     """
-    Stock record for a product. One row per product, auto-created on product save.
+    Stock record for a product variant. One row per variant, auto-created on save.
     """
 
-    product = models.OneToOneField(
-        "products.Product",
+    variant = models.OneToOneField(
+        "products.ProductVariant",
         on_delete=models.CASCADE,
         related_name="inventory",
     )
@@ -34,11 +34,14 @@ class Inventory(models.Model):
     )
 
     class Meta:
-        ordering = ["product__name"]
+        ordering = ["variant__product__name", "variant__sort_order"]
         verbose_name_plural = "inventory"
 
     def __str__(self):
-        return f"{self.product.name} ({self.available_quantity} available)"
+        return (
+            f"{self.variant.product.name} — {self.variant.label} "
+            f"({self.available_quantity} available)"
+        )
 
     @property
     def available_quantity(self):

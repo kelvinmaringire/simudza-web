@@ -4,6 +4,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from businesses.models import Business
+from businesses.verification import VerificationLevel
 from categories.models import Category
 from products.models import Product
 from reviews.models import (
@@ -119,7 +120,11 @@ class ListingReportTests(TestCase):
         self.client.force_login(self.staff)
         response = self.client.post(
             reverse("accounts:verify_listing"),
-            {"kind": "product", "pk": self.product.pk},
+            {
+                "kind": "product",
+                "pk": self.product.pk,
+                "level": VerificationLevel.SIMUDZA_CHECKED,
+            },
             HTTP_HOST="localhost",
         )
         self.assertEqual(response.status_code, 302)

@@ -1,0 +1,72 @@
+{% extends "wagtailadmin/bulk_actions/confirmation/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% trans "Confirm bulk edit" %} — {{ model_opts.verbose_name_plural|capfirst }}{% endblock %}
+
+{% block header %}
+    {% include "wagtailadmin/shared/header.html" with title=_("Confirm bulk edit") subtitle=model_opts.verbose_name_plural|capfirst icon=header_icon only %}
+{% endblock header %}
+
+{% block items_with_access %}
+    <p>
+        {% blocktrans trimmed with total=total_selected will_change=will_change_count unchanged=unchanged_count %}
+            {{ total }} selected: {{ will_change }} will change, {{ unchanged }} already match the new values.
+        {% endblocktrans %}
+    </p>
+    <p><strong>{% trans "Reason:" %}</strong> {{ reason }}</p>
+
+    {% if change_rows %}
+        <table class="listing">
+            <thead>
+                <tr>
+                    <th>{% trans "Item" %}</th>
+                    <th>{% trans "Field" %}</th>
+                    <th>{% trans "Current" %}</th>
+                    <th>{% trans "New" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in change_rows %}
+                    {% for diff in row.diffs %}
+                        <tr>
+                            {% if forloop.first %}
+                                <td rowspan="{{ row.diffs|length }}">{{ row.object }}</td>
+                            {% endif %}
+                            <td>{{ diff.field_label }}</td>
+                            <td>{{ diff.old_display|default:"—" }}</td>
+                            <td>{{ diff.new_display|default:"—" }}</td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if change_rows_truncated %}
+            <p class="help-block">{% trans "Only the first 100 changing items are shown." %}</p>
+        {% endif %}
+    {% else %}
+        <p>{% trans "No items would change with these values." %}</p>
+    {% endif %}
+{% endblock items_with_access %}
+
+{% block items_with_no_access %}
+    {% if items_with_no_access %}
+        {% trans "You don't have permission to change these items" as no_access_msg %}
+        {% include "wagtailadmin/bulk_actions/confirmation/list_items_with_no_access.html" with items=items_with_no_access no_access_msg=no_access_msg %}
+    {% endif %}
+{% endblock items_with_no_access %}
+
+{% block form_section %}
+    <form action="{{ submit_url }}" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="confirm" value="1">
+        {% for key, values in post_data.lists %}
+            {% if key != "csrfmiddlewaretoken" and key != "confirm" %}
+                {% for value in values %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+        <button type="submit" class="button">{% trans "Apply changes" %}</button>
+        <a href="{{ next }}" class="button button-secondary">{% trans "Cancel" %}</a>
+    </form>
+{% endblock form_section %}

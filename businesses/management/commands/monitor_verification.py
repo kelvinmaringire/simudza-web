@@ -17,7 +17,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        result = monitor(dry_run=options["dry_run"])
+        from history.context import change_context
+        from history.models import ChangeLog
+
+        with change_context(source=ChangeLog.Source.SYSTEM):
+            result = monitor(dry_run=options["dry_run"])
         prefix = "[dry run] " if options["dry_run"] else ""
         self.stdout.write(
             f"{prefix}Owners due for a reminder: {result['reminders_due']}\n"

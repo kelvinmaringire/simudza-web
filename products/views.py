@@ -1,4 +1,3 @@
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch, Q
 from django.views.generic import DetailView
 
@@ -34,9 +33,8 @@ class ProductQuerysetMixin:
                 "business__logo",
                 "category",
                 "image",
-                "inventory",
             )
-            .prefetch_related(gallery, retail)
+            .prefetch_related(gallery, retail, "videos")
             .order_by("name")
         )
 
@@ -110,19 +108,15 @@ class ProductDetailView(ProductQuerysetMixin, DetailView):
             )
         context["gallery"] = gallery
         context["business"] = product.business
-        inventory = None
-        try:
-            inventory = product.inventory
-        except ObjectDoesNotExist:
-            inventory = None
-        context["in_marketplace"] = (
-            product.price is not None
-            and inventory is not None
-            and inventory.available_quantity > 0
+        context["in_marketplace"] = product.variants.sellable().exists()
+        context["product_variants"] = product.variants.order_by(
+            "sort_order",
+            "pk",
         )
         business = product.business
         context["retail_locations"] = (
             list(business.retail_locations.all()) if business else []
         )
+        context["videos"] = list(product.videos.all())
         context["related_products"] = self.get_related_products(product)
         return context

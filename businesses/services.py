@@ -5,6 +5,7 @@ from wagtail.images import get_image_model
 
 from products.forms import unique_product_slug
 from products.models import Product
+from products.services import upsert_default_variant
 
 from .models import (
     Business,
@@ -35,9 +36,21 @@ def apply_submission(submission, *, reviewer=None):
     if submission.status == ManufacturerSubmission.Status.APPLIED:
         return submission
 
+    from history.context import change_context
+    from history.models import ChangeLog
+
     kind = submission.kind
     user = submission.submitted_by
 
+    with change_context(
+        user=reviewer or user,
+        source=ChangeLog.Source.SUBMISSION,
+        reason=f"Submission #{submission.pk}",
+    ):
+        return _apply_submission_body(submission, reviewer=reviewer, user=user, kind=kind)
+
+
+def _apply_submission_body(submission, *, reviewer, user, kind):
     if kind == ManufacturerSubmission.Kind.COMPANY_PROFILE:
         business = submission.business
         creating = business is None
@@ -97,11 +110,6 @@ def apply_submission(submission, *, reviewer=None):
                 submission.origin_type or Product.OriginType.MADE_IN_ZIMBABWE
             ),
             brand_name=submission.brand_name,
-            sku=submission.sku,
-            barcode=submission.barcode,
-            size_value=submission.size_value,
-            size_unit=submission.size_unit,
-            price=submission.price,
             status=Product.ProductStatus.PENDING,
             slug=unique_product_slug(submission.product_name),
         )
@@ -119,6 +127,14 @@ def apply_submission(submission, *, reviewer=None):
         elif reviewer is not None and submission.business.owner_id != user.pk:
             product.verification_level = VerificationLevel.COMMUNITY_REPORTED
         product.save()
+        upsert_default_variant(
+            product,
+            sku=submission.sku,
+            barcode=submission.barcode,
+            size_value=submission.size_value,
+            size_unit=submission.size_unit,
+            price=submission.price,
+        )
         submission.product = product
 
     elif kind == ManufacturerSubmission.Kind.PRODUCT_UPDATE:
@@ -134,11 +150,6 @@ def apply_submission(submission, *, reviewer=None):
         if submission.origin_type:
             product.origin_type = submission.origin_type
         product.brand_name = submission.brand_name
-        product.sku = submission.sku
-        product.barcode = submission.barcode
-        product.size_value = submission.size_value
-        product.size_unit = submission.size_unit
-        product.price = submission.price
         image = _wagtail_image_from_upload(
             submission.product_image_upload,
             title=product.name,
@@ -154,6 +165,14 @@ def apply_submission(submission, *, reviewer=None):
         elif reviewer is not None and product.business.owner_id != user.pk:
             product.verification_level = VerificationLevel.COMMUNITY_REPORTED
         product.save()
+        upsert_default_variant(
+            product,
+            sku=submission.sku,
+            barcode=submission.barcode,
+            size_value=submission.size_value,
+            size_unit=submission.size_unit,
+            price=submission.price,
+        )
 
     elif kind == ManufacturerSubmission.Kind.RETAIL_LOCATION:
         if submission.business_id is None:
@@ -180,3 +199,4 @@ def apply_submission(submission, *, reviewer=None):
         submission.reviewed_by = reviewer
     submission.save()
     return submission
+

@@ -37,28 +37,28 @@ class CartItem(Orderable):
         on_delete=models.CASCADE,
         related_name="items",
     )
-    product = models.ForeignKey(
-        "products.Product",
+    variant = models.ForeignKey(
+        "products.ProductVariant",
         on_delete=models.PROTECT,
         related_name="cart_items",
     )
     quantity = models.PositiveIntegerField(default=1)
 
     panels = [
-        FieldPanel("product"),
+        FieldPanel("variant"),
         FieldPanel("quantity"),
     ]
 
     class Meta(Orderable.Meta):
         constraints = [
             models.UniqueConstraint(
-                fields=["cart", "product"],
-                name="unique_cart_product",
+                fields=["cart", "variant"],
+                name="unique_cart_variant",
             ),
         ]
 
     def __str__(self):
-        return f"{self.product} × {self.quantity}"
+        return f"{self.variant} × {self.quantity}"
 
 
 class Order(ClusterableModel):
@@ -104,13 +104,23 @@ class OrderItem(Orderable):
         blank=True,
         related_name="order_items",
     )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_items",
+    )
     product_name = models.CharField(max_length=250)
+    variant_label = models.CharField(max_length=200, blank=True)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField(default=1)
 
     panels = [
         FieldPanel("product"),
+        FieldPanel("variant"),
         FieldPanel("product_name"),
+        FieldPanel("variant_label"),
         FieldPanel("unit_price"),
         FieldPanel("quantity"),
     ]
@@ -171,23 +181,31 @@ class Checkout(models.Model):
         if self.order_id:
             raise ValidationError("Checkout already has an order.")
 
-        cart_items = list(self.cart.items.select_related("product").all())
+        cart_items = list(
+            self.cart.items.select_related(
+                "variant",
+                "variant__product",
+            ).all()
+        )
         if not cart_items:
             raise ValidationError("Cart is empty.")
 
         subtotal = Decimal("0")
         order_items_data = []
         for item in cart_items:
-            price = item.product.price
+            price = item.variant.price
             if price is None:
                 raise ValidationError(
-                    f"Product '{item.product.name}' has no price set."
+                    f"Variant '{item.variant.label}' for "
+                    f"'{item.variant.product.name}' has no price set."
                 )
             subtotal += price * item.quantity
             order_items_data.append(
                 {
-                    "product": item.product,
-                    "product_name": item.product.name,
+                    "product": item.variant.product,
+                    "variant": item.variant,
+                    "product_name": item.variant.product.name,
+                    "variant_label": item.variant.label,
                     "unit_price": price,
                     "quantity": item.quantity,
                 }

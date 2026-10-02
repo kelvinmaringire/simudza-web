@@ -8,10 +8,14 @@ from wagtail.admin.views.generic.chooser import ChooseResultsView, ChooseView
 from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.admin.viewsets.model import ModelViewSet
 
+from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
 from simudza.admin_import_export import ImportExportViewSetMixin
 
+from .admin_filters import CategoryAttentionFilterSet
 from .forms import CategoryForm
 from .models import Category
+from .panels import CategoryIssuesPanel
+from .quality import category_issues
 from .resources import CategoryResource
 
 
@@ -74,18 +78,35 @@ class CategoryChooserViewSet(ChooserViewSet):
 category_chooser_viewset = CategoryChooserViewSet("category_chooser")
 
 
-class CategoryViewSet(ImportExportViewSetMixin, ModelViewSet):
+def _category_attention_count(category):
+    return len(category_issues(category))
+
+
+class CategoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
     model = Category
     resource_class = CategoryResource
+
+    bulk_edit_validate_category_parent = True
+    bulk_edit_fields = [
+        BulkEditField("parent"),
+        BulkEditField("is_active"),
+        BulkEditField("sort_order"),
+    ]
 
     name = "category"
     menu_label = "Categories"
     menu_icon = "folder-open-inverse"
 
     add_to_admin_menu = True
+    filterset_class = CategoryAttentionFilterSet
 
     list_display = [
         "name",
+        Column(
+            "attention",
+            label=_("Needs attention"),
+            accessor=_category_attention_count,
+        ),
         "parent",
         "sort_order",
         "is_active",
@@ -94,6 +115,7 @@ class CategoryViewSet(ImportExportViewSetMixin, ModelViewSet):
     list_filter = [
         "is_active",
         "parent",
+        "needs_attention",
     ]
 
     search_fields = [
@@ -121,6 +143,7 @@ class CategoryViewSet(ImportExportViewSetMixin, ModelViewSet):
                 ],
                 heading="Settings",
             ),
+            CategoryIssuesPanel(heading="Data quality"),
         ],
         base_form_class=CategoryForm,
     )

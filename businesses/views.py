@@ -43,6 +43,7 @@ class BusinessQuerysetMixin:
             .prefetch_related(
                 published_products,
                 "retail_locations",
+                "videos",
             )
             .annotate(
                 product_count=Count(
@@ -183,6 +184,7 @@ class BusinessDetailView(BusinessQuerysetMixin, DetailView):
             for location in self.object.retail_locations.all()
             if location.is_active
         ]
+        context["videos"] = list(self.object.videos.all())
         return context
 
 

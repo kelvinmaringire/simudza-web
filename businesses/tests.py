@@ -9,7 +9,6 @@ from businesses.models import Business
 from businesses.verification import FreshnessTier, freshness_for
 from categories.models import Category
 from directory.models import DirectoryListing
-from inventory.models import Inventory
 from products.models import Product
 
 
@@ -60,36 +59,34 @@ class VerificationVisibilityTests(TestCase):
             owner=owner,
             verified_at=timezone.now() - timedelta(days=400),
         )
+        from products.test_helpers import add_sellable_variant
+
         self.product = Product.objects.create(
             business=self.business,
             category=self.category,
             name="Fresh Item",
             slug="fresh-item",
             verified_at=timezone.now(),
-            price="10.00",
         )
+        add_sellable_variant(self.product, price="10.00")
         self.hidden_product = Product.objects.create(
             business=self.business,
             category=self.category,
             name="Old Item",
             slug="old-item",
             verified_at=timezone.now() - timedelta(days=400),
-            price="12.00",
         )
+        add_sellable_variant(self.hidden_product, price="12.00")
         self.inherited_product = Product.objects.create(
             business=self.hidden_business,
             category=self.category,
             name="Inherited Stale",
             slug="inherited-stale",
             verified_at=timezone.now(),
-            price="15.00",
         )
+        add_sellable_variant(self.inherited_product, price="15.00")
         for product in (self.product, self.hidden_product, self.inherited_product):
             DirectoryListing.objects.get_or_create(product=product)
-            Inventory.objects.update_or_create(
-                product=product,
-                defaults={"quantity": 10, "reserved_quantity": 0},
-            )
 
     def test_business_visible_in_search_excludes_stale(self):
         visible = set(Business.objects.visible_in_search().values_list("pk", flat=True))

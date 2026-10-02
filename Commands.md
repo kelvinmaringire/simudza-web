@@ -77,3 +77,27 @@ Cron on the server (06:00 daily):
 ```cron
 0 6 * * * cd /root/srv/simudza-web && docker compose exec -T web python manage.py monitor_verification >> /var/log/simudza-monitor.log 2>&1
 ```
+
+Recompute data-quality scores (verification age and other time-based checks):
+
+```bash
+docker compose exec -T web python manage.py refresh_data_quality --dry-run
+docker compose exec -T web python manage.py refresh_data_quality
+```
+
+Cron (06:15 daily, after verification monitor):
+
+```cron
+15 6 * * * cd /root/srv/simudza-web && docker compose exec -T web python manage.py refresh_data_quality >> /var/log/simudza-quality.log 2>&1
+```
+
+# Duplicate detection
+
+Businesses and products are checked automatically on save. Possible duplicates are **flagged for review** under **Possible duplicates** in `/admin/` — listings are never edited or deleted automatically. "Not a duplicate" decisions are remembered; a dismissed pair is only reopened if a new hard identifier (barcode, SKU, website, email, phone) starts matching.
+
+Re-check everything (after imports, or nightly):
+
+```bash
+docker compose exec -T web python manage.py scan_duplicates
+docker compose exec -T web python manage.py scan_duplicates --products-only
+```

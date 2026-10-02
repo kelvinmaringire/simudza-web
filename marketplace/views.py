@@ -1,6 +1,5 @@
 import json
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import redirect
@@ -22,6 +21,7 @@ from .services import (
     get_marketplace_origins,
     get_marketplace_products,
     get_related_marketplace_products,
+    get_sellable_variants_for_product,
     parse_price,
     sort_marketplace_products,
     sync_user_cart,
@@ -136,17 +136,19 @@ class MarketplaceProductDetailView(DetailView):
                 "category",
                 "category__parent",
                 "image",
-                "inventory",
             )
             .prefetch_related(gallery)
         )
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if self.object.price is None:
-            # Not sold on Simudza — the directory page is the canonical home.
+        sellable_variants = get_sellable_variants_for_product(self.object)
+        if not sellable_variants:
             return redirect(self.object.get_absolute_url())
-        context = self.get_context_data(object=self.object)
+        context = self.get_context_data(
+            object=self.object,
+            sellable_variants=sellable_variants,
+        )
         return self.render_to_response(context)
 
     def get_gallery(self, product):
@@ -159,22 +161,32 @@ class MarketplaceProductDetailView(DetailView):
             gallery.append({"image": item.image, "alt": item.alt_text or product.name})
         return gallery
 
-    def get_json_ld(self, product, gallery, available_quantity):
+    def get_json_ld(self, product, gallery, sellable_variants):
+        offers = []
+        for variant in sellable_variants:
+            available = variant.inventory.available_quantity
+            offer = {
+                "@type": "Offer",
+                "priceCurrency": "USD",
+                "price": str(variant.price),
+                "availability": (
+                    "https://schema.org/InStock"
+                    if available > 0
+                    else "https://schema.org/OutOfStock"
+                ),
+            }
+            if variant.sku:
+                offer["sku"] = variant.sku
+            if variant.barcode:
+                offer["gtin"] = variant.barcode
+            offers.append(offer)
+
         data = {
             "@context": "https://schema.org",
             "@type": "Product",
             "name": product.name,
             "url": self.request.build_absolute_uri(product.get_marketplace_url()),
-            "offers": {
-                "@type": "Offer",
-                "priceCurrency": "USD",
-                "price": str(product.price),
-                "availability": (
-                    "https://schema.org/InStock"
-                    if available_quantity > 0
-                    else "https://schema.org/OutOfStock"
-                ),
-            },
+            "offers": offers,
         }
         if product.short_description or product.description:
             data["description"] = product.short_description or product.description
@@ -183,10 +195,6 @@ class MarketplaceProductDetailView(DetailView):
                 "@type": "Brand",
                 "name": product.brand_name or product.business.name,
             }
-        if product.sku:
-            data["sku"] = product.sku
-        if product.barcode:
-            data["gtin"] = product.barcode
         if gallery:
             data["image"] = [
                 self.request.build_absolute_uri(
@@ -199,22 +207,57 @@ class MarketplaceProductDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         product = self.object
-        try:
-            inventory = product.inventory
-        except ObjectDoesNotExist:
-            inventory = None
-        available_quantity = inventory.available_quantity if inventory else 0
+        sellable_variants = kwargs.get("sellable_variants")
+        if sellable_variants is None:
+            sellable_variants = get_sellable_variants_for_product(product)
+        selected = sellable_variants[0] if sellable_variants else None
+        available_quantity = (
+            selected.inventory.available_quantity if selected else 0
+        )
         gallery = self.get_gallery(product)
+        image_url = ""
+        if product.image:
+            image_url = product.image.get_rendition("fill-96x96").url
+        variant_options = []
+        for variant in sellable_variants:
+            variant_options.append(
+                {
+                    "id": variant.pk,
+                    "label": variant.label,
+                    "price": str(variant.price),
+                    "sizeDisplay": variant.size_display,
+                    "packaging": variant.packaging,
+                    "sku": variant.sku,
+                    "barcode": variant.barcode,
+                    "maxQty": variant.inventory.available_quantity,
+                }
+            )
         context.update(
             {
                 "business": product.business,
                 "gallery": gallery,
-                "inventory": inventory,
+                "sellable_variants": sellable_variants,
+                "variant_options_json": mark_safe(
+                    json.dumps(variant_options).translate(JSON_LD_ESCAPES)
+                ),
+                "cart_image_url": image_url,
+                "cart_product_name": product.name,
+                "cart_product_url": product.get_marketplace_url(),
                 "available_quantity": available_quantity,
-                "in_stock": available_quantity > 0,
-                "low_stock": bool(inventory and available_quantity > 0 and inventory.is_low_stock),
+                "in_stock": any(
+                    v.inventory.available_quantity > 0 for v in sellable_variants
+                ),
+                "low_stock": bool(
+                    selected
+                    and available_quantity > 0
+                    and selected.inventory.is_low_stock
+                ),
                 "related_products": get_related_marketplace_products(product),
-                "product_json_ld": self.get_json_ld(product, gallery, available_quantity),
+                "product_json_ld": self.get_json_ld(
+                    product,
+                    gallery,
+                    sellable_variants,
+                ),
             }
         )
         return context

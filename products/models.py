@@ -1,10 +1,12 @@
 from django.db import models
+from django.db.models import Count, F, Min, Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 
 from django.conf import settings
 
+from businesses.videos import VideoLink
 from businesses.verification import (
     VerificationLevel,
     freshness_for,
@@ -21,7 +23,17 @@ from wagtail.fields import RichTextField, StreamField
 from wagtail.images import get_image_model
 from wagtail.models import Orderable, Page
 
+from .panels import VariantEditLinkPanel
 from .streams import ProductClassificationStreamBlock
+
+
+class ProductVariantQuerySet(models.QuerySet):
+    def sellable(self):
+        return self.filter(
+            is_available=True,
+            price__isnull=False,
+            inventory__quantity__gt=F("inventory__reserved_quantity"),
+        ).distinct()
 
 
 class ProductQuerySet(models.QuerySet):
@@ -35,6 +47,23 @@ class ProductQuerySet(models.QuerySet):
         ).exclude(
             business__verification_level=VerificationLevel.DISCONTINUED,
         )
+
+    def with_sellable_variants(self):
+        sellable_filter = Q(
+            variants__is_available=True,
+            variants__price__isnull=False,
+            variants__inventory__quantity__gt=F(
+                "variants__inventory__reserved_quantity"
+            ),
+        )
+        return self.annotate(
+            from_price=Min("variants__price", filter=sellable_filter),
+            sellable_variant_count=Count(
+                "variants",
+                filter=sellable_filter,
+                distinct=True,
+            ),
+        ).filter(sellable_variant_count__gt=0)
 
 
 class Product(ClusterableModel):
@@ -125,35 +154,6 @@ class Product(ClusterableModel):
         db_index=True,
     )
 
-    sku = models.CharField(
-        max_length=100,
-        blank=True,
-    )
-
-    barcode = models.CharField(
-        max_length=100,
-        blank=True,
-    )
-
-    size_value = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        blank=True,
-        null=True,
-    )
-
-    size_unit = models.CharField(
-        max_length=30,
-        blank=True,
-    )
-
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-    )
-
     status = models.CharField(
         max_length=20,
         choices=ProductStatus,
@@ -206,6 +206,13 @@ class Product(ClusterableModel):
     updated_at = models.DateTimeField(
         auto_now=True,
     )
+
+    quality_score = models.PositiveSmallIntegerField(
+        default=0,
+        db_index=True,
+    )
+    quality_issues = models.JSONField(default=list, blank=True)
+    quality_checked_at = models.DateTimeField(null=True, blank=True)
 
     objects = ProductQuerySet.as_manager()
 
@@ -270,6 +277,165 @@ class Product(ClusterableModel):
             kwargs={"slug": self.slug},
         )
 
+    @property
+    def sellable_variants_for_marketplace(self):
+        cached = getattr(self, "sellable_variants_list", None)
+        if cached is not None:
+            return cached
+        return list(
+            self.variants.sellable()
+            .select_related("inventory")
+            .order_by("sort_order", "pk")
+        )
+
+
+class ProductVariant(ClusterableModel, Orderable):
+    product = ParentalKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="variants",
+    )
+
+    name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='Optional label, e.g. "330 ml can".',
+    )
+
+    sku = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    barcode = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    size_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+
+    size_unit = models.CharField(
+        max_length=30,
+        blank=True,
+    )
+
+    packaging = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='e.g. "PET bottle", "Can".',
+    )
+
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    is_available = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    objects = ProductVariantQuerySet.as_manager()
+
+    panels = [
+        FieldPanel("name"),
+        FieldPanel("size_value"),
+        FieldPanel("size_unit"),
+        FieldPanel("packaging"),
+        FieldPanel("sku"),
+        FieldPanel("barcode"),
+        FieldPanel("price"),
+        FieldPanel("is_available"),
+        VariantEditLinkPanel(),
+    ]
+
+    class Meta(Orderable.Meta):
+        verbose_name = "product variant"
+        verbose_name_plural = "product variants"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["barcode"],
+                condition=~Q(barcode=""),
+                name="unique_productvariant_barcode_nonempty",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "sku"],
+                condition=~Q(sku=""),
+                name="unique_productvariant_sku_per_product_nonempty",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.product.name} — {self.label}"
+
+    @property
+    def size_display(self):
+        if not self.size_value and not self.size_unit:
+            return ""
+        value = ""
+        if self.size_value is not None:
+            value = format(self.size_value, "f").rstrip("0").rstrip(".")
+        unit = self.size_unit or ""
+        return f"{value} {unit}".strip()
+
+    @property
+    def label(self):
+        if self.name:
+            return self.name
+        if self.size_display:
+            return self.size_display
+        return "Standard"
+
+    @property
+    def primary_image(self):
+        first = self.images.select_related("image").first()
+        if first:
+            return first.image
+        if self.product_id:
+            return self.product.image
+        return None
+
+
+class ProductVariantImage(Orderable):
+    variant = ParentalKey(
+        ProductVariant,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+
+    image = models.ForeignKey(
+        get_image_model(),
+        on_delete=models.CASCADE,
+        related_name="product_variant_gallery_images",
+    )
+
+    alt_text = models.CharField(
+        max_length=200,
+        blank=True,
+    )
+
+    panels = [
+        FieldPanel("image"),
+        FieldPanel("alt_text"),
+    ]
+
+    class Meta(Orderable.Meta):
+        pass
+
 
 class ProductImage(Orderable):
     product = ParentalKey(
@@ -301,6 +467,18 @@ class ProductImage(Orderable):
 
     class Meta(Orderable.Meta):
         pass
+
+
+class ProductVideo(VideoLink):
+    product = ParentalKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="videos",
+    )
+
+    class Meta(VideoLink.Meta):
+        verbose_name = "product video"
+        verbose_name_plural = "product videos"
 
 
 class ProductClassificationPage(Page):
