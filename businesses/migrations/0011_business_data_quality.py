@@ -2,16 +2,6 @@ from django.contrib.postgres.indexes import GinIndex
 from django.db import migrations, models
 
 
-def backfill_quality(apps, schema_editor):
-    from businesses.quality import refresh_business_quality
-    from businesses.models import Business
-    from products.models import Product
-    from products.quality import refresh_product_quality
-
-    refresh_business_quality(Business.objects.all())
-    refresh_product_quality(Product.objects.all())
-
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -42,5 +32,4 @@ class Migration(migrations.Migration):
                 name="businesses_business_quality_issues",
             ),
         ),
-        migrations.RunPython(backfill_quality, migrations.RunPython.noop),
     ]
