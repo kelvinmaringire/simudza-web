@@ -26,7 +26,7 @@
 <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border-base-300 mb-6 w-full border shadow-sm">
     <div class="stat">
         <div class="stat-title">Cart items</div>
-        <div class="stat-value text-primary">{{ cart_item_count }}</div>
+        <div class="stat-value text-primary" x-text="$store.cart.count">0</div>
         <div class="stat-desc">
             <a href="{% url 'marketplace:index' %}" class="link link-hover">Go to marketplace</a>
         </div>

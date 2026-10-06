@@ -1,7 +1,7 @@
 import json
 
 from django.db.models import Prefetch
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.utils.cache import patch_vary_headers
 from django.utils.safestring import mark_safe
@@ -24,8 +24,8 @@ from .services import (
     get_sellable_variants_for_product,
     parse_price,
     sort_marketplace_products,
-    sync_user_cart,
 )
+from .cart_workflow import serialize_cart_lines, sync_cart
 
 JSON_LD_ESCAPES = {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
 
@@ -263,33 +263,43 @@ class MarketplaceProductDetailView(DetailView):
         return context
 
 
-def _parse_sync_payload(request):
+def _parse_sync_body(request):
     if request.content_type and "application/json" in request.content_type:
         try:
             data = json.loads(request.body.decode() or "{}")
         except (json.JSONDecodeError, UnicodeDecodeError):
-            return []
-        return data.get("items") or []
+            return {}
+        return data if isinstance(data, dict) else {}
 
     raw = request.POST.get("payload", "")
     if not raw:
-        return []
+        return {}
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        return []
-    return data.get("items") or []
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 @require_POST
 def cart_sync(request):
-    """Silent backend cart store driven by client localStorage. No UI payload."""
-    if not request.user.is_authenticated:
-        return HttpResponse(status=204)
-
-    items = _parse_sync_payload(request)
+    """Sync localStorage cart snapshot to cart sessions and analytics."""
+    body = _parse_sync_body(request)
+    token = body.get("token")
+    items = body.get("items")
+    if not token:
+        return HttpResponse(status=400)
     if not isinstance(items, list):
         return HttpResponse(status=400)
 
-    sync_user_cart(request.user, items)
+    user = request.user if request.user.is_authenticated else None
+    apply = body.get("apply", True)
+    if not isinstance(apply, bool):
+        apply = str(apply).lower() in ("1", "true", "yes")
+    cart = sync_cart(token=token, user=user, items=items, apply=apply)
+
+    if user:
+        lines = serialize_cart_lines(cart) if cart else []
+        return JsonResponse({"items": lines})
+
     return HttpResponse(status=204)

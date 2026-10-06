@@ -1,0 +1,9 @@
+{% extends "wagtailadmin/tables/title_cell.html" %}
+
+{% block title %}
+    {% for ancestor in ancestors %}
+        {% if ancestor.url %}<a href="{{ ancestor.url }}">{{ ancestor.name }}</a>{% else %}{{ ancestor.name }}{% endif %}
+        <span aria-hidden="true">→</span>
+    {% endfor %}
+    {{ block.super }}
+{% endblock %}

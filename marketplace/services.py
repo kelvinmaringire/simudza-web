@@ -111,7 +111,7 @@ def get_marketplace_categories(queryset):
     """Categories that currently have sellable products, with product counts."""
     counts = _facet_counts(queryset, "category_id")
     categories = list(
-        Category.objects.filter(pk__in=counts.keys()).order_by("sort_order", "name")
+        Category.objects.filter(pk__in=counts.keys()).order_by("name")
     )
     for category in categories:
         category.marketplace_count = counts.get(category.pk, 0)
@@ -155,70 +155,3 @@ def get_sellable_variants_for_product(product):
         .order_by("sort_order", "pk")
     )
 
-
-def get_user_cart(user):
-    cart, _ = Cart.objects.get_or_create(user=user)
-    return cart
-
-
-def get_cart_with_items(user):
-    cart, _ = Cart.objects.prefetch_related(
-        "items__variant__product__image",
-        "items__variant__inventory",
-    ).get_or_create(user=user)
-    return cart
-
-
-def _sellable_variants_by_id(variant_ids):
-    return {
-        variant.pk: variant
-        for variant in ProductVariant.objects.sellable()
-        .filter(pk__in=variant_ids)
-        .select_related("inventory", "product", "product__image")
-    }
-
-
-def sync_user_cart(user, items):
-    """
-    Quietly replace the user's DB cart to match client localStorage items.
-    items: iterable of {"variant_id": int, "quantity": int}
-    """
-    cart = get_user_cart(user)
-    variant_ids = [
-        item["variant_id"] for item in items if item.get("variant_id")
-    ]
-    sellable = _sellable_variants_by_id(variant_ids)
-
-    wanted = {}
-    for item in items:
-        variant_id = item.get("variant_id")
-        try:
-            quantity = int(item.get("quantity", 0))
-        except (TypeError, ValueError):
-            quantity = 0
-        if variant_id not in sellable or quantity <= 0:
-            continue
-        available = sellable[variant_id].inventory.available_quantity
-        wanted[variant_id] = min(quantity, available)
-
-    existing = {row.variant_id: row for row in cart.items.all()}
-
-    for variant_id, quantity in wanted.items():
-        row = existing.pop(variant_id, None)
-        if row:
-            if row.quantity != quantity:
-                row.quantity = quantity
-                row.save(update_fields=["quantity"])
-        else:
-            CartItem.objects.create(
-                cart=cart,
-                variant=sellable[variant_id],
-                quantity=quantity,
-            )
-
-    if existing:
-        CartItem.objects.filter(
-            pk__in=[row.pk for row in existing.values()]
-        ).delete()
-
-    return cart

@@ -2,8 +2,8 @@ from django.urls import path
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet
 
-from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
-from simudza.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
+from simudza.utils.admin_import_export import ImportExportViewSetMixin
 
 from .forms import DirectoryListingForm
 from .models import DirectoryListing

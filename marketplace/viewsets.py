@@ -1,12 +1,42 @@
+from django.utils.translation import gettext_lazy as _
+
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
 
-from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
-from simudza.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
+from simudza.utils.admin_import_export import ImportExportViewSetMixin
+
+from marketplace.cart_lifecycle import CART_STATUS_LABELS
 
 from .forms import CartForm, CheckoutForm, OrderForm
 from .models import Cart, Checkout, Order
 from .resources import CartResource, CheckoutResource, OrderResource
+
+
+def cart_user_display(cart):
+    if cart.user_id:
+        return cart.user.get_username()
+    return _("Guest")
+
+
+cart_user_display.short_description = _("User")
+
+
+def cart_lifecycle_display(cart):
+    return CART_STATUS_LABELS.get(cart.lifecycle_status, cart.lifecycle_status.value)
+
+
+cart_lifecycle_display.short_description = _("Status")
+
+
+def cart_value_display(cart):
+    value = getattr(cart, "cart_value", None)
+    if value is None:
+        return "0.00"
+    return value
+
+
+cart_value_display.short_description = _("Value")
 
 
 class CartViewSet(ImportExportViewSetMixin, ModelViewSet):
@@ -19,9 +49,11 @@ class CartViewSet(ImportExportViewSetMixin, ModelViewSet):
     add_to_admin_menu = False
 
     list_display = [
-        "user",
+        cart_user_display,
+        cart_lifecycle_display,
         "item_count",
-        "updated_at",
+        cart_value_display,
+        "last_activity_at",
     ]
 
     search_fields = [
@@ -29,6 +61,7 @@ class CartViewSet(ImportExportViewSetMixin, ModelViewSet):
         "user__email",
         "user__first_name",
         "user__last_name",
+        "token",
     ]
 
     edit_handler = ObjectList(
@@ -36,6 +69,9 @@ class CartViewSet(ImportExportViewSetMixin, ModelViewSet):
             MultiFieldPanel(
                 [
                     FieldPanel("user"),
+                    FieldPanel("last_activity_at"),
+                    FieldPanel("converted_at"),
+                    FieldPanel("merged_into"),
                 ],
                 heading="Cart",
             ),
@@ -48,19 +84,26 @@ class CartViewSet(ImportExportViewSetMixin, ModelViewSet):
 
     inspect_view_fields = [
         "user",
+        "token",
         "item_count",
+        "last_activity_at",
+        "converted_at",
+        "merged_into",
         "created_at",
         "updated_at",
     ]
+
+    def get_queryset(self, request):
+        return (
+            Cart.objects.filter(merged_into__isnull=True)
+            .with_lifecycle()
+            .with_value()
+        )
 
 
 class OrderViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
     model = Order
     resource_class = OrderResource
-
-    bulk_edit_fields = [
-        BulkEditField("status"),
-    ]
 
     name = "order"
     menu_label = "Orders"
@@ -68,15 +111,10 @@ class OrderViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet)
     add_to_admin_menu = False
 
     list_display = [
-        "id",
         "user",
         "status",
         "total",
         "created_at",
-    ]
-
-    list_filter = [
-        "status",
     ]
 
     search_fields = [
@@ -84,7 +122,10 @@ class OrderViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet)
         "user__email",
         "user__first_name",
         "user__last_name",
-        "items__product_name",
+    ]
+
+    bulk_edit_fields = [
+        BulkEditField("status"),
     ]
 
     edit_handler = ObjectList(
@@ -121,17 +162,12 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
     model = Checkout
     resource_class = CheckoutResource
 
-    bulk_edit_fields = [
-        BulkEditField("status"),
-    ]
-
     name = "checkout"
     menu_label = "Checkouts"
-    menu_icon = "clipboard-list"
+    menu_icon = "doc-full"
     add_to_admin_menu = False
 
     list_display = [
-        "id",
         "user",
         "cart",
         "status",
@@ -139,13 +175,15 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
         "created_at",
     ]
 
-    list_filter = [
-        "status",
-    ]
-
     search_fields = [
         "user__username",
         "user__email",
+        "user__first_name",
+        "user__last_name",
+    ]
+
+    bulk_edit_fields = [
+        BulkEditField("status"),
     ]
 
     edit_handler = ObjectList(
@@ -156,7 +194,7 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
                     FieldPanel("cart"),
                     FieldPanel("delivery_fee"),
                     FieldPanel("status"),
-                    FieldPanel("order", read_only=True),
+                    FieldPanel("order"),
                 ],
                 heading="Checkout",
             ),
@@ -179,9 +217,6 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
 
 class MarketplaceViewSetGroup(ModelViewSetGroup):
     menu_label = "Marketplace"
-    menu_icon = "desktop"
-    items = (
-        CartViewSet,
-        OrderViewSet,
-        CheckoutViewSet,
-    )
+    menu_icon = "cart"
+    menu_order = 200
+    items = (CartViewSet(), OrderViewSet(), CheckoutViewSet())

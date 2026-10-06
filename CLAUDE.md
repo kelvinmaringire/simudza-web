@@ -12,7 +12,7 @@ Mirror for Cursor: [.cursor/rules/database-first-architecture.mdc](.cursor/rules
 
 - Run app: `docker compose up`
 - Migrate: `docker compose exec -T web python manage.py migrate`
-- Tests: `docker compose exec -T web python manage.py test`
+- Tests: `docker compose exec -T web python manage.py test <app_or_module>` — run only tests covering your change; CI runs the full suite ([.claude/rules/targeted-tests.md](.claude/rules/targeted-tests.md), Cursor: [.cursor/rules/targeted-tests.mdc](.cursor/rules/targeted-tests.mdc))
 - Ops (dump, restore, verification cron): [Commands.md](Commands.md)
 
 ## Domain layout (verification example)

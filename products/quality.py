@@ -23,6 +23,15 @@ ISSUE_LABELS = {
     "customer_reported": "Customer reported outdated information",
 }
 
+# Category fields read by evaluate_product; saves touching nothing else skip
+# the per-category product refresh.
+CATEGORY_QUALITY_FIELDS = ("is_active",)
+
+# Business fields read by evaluate_product; same purpose for business saves.
+BUSINESS_QUALITY_FIELDS = ("is_active", "email", "phone", "website", "verified_at")
+
+REFRESH_BATCH_SIZE = 500
+
 
 @dataclass(frozen=True)
 class Check:
@@ -39,7 +48,13 @@ class QualityReport:
     max_score: int = 10
 
 
-def evaluate_product(product, *, now=None) -> QualityReport:
+def evaluate_product(
+    product,
+    *,
+    now=None,
+    duplicate_ids=None,
+    reported_ids=None,
+) -> QualityReport:
     from .models import Product
     now = now or timezone.now()
     business = product.business
@@ -109,15 +124,13 @@ def evaluate_product(product, *, now=None) -> QualityReport:
     ):
         issues.append("invalid_contact")
 
-    from businesses.verification_dashboard import OPEN_REPORT_FILTER
-    from duplicates.models import DuplicateFlag
-    from reviews.models import ProductReview
-
-    if DuplicateFlag.objects.open().for_object(product).exists():
+    if duplicate_ids is None:
+        duplicate_ids = _product_ids_with_open_duplicates([product.pk])
+    if reported_ids is None:
+        reported_ids = _product_ids_with_open_reports([product.pk])
+    if product.pk in duplicate_ids:
         issues.append("duplicate_suspected")
-    if ProductReview.objects.filter(product=product).filter(
-        OPEN_REPORT_FILTER
-    ).exists():
+    if product.pk in reported_ids:
         issues.append("customer_reported")
 
     return QualityReport(
@@ -127,7 +140,39 @@ def evaluate_product(product, *, now=None) -> QualityReport:
     )
 
 
-def refresh_product_quality(product_or_qs):
+def _product_ids_with_open_duplicates(product_ids) -> set[int]:
+    from django.db.models import Q
+
+    from duplicates.models import DuplicateFlag
+
+    ids: set[int] = set()
+    rows = DuplicateFlag.objects.open().filter(
+        Q(product_a_id__in=product_ids) | Q(product_b_id__in=product_ids)
+    ).values_list("product_a_id", "product_b_id")
+    for a, b in rows:
+        ids.update((a, b))
+    return ids & set(product_ids)
+
+
+def _product_ids_with_open_reports(product_ids) -> set[int]:
+    from businesses.verification_dashboard import OPEN_REPORT_FILTER
+    from reviews.models import ProductReview
+
+    return set(
+        ProductReview.objects.filter(product_id__in=product_ids)
+        .filter(OPEN_REPORT_FILTER)
+        .values_list("product_id", flat=True)
+    )
+
+
+def refresh_product_quality(product_or_qs, *, batch_size=REFRESH_BATCH_SIZE):
+    """
+    Recompute and store quality for one product or a queryset.
+
+    Works in primary-key batches with a fixed number of queries per batch
+    (products, duplicate flags, open reports, bulk update), so cost grows
+    with batches rather than with per-product lookups.
+    """
     from django.utils import timezone as tz
 
     from .models import Product
@@ -137,17 +182,35 @@ def refresh_product_quality(product_or_qs):
     else:
         qs = product_or_qs
 
-    qs = qs.select_related("business", "category").prefetch_related(
-        "variants", "images"
+    qs = (
+        qs.order_by("pk")
+        .select_related("business", "category")
+        .prefetch_related("variants", "images")
     )
     now = tz.now()
-    for product in qs:
-        report = evaluate_product(product, now=now)
-        Product.objects.filter(pk=product.pk).update(
-            quality_score=report.score,
-            quality_issues=report.issues,
-            quality_checked_at=now,
+    last_pk = 0
+    while True:
+        batch = list(qs.filter(pk__gt=last_pk)[:batch_size])
+        if not batch:
+            break
+        ids = [p.pk for p in batch]
+        duplicate_ids = _product_ids_with_open_duplicates(ids)
+        reported_ids = _product_ids_with_open_reports(ids)
+        for product in batch:
+            report = evaluate_product(
+                product,
+                now=now,
+                duplicate_ids=duplicate_ids,
+                reported_ids=reported_ids,
+            )
+            product.quality_score = report.score
+            product.quality_issues = report.issues
+            product.quality_checked_at = now
+        Product.objects.bulk_update(
+            batch,
+            ["quality_score", "quality_issues", "quality_checked_at"],
         )
+        last_pk = batch[-1].pk
 
 
 def issue_counts():

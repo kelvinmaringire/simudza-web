@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from wagtail.admin.filters import WagtailFilterSet
 
 from .models import Category
+from .quality import ISSUE_LABELS
 
 
 class CategoryAttentionFilterSet(WagtailFilterSet):
@@ -14,6 +15,11 @@ class CategoryAttentionFilterSet(WagtailFilterSet):
         ],
         method="filter_needs_attention",
     )
+    issue = django_filters.ChoiceFilter(
+        label=_("Issue"),
+        choices=[("", "---------")] + list(ISSUE_LABELS.items()),
+        method="filter_issue",
+    )
 
     class Meta:
         model = Category
@@ -23,3 +29,8 @@ class CategoryAttentionFilterSet(WagtailFilterSet):
         if value != "yes":
             return queryset
         return queryset.needing_attention()
+
+    def filter_issue(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.with_issue(value)

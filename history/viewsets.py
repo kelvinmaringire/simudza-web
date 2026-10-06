@@ -2,7 +2,7 @@ from django.utils.translation import gettext_lazy as _
 from wagtail.admin.ui.tables import Column, DateColumn
 from wagtail.admin.viewsets.model import ModelViewSet
 
-from simudza.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_import_export import ImportExportViewSetMixin
 
 from .models import ChangeLog
 from .resources import ChangeLogResource

@@ -1,8 +1,12 @@
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import DecimalField, F, Q, Sum
+from django.db.models.functions import Coalesce
+from django.utils import timezone
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 
@@ -10,25 +14,93 @@ from wagtail.admin.panels import FieldPanel
 from wagtail.fields import RichTextField
 from wagtail.models import Orderable, Page
 
+from marketplace.cart_lifecycle import CartStatus, lifecycle_status_for_cart
+
+
+class CartQuerySet(models.QuerySet):
+    def open(self):
+        return self.filter(
+            converted_at__isnull=True,
+            merged_into__isnull=True,
+        )
+
+    def with_value(self):
+        return self.annotate(
+            cart_value=Coalesce(
+                Sum(
+                    F("items__quantity") * F("items__price_snapshot"),
+                    filter=Q(items__removed_at__isnull=True),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+
+    def with_lifecycle(self, *, now=None):
+        from marketplace.cart_lifecycle import annotate_lifecycle
+
+        return annotate_lifecycle(self, now=now)
+
 
 class Cart(ClusterableModel):
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="cart",
+        related_name="carts",
+        null=True,
+        blank=True,
+    )
+    token = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    last_activity_at = models.DateTimeField(default=timezone.now)
+    converted_at = models.DateTimeField(null=True, blank=True)
+    merged_into = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="merged_from",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = CartQuerySet.as_manager()
+
     class Meta:
-        ordering = ["-updated_at"]
+        ordering = ["-last_activity_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=Q(
+                    converted_at__isnull=True,
+                    merged_into__isnull=True,
+                    user__isnull=False,
+                ),
+                name="unique_open_cart_per_user",
+            ),
+        ]
 
     def __str__(self):
-        return f"Cart for {self.user}"
+        if self.user_id:
+            return f"Cart for {self.user}"
+        return f"Guest cart {self.token}"
 
     @property
     def item_count(self):
-        return sum(item.quantity for item in self.items.all())
+        return sum(
+            item.quantity
+            for item in self.items.filter(removed_at__isnull=True)
+        )
+
+    @property
+    def lifecycle_status(self) -> CartStatus:
+        annotated = self.__dict__.get("lifecycle_status_code")
+        if isinstance(annotated, str):
+            return CartStatus(annotated)
+        return lifecycle_status_for_cart(
+            last_activity_at=self.last_activity_at,
+            converted_at=self.converted_at,
+            merged_into_id=self.merged_into_id,
+        )
 
 
 class CartItem(Orderable):
@@ -43,10 +115,21 @@ class CartItem(Orderable):
         related_name="cart_items",
     )
     quantity = models.PositiveIntegerField(default=1)
+    price_snapshot = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    added_at = models.DateTimeField(default=timezone.now)
+    removed_at = models.DateTimeField(null=True, blank=True)
 
     panels = [
         FieldPanel("variant"),
         FieldPanel("quantity"),
+        FieldPanel("price_snapshot"),
+        FieldPanel("added_at"),
+        FieldPanel("removed_at"),
     ]
 
     class Meta(Orderable.Meta):
@@ -59,6 +142,51 @@ class CartItem(Orderable):
 
     def __str__(self):
         return f"{self.variant} × {self.quantity}"
+
+    @property
+    def is_live(self):
+        return self.removed_at is None
+
+
+class CartEvent(models.Model):
+    class Kind(models.TextChoices):
+        ADDED = "added", "Added"
+        QUANTITY_CHANGED = "quantity_changed", "Quantity changed"
+        REMOVED = "removed", "Removed"
+        MERGED = "merged", "Merged"
+        CONVERTED = "converted", "Converted"
+
+    cart = models.ForeignKey(
+        Cart,
+        on_delete=models.CASCADE,
+        related_name="events",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cart_events",
+    )
+    kind = models.CharField(max_length=32, choices=Kind.choices)
+    quantity = models.PositiveIntegerField(default=0)
+    quantity_delta = models.IntegerField(default=0)
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["kind", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.cart_id} {self.kind}"
 
 
 class Order(ClusterableModel):
@@ -181,11 +309,13 @@ class Checkout(models.Model):
         if self.order_id:
             raise ValidationError("Checkout already has an order.")
 
+        from marketplace.cart_workflow import mark_cart_converted
+
         cart_items = list(
-            self.cart.items.select_related(
+            self.cart.items.filter(removed_at__isnull=True).select_related(
                 "variant",
                 "variant__product",
-            ).all()
+            )
         )
         if not cart_items:
             raise ValidationError("Cart is empty.")
@@ -193,7 +323,9 @@ class Checkout(models.Model):
         subtotal = Decimal("0")
         order_items_data = []
         for item in cart_items:
-            price = item.variant.price
+            price = item.price_snapshot
+            if price is None:
+                price = item.variant.price
             if price is None:
                 raise ValidationError(
                     f"Variant '{item.variant.label}' for "
@@ -228,6 +360,8 @@ class Checkout(models.Model):
         self.order = order
         self.status = self.CheckoutStatus.COMPLETED
         self.save(update_fields=["order", "status", "updated_at"])
+
+        mark_cart_converted(self.cart, order=order)
 
         return order
 

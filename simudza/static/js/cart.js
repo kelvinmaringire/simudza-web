@@ -1,4 +1,5 @@
 const CART_STORAGE_KEY = "simudza_cart_v2";
+const CART_TOKEN_KEY = "simudza_cart_token";
 
 function readCartStorage() {
     try {
@@ -19,6 +20,28 @@ function writeCartStorage(items) {
     } catch (e) {}
 }
 
+function getOrCreateCartToken() {
+    try {
+        let token = localStorage.getItem(CART_TOKEN_KEY);
+        if (token) {
+            return token;
+        }
+        if (window.crypto && crypto.randomUUID) {
+            token = crypto.randomUUID();
+        } else {
+            token = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+                const r = (Math.random() * 16) | 0;
+                const v = c === "x" ? r : (r & 0x3) | 0x8;
+                return v.toString(16);
+            });
+        }
+        localStorage.setItem(CART_TOKEN_KEY, token);
+        return token;
+    } catch (e) {
+        return "";
+    }
+}
+
 function getCsrfToken() {
     const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
     if (match) {
@@ -28,7 +51,6 @@ function getCsrfToken() {
     return input ? input.value : "";
 }
 
-// Register before Alpine init so cart sync POSTs always carry CSRF.
 document.addEventListener("htmx:configRequest", function (event) {
     const verb = (event.detail.verb || "").toLowerCase();
     if (verb && verb !== "get") {
@@ -41,6 +63,8 @@ document.addEventListener("alpine:init", function () {
         items: readCartStorage(),
         syncUrl: "/marketplace/cart/sync/",
         canSync: false,
+        isLoggedIn: false,
+        _syncTimer: null,
 
         get count() {
             return this.items.reduce(function (total, item) {
@@ -75,16 +99,51 @@ document.addEventListener("alpine:init", function () {
         init() {
             const root = document.documentElement;
             this.canSync = root.dataset.cartSync === "1";
+            this.isLoggedIn = root.dataset.cartLoggedIn === "1";
             this.syncUrl = root.dataset.cartSyncUrl || this.syncUrl;
             this.items = readCartStorage();
-            if (this.canSync && this.items.length) {
-                this.sync();
+            getOrCreateCartToken();
+            if (this.canSync && (this.isLoggedIn || this.items.length)) {
+                this.sync({ apply: !this.isLoggedIn || this.items.length > 0 });
             }
         },
 
         persist() {
             writeCartStorage(this.items);
-            this.sync();
+            this.scheduleSync();
+        },
+
+        scheduleSync() {
+            if (!this.canSync) {
+                return;
+            }
+            const self = this;
+            if (self._syncTimer) {
+                clearTimeout(self._syncTimer);
+            }
+            self._syncTimer = setTimeout(function () {
+                self._syncTimer = null;
+                self.sync();
+            }, 800);
+        },
+
+        applyServerItems(serverItems) {
+            if (!Array.isArray(serverItems)) {
+                return;
+            }
+            this.items = serverItems.map(function (item) {
+                return {
+                    id: Number(item.id),
+                    name: item.name,
+                    variantLabel: item.variantLabel || "",
+                    price: item.price,
+                    imageUrl: item.imageUrl || "",
+                    url: item.url || "",
+                    maxQty: Number(item.maxQty || 99),
+                    quantity: Number(item.quantity),
+                };
+            });
+            writeCartStorage(this.items);
         },
 
         add(line, quantity) {
@@ -164,12 +223,21 @@ document.addEventListener("alpine:init", function () {
             }
         },
 
-        sync() {
+        sync(options) {
             if (!this.canSync) {
                 return;
             }
 
+            const token = getOrCreateCartToken();
+            if (!token) {
+                return;
+            }
+
+            const apply = !options || options.apply !== false;
+
             const payload = {
+                token: token,
+                apply: apply,
                 items: this.items.map(function (item) {
                     return {
                         variant_id: Number(item.id),
@@ -179,14 +247,7 @@ document.addEventListener("alpine:init", function () {
             };
 
             const csrfToken = getCsrfToken();
-            if (window.htmx) {
-                htmx.ajax("POST", this.syncUrl, {
-                    values: { payload: JSON.stringify(payload) },
-                    swap: "none",
-                    headers: { "X-CSRFToken": csrfToken },
-                });
-                return;
-            }
+            const self = this;
 
             fetch(this.syncUrl, {
                 method: "POST",
@@ -196,7 +257,22 @@ document.addEventListener("alpine:init", function () {
                 },
                 body: JSON.stringify(payload),
                 credentials: "same-origin",
-            }).catch(function () {});
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        return null;
+                    }
+                    if (response.status === 204) {
+                        return null;
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data && Object.prototype.hasOwnProperty.call(data, "items")) {
+                        self.applyServerItems(data.items);
+                    }
+                })
+                .catch(function () {});
         },
     });
 });

@@ -4,7 +4,7 @@ from import_export.widgets import ForeignKeyWidget
 from accounts.models import CustomUser
 
 from .models import Business, unique_business_slug
-from simudza.import_export_mixins import ImportUserMixin, VerificationLevelMixin
+from simudza.utils.import_export_mixins import ImportUserMixin, VerificationLevelMixin
 
 
 class BusinessResource(ImportUserMixin, VerificationLevelMixin, resources.ModelResource):

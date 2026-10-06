@@ -37,7 +37,6 @@ from businesses.verification_workflow import (
     staff_set_level,
     verification_exceptions,
 )
-from marketplace.models import Cart
 from products.models import Product
 
 from .forms import (
@@ -48,21 +47,10 @@ from .forms import (
     MemberSignUpForm,
 )
 
-REMEMBER_ME_SECONDS = 60 * 60 * 24 * 30
-
-
 class MemberLoginView(LoginView):
     template_name = "accounts/login.html"
     authentication_form = MemberLoginForm
     redirect_authenticated_user = True
-
-    def form_valid(self, form):
-        remember_me = form.cleaned_data.get("remember_me")
-        if remember_me:
-            self.request.session.set_expiry(REMEMBER_ME_SECONDS)
-        else:
-            self.request.session.set_expiry(0)
-        return super().form_valid(form)
 
 
 class MemberLogoutView(LogoutView):
@@ -128,16 +116,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        cart_item_count = 0
-        try:
-            cart_item_count = user.cart.item_count
-        except Cart.DoesNotExist:
-            pass
-
         context["display_name"] = (
             user.get_full_name() or user.get_username()
         )
-        context["cart_item_count"] = cart_item_count
         context["order_count"] = user.orders.count()
 
         listings = owner_listings(user)

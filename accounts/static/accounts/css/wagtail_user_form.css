@@ -1,0 +1,40 @@
+/* Wagtail user create/edit: responsive grid sized by each field's max characters (--chars). */
+.simudza-user-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2rem;
+}
+
+.simudza-user-grid__cell {
+    --chars: 30;
+    flex: 1 1 clamp(11rem, calc(var(--chars) * 1ch + 3rem), 26rem);
+    min-width: 0;
+    max-width: 100%;
+}
+
+.simudza-user-grid__cell input:not([type="checkbox"]):not([type="radio"]),
+.simudza-user-grid__cell select {
+    max-width: calc(var(--chars) * 1ch + 3rem);
+}
+
+.simudza-user-grid__cell--wide {
+    flex-basis: 100%;
+}
+
+.simudza-user-grid {
+    container-type: inline-size;
+}
+
+/* Related fields that share a row (username + email, names, passwords); stack when narrow. */
+.simudza-user-grid__pair {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 2rem;
+}
+
+@container (min-width: 36rem) {
+    .simudza-user-grid__pair {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

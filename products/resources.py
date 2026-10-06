@@ -4,7 +4,7 @@ from import_export.widgets import ForeignKeyWidget
 from businesses.models import Business
 from categories.models import Category
 from products.forms import unique_product_slug
-from simudza.import_export_mixins import ImportUserMixin, VerificationLevelMixin
+from simudza.utils.import_export_mixins import ImportUserMixin, VerificationLevelMixin
 
 from .models import Product, ProductVariant
 

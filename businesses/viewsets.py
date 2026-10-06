@@ -18,8 +18,8 @@ from history.panels import ChangeHistoryPanel
 
 from .admin_filters import BusinessQualityFilterSet
 from .panels import DataQualityPanel
-from simudza.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
-from simudza.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
+from simudza.utils.admin_import_export import ImportExportViewSetMixin
 
 from .forms import BusinessForm
 from .models import Business

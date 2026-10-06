@@ -78,10 +78,8 @@ TRACKED_FIELDS = {
     "categories.Category": [
         "name",
         "slug",
-        "description",
         "parent",
         "is_active",
-        "sort_order",
     ],
     "reviews.ProductReview": [
         "status",

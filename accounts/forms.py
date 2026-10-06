@@ -14,12 +14,6 @@ User = get_user_model()
 class MemberLoginForm(AuthenticationForm):
     """Login form for site members (username or email)."""
 
-    remember_me = forms.BooleanField(
-        required=False,
-        initial=False,
-        label="Remember me",
-    )
-
     error_messages = {
         **AuthenticationForm.error_messages,
         "invalid_login": (

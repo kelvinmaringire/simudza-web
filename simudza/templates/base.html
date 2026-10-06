@@ -4,6 +4,7 @@
 <html
     lang="en"
     data-cart-sync="{% if cart_can_sync %}1{% else %}0{% endif %}"
+    data-cart-logged-in="{% if user.is_authenticated %}1{% else %}0{% endif %}"
     data-cart-sync-url="{% url 'marketplace:cart_sync' %}"
 >
     <head>

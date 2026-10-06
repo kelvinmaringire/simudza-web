@@ -10,7 +10,7 @@ from businesses.verification_workflow import bulk_set_level
 from categories.models import Category
 from history.models import ChangeLog
 from products.models import Product
-from simudza.bulk_edit import (
+from simudza.utils.bulk_edit import (
     BulkEditValidationError,
     apply_bulk_changes,
     preview_bulk_changes,

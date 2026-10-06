@@ -1,0 +1,11 @@
+{% extends "wagtailusers/users/edit.html" %}
+{% load static %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'accounts/css/wagtail_user_form.css' %}">
+{% endblock extra_css %}
+
+{% block fields %}
+    {% include "accounts/wagtail/user_account_fields.html" %}
+{% endblock fields %}

@@ -4,7 +4,7 @@ from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 from wagtail.admin.ui.components import Component
 
-from simudza.admin_data_quality import (
+from simudza.utils.admin_data_quality import (
     DataQualityIndexView,
     user_can_view_data_quality,
 )

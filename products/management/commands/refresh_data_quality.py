@@ -40,17 +40,8 @@ class Command(BaseCommand):
             refreshed_b += len(batch)
             last_pk = batch[-1].pk
 
-        refreshed_p = 0
-        last_pk = 0
-        while True:
-            batch = list(
-                Product.objects.filter(pk__gt=last_pk).order_by("pk")[:BATCH]
-            )
-            if not batch:
-                break
-            refresh_product_quality(Product.objects.filter(pk__in=[p.pk for p in batch]))
-            refreshed_p += len(batch)
-            last_pk = batch[-1].pk
+        refresh_product_quality(Product.objects.all(), batch_size=BATCH)
+        refreshed_p = product_count
 
         self.stdout.write(
             self.style.SUCCESS(

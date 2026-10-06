@@ -38,42 +38,26 @@ def _compare_raw(instance, field_name, value):
     return old_raw, new_raw
 
 
-def _descendant_pks(category_model, root_pk):
-    found: set[int] = set()
-    queue = list(
-        category_model.objects.filter(parent_id=root_pk).values_list("pk", flat=True)
-    )
-    while queue:
-        pk = queue.pop()
-        if pk in found:
-            continue
-        found.add(pk)
-        queue.extend(
-            category_model.objects.filter(parent_id=pk).values_list("pk", flat=True)
-        )
-    return found
-
-
 def validate_category_parent_bulk(objects, parent_value):
+    from categories.hierarchy import validate_parent
     from categories.models import Category
 
     if parent_value is None:
         return
-    parent_pk = parent_value.pk if hasattr(parent_value, "pk") else parent_value
-    selected_pks = {obj.pk for obj in objects}
-    if parent_pk in selected_pks:
+    parent = (
+        parent_value
+        if isinstance(parent_value, Category)
+        else Category.objects.get(pk=parent_value)
+    )
+    if parent.pk in {obj.pk for obj in objects}:
         raise BulkEditValidationError(
             "Parent cannot be one of the selected categories.",
         )
     for obj in objects:
-        if parent_pk == obj.pk:
-            raise BulkEditValidationError(
-                "A category cannot be its own parent.",
-            )
-        if parent_pk in _descendant_pks(Category, obj.pk):
-            raise BulkEditValidationError(
-                f"Cannot set parent to a descendant of “{obj}”.",
-            )
+        try:
+            validate_parent(obj, parent)
+        except ValidationError as exc:
+            raise BulkEditValidationError(exc.message_dict["parent"]) from exc
 
 
 def _field_diffs_for_object(obj, values, *, applier_field_names):

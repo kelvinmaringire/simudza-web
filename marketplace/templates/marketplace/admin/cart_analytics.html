@@ -1,0 +1,60 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% trans "Cart analytics" %}{% endblock %}
+
+{% block content %}
+    {% include "wagtailadmin/shared/header.html" with title=page_title icon="shopping-cart" %}
+
+    <div class="nice-padding">
+        <section class="panel summary w-mb-8">
+            <h2 class="w-h3">{% trans "Cart analytics" %}</h2>
+            <table class="listing">
+                <thead>
+                    <tr>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "Carts" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for label, count, code in status_rows %}
+                        <tr>
+                            <td>{{ label }}</td>
+                            <td>{{ count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel summary w-mb-8">
+            <h2 class="w-h3">{% trans "Cart value" %}</h2>
+            <p>{% trans "Potential cart value (active + inactive)" %}: <strong>{{ potential_cart_value }}</strong></p>
+            <p>{% trans "Abandoned cart value" %}: <strong>{{ abandoned_cart_value }}</strong></p>
+        </section>
+
+        <section class="panel summary">
+            <h2 class="w-h3">{% trans "Most abandoned products" %}</h2>
+            {% if most_abandoned_products %}
+                <table class="listing">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Product" %}</th>
+                            <th>{% trans "Units in abandoned carts" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in most_abandoned_products %}
+                            <tr>
+                                <td>{{ row.product_name }}</td>
+                                <td>{{ row.units }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>{% trans "No abandoned cart products yet." %}</p>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}

@@ -13,10 +13,8 @@ class CategoryForm(WagtailAdminModelForm):
         formfield_callback = formfield_for_dbfield
         fields = [
             "name",
-            "description",
             "parent",
             "is_active",
-            "sort_order",
         ]
 
     def save(self, commit=True):

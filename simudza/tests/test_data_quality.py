@@ -24,11 +24,7 @@ class ProductQualityTests(TestCase):
             phone="+263771234567",
             website="https://example.com",
         )
-        self.category = Category.objects.create(
-            name="Food",
-            slug="food",
-            description="Food products",
-        )
+        self.category = Category.objects.create(name="Food", slug="food")
 
     def _product(self, **kwargs):
         defaults = {
@@ -111,7 +107,7 @@ class ProductQualitySignalTests(TestCase):
             email="a@b.com",
             phone="1234567",
         )
-        self.category = Category.objects.create(name="C", slug="c", description="x")
+        self.category = Category.objects.create(name="C", slug="c")
         self.product = Product.objects.create(
             business=self.business,
             category=self.category,
@@ -131,6 +127,65 @@ class ProductQualitySignalTests(TestCase):
             self.business.save()
         self.product.refresh_from_db()
         self.assertEqual(self.product.quality_score, 8)
+
+    def test_business_cosmetic_edit_refreshes_business_only(self):
+        Product.objects.filter(pk=self.product.pk).update(quality_checked_at=None)
+        Business.objects.filter(pk=self.business.pk).update(quality_checked_at=None)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.business.description = "New description"
+            self.business.save()
+        self.product.refresh_from_db()
+        self.business.refresh_from_db()
+        self.assertIsNone(self.product.quality_checked_at)
+        self.assertIsNotNone(self.business.quality_checked_at)
+
+    def test_business_review_refreshes_business_only(self):
+        from reviews.models import BusinessReview
+
+        Product.objects.filter(pk=self.product.pk).update(quality_checked_at=None)
+        with self.captureOnCommitCallbacks(execute=True):
+            BusinessReview.objects.create(
+                business=self.business,
+                reason=ReportReason.PRICE_INCORRECT,
+                status=ReportStatus.OPEN,
+            )
+        self.product.refresh_from_db()
+        self.business.refresh_from_db()
+        self.assertIsNone(self.product.quality_checked_at)
+        self.assertIn("customer_reported", self.business.quality_issues)
+
+    def test_category_deactivation_refreshes_products(self):
+        refresh_product_quality(self.product)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.category.is_active = False
+            self.category.save()
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quality_score, 8)
+        self.assertIn("missing_category", self.product.quality_issues)
+
+    def test_category_cosmetic_edit_skips_product_refresh(self):
+        Product.objects.filter(pk=self.product.pk).update(quality_checked_at=None)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.category.name = "Renamed"
+            self.category.save()
+        self.product.refresh_from_db()
+        self.assertIsNone(self.product.quality_checked_at)
+
+    def test_refresh_query_count_is_per_batch_not_per_product(self):
+        for i in range(10):
+            p = Product.objects.create(
+                business=self.business,
+                category=self.category,
+                name=f"P{i}",
+                slug=f"p-{i}",
+            )
+            upsert_default_variant(p, price="1")
+        qs = Product.objects.filter(category=self.category)
+        # products, variants, images, duplicates, reports, bulk update,
+        # empty next batch
+        with self.assertNumQueries(7):
+            refresh_product_quality(qs)
+        self.assertFalse(qs.filter(quality_checked_at__isnull=True).exists())
 
 
 class DataQualityAdminTests(TestCase):
@@ -168,3 +223,41 @@ class DataQualityAdminTests(TestCase):
         response = self.client.get(reverse("simudza_data_quality_index"), **self.host)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Missing image")
+
+    def _dashboard(self):
+        self.client.force_login(self.staff)
+        return self.client.get(reverse("simudza_data_quality_index"), **self.host)
+
+    def test_dashboard_hides_zero_count_issues(self):
+        response = self._dashboard()
+        product_labels = [i["label"] for i in response.context["product_issues"]]
+        self.assertEqual(product_labels, ["Missing image"])
+        self.assertNotContains(response, "Missing manufacturer")
+        self.assertContains(
+            response, f'href="{reverse("product:index")}?issue=missing_image"'
+        )
+
+    def test_dashboard_shows_empty_message_for_sections_without_issues(self):
+        response = self._dashboard()
+        self.assertEqual(response.context["category_issues"], [])
+        self.assertContains(response, "No issues found")
+
+    def test_dashboard_keeps_score_band_links(self):
+        response = self._dashboard()
+        bands = response.context["product_score_bands"]
+        self.assertEqual([b["label"] for b in bands], ["0–3", "4–6", "7–8", "9–10"])
+        self.assertContains(
+            response,
+            f'href="{reverse("product:index")}?quality_score_min=4&amp;quality_score_max=6"',
+        )
+
+    def test_dashboard_category_issue_links_to_filtered_index(self):
+        tea = Category.objects.create(name="Tea", slug="tea", parent=self.category)
+        response = self._dashboard()
+        url = f'{reverse("category:index")}?issue=no_published_products'
+        self.assertContains(response, f'href="{url}"')
+        self.assertContains(response, "?needs_attention=yes")
+
+        listing = self.client.get(url, **self.host)
+        self.assertEqual(listing.status_code, 200)
+        self.assertContains(listing, reverse("category:edit", args=[tea.pk]))

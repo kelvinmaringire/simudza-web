@@ -1,0 +1,22 @@
+{% load i18n %}
+<section class="dq-section" aria-label="{{ title }}">
+    <header class="dq-section__header">
+        <h2 class="dq-section__title">{{ title }}</h2>
+        <span class="dq-section__meta">
+            {% blocktrans count counter=issues|length %}{{ counter }} issue type{% plural %}{{ counter }} issue types{% endblocktrans %}
+        </span>
+    </header>
+
+    <h3 class="dq-subheading">{% trans "Issues" %}</h3>
+    {% include "admin_data_quality/includes/issue_grid.html" %}
+
+    <h3 class="dq-subheading">{% trans "Quality score" %}</h3>
+    <div class="dq-grid dq-grid--bands">
+        {% for band in score_bands %}
+            <a class="dq-tile dq-tile--band dq-tile--{{ band.tone }}" href="{{ band.url }}">
+                <span class="dq-tile__count">{{ band.count }}</span>
+                <span class="dq-tile__label">{% blocktrans with range=band.label %}Score {{ range }}{% endblocktrans %}</span>
+            </a>
+        {% endfor %}
+    </div>
+</section>

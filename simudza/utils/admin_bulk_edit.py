@@ -20,7 +20,7 @@ from wagtail.admin.views.bulk_action import BulkAction
 from wagtail.admin.views.generic.models import IndexView
 from wagtail.permissions import ModelPermissionPolicy
 
-from simudza.bulk_edit import (
+from simudza.utils.bulk_edit import (
     BulkEditValidationError,
     apply_bulk_changes,
     preview_bulk_changes,

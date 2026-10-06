@@ -60,7 +60,6 @@ def build_directory_category_tree(selected_id=None):
             "pk",
             "name",
             "parent_id",
-            "sort_order",
         )
     }
 
@@ -91,8 +90,8 @@ def build_directory_category_tree(selected_id=None):
 
     def sort_key(category):
         has_children = bool(children_map.get(category.pk))
-        # Branches first, then existing sort_order + alphabetical order.
-        return (0 if has_children else 1, category.sort_order, category.name.lower())
+        # Branches first, then alphabetical order.
+        return (0 if has_children else 1, category.name.lower())
 
     for parent_id in children_map:
         children_map[parent_id].sort(key=sort_key)

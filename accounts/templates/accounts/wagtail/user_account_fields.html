@@ -1,0 +1,34 @@
+{% load wagtailadmin_tags %}
+<li>
+    <div class="simudza-user-grid">
+        <div class="simudza-user-grid__pair">
+            {% if form.separate_username_field %}
+                <div class="simudza-user-grid__cell" style="--chars: {{ form.username_field.field.max_length|default:30 }}">{% formattedfield form.username_field %}</div>
+            {% endif %}
+            <div class="simudza-user-grid__cell" style="--chars: {{ form.email.field.max_length|default:40 }}">{% formattedfield form.email %}</div>
+        </div>
+        <div class="simudza-user-grid__pair">
+            <div class="simudza-user-grid__cell" style="--chars: {{ form.first_name.field.max_length|default:30 }}">{% formattedfield form.first_name %}</div>
+            <div class="simudza-user-grid__cell" style="--chars: {{ form.last_name.field.max_length|default:30 }}">{% formattedfield form.last_name %}</div>
+        </div>
+        <div class="simudza-user-grid__cell" style="--chars: {{ form.phone_number.field.max_length }}">{% formattedfield form.phone_number %}</div>
+        <div class="simudza-user-grid__cell" style="--chars: 12">{% formattedfield form.dob %}</div>
+        <div class="simudza-user-grid__cell" style="--chars: 12">{% formattedfield form.sex %}</div>
+        <div class="simudza-user-grid__cell simudza-user-grid__cell--wide">{% formattedfield form.physical_address %}</div>
+        <div class="simudza-user-grid__cell" style="--chars: 40">{% formattedfield form.pic %}</div>
+        {% if form.password1 or form.password2 %}
+            <div class="simudza-user-grid__pair">
+                {% if form.password1 %}
+                    <div class="simudza-user-grid__cell" style="--chars: 30">{% formattedfield form.password1 %}</div>
+                {% endif %}
+                {% if form.password2 %}
+                    <div class="simudza-user-grid__cell" style="--chars: 30">{% formattedfield form.password2 %}</div>
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="simudza-user-grid__cell" style="--chars: 12">{% formattedfield form.email_verified %}</div>
+        {% if form.is_active %}
+            <div class="simudza-user-grid__cell" style="--chars: 12">{% formattedfield form.is_active %}</div>
+        {% endif %}
+    </div>
+</li>

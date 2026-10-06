@@ -3,18 +3,43 @@ from django.db.models import Count, Q
 from django.urls import reverse
 
 
+# Data-quality issues, evaluated on ``with_product_counts()``. Top-level
+# categories organise the taxonomy and need not hold products directly.
+ATTENTION_ISSUES = {
+    "inactive_with_products": Q(is_active=False, product_count__gt=0),
+    "no_published_products": Q(parent__isnull=False, published_count=0),
+}
+
+
 class CategoryQuerySet(models.QuerySet):
-    def needing_attention(self):
+    def with_product_counts(self):
+        from products.models import Product
+
         return self.annotate(
             published_count=Count(
                 "products",
-                filter=Q(products__status="published"),
+                filter=Q(products__status=Product.ProductStatus.PUBLISHED),
             ),
             product_count=Count("products"),
-        ).filter(
-            Q(description="")
-            | Q(is_active=False, product_count__gt=0)
-            | Q(published_count=0)
+        )
+
+    def with_issue(self, code):
+        return self.with_product_counts().filter(ATTENTION_ISSUES[code])
+
+    def needing_attention(self):
+        conditions = Q()
+        for condition in ATTENTION_ISSUES.values():
+            conditions |= condition
+        return self.with_product_counts().filter(conditions)
+
+    def with_tree_path(self):
+        """Annotate ``tree_path_ids`` / ``tree_path_names`` (root → self)."""
+        from .hierarchy import tree_path_expression
+
+        table = self.model._meta.db_table
+        return self.annotate(
+            tree_path_ids=tree_path_expression(table, "ids"),
+            tree_path_names=tree_path_expression(table, "names"),
         )
 
 
@@ -26,13 +51,9 @@ class Category(models.Model):
         unique=True,
     )
 
-    description = models.TextField(
-        blank=True,
-    )
-
     parent = models.ForeignKey(
         "self",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         blank=True,
         null=True,
         related_name="children",
@@ -40,10 +61,6 @@ class Category(models.Model):
 
     is_active = models.BooleanField(
         default=True,
-    )
-
-    sort_order = models.PositiveIntegerField(
-        default=0,
     )
 
     created_at = models.DateTimeField(
@@ -57,16 +74,21 @@ class Category(models.Model):
     objects = CategoryQuerySet.as_manager()
 
     class Meta:
-        ordering = [
-            "sort_order",
-            "name",
-        ]
+        ordering = ["name"]
+        verbose_name = "category"
+        verbose_name_plural = "categories"
 
     def __str__(self):
-        if self.parent:
-            return f"{self.parent} → {self.name}"
+        from .hierarchy import iter_ancestors
 
-        return self.name
+        names = [a.name for a in iter_ancestors(self)][::-1]
+        return " → ".join([*names, self.name])
+
+    def clean(self):
+        from .hierarchy import validate_parent
+
+        super().clean()
+        validate_parent(self, self.parent)
 
     def get_absolute_url(self):
         return reverse(

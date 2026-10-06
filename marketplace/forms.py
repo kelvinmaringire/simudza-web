@@ -8,7 +8,12 @@ class CartForm(WagtailAdminModelForm):
     class Meta:
         model = Cart
         formfield_callback = formfield_for_dbfield
-        fields = ["user"]
+        fields = [
+            "user",
+            "last_activity_at",
+            "converted_at",
+            "merged_into",
+        ]
 
 
 class OrderForm(WagtailAdminModelForm):

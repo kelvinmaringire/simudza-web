@@ -2,7 +2,7 @@ from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
 from wagtail.admin.ui.tables import Column
 from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
 
-from simudza.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_import_export import ImportExportViewSetMixin
 
 from .forms import BusinessReviewForm, ProductReviewForm
 from .models import BusinessReview, ProductReview

@@ -15,8 +15,10 @@ def _format_order_items(order):
 
 def _format_cart_items(cart):
     parts = []
-    for item in cart.items.all():
-        parts.append(f"{item.product.name} x{item.quantity}")
+    for item in cart.items.filter(removed_at__isnull=True).select_related(
+        "variant__product"
+    ):
+        parts.append(f"{item.variant.product.name} x{item.quantity}")
     return "; ".join(parts)
 
 
@@ -32,7 +34,14 @@ class CartResource(resources.ModelResource):
         model = Cart
         import_id_fields = ("id",)
         skip_unchanged = True
-        fields = ("id", "user", "items")
+        fields = (
+            "id",
+            "user",
+            "token",
+            "last_activity_at",
+            "converted_at",
+            "items",
+        )
         export_order = fields
 
     def dehydrate_items(self, cart):

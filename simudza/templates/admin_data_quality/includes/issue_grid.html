@@ -1,0 +1,13 @@
+{% load i18n %}
+{% if issues %}
+    <div class="dq-grid">
+        {% for issue in issues %}
+            <a class="dq-tile" href="{{ issue.url }}">
+                <span class="dq-tile__count">{{ issue.count }}</span>
+                <span class="dq-tile__label">{{ issue.label }}</span>
+            </a>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="dq-empty">{% trans "No issues found" %}</p>
+{% endif %}
