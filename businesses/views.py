@@ -7,12 +7,8 @@ from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from products.models import Product
 
-from .forms import (
-    CompanySubmissionForm,
-    ProductSubmissionForm,
-    RetailLocationSubmissionForm,
-)
-from .models import Business, ManufacturerSubmission
+from .forms import OwnerCompanyForm, OwnerProductForm
+from .models import Business
 
 
 FILTER_PARAM_NAMES = (
@@ -37,12 +33,11 @@ class BusinessQuerysetMixin:
             to_attr="published_products",
         )
         return (
-            Business.objects.filter(is_active=True)
+            Business.objects.served()
             .exclude(slug="")
             .select_related("logo")
             .prefetch_related(
                 published_products,
-                "retail_locations",
                 "videos",
             )
             .annotate(
@@ -119,7 +114,7 @@ class BusinessListQuerysetMixin(BusinessQuerysetMixin):
             queryset = queryset.filter(town_or_city__iexact=town)
 
         if self.get_verified_only():
-            from businesses.verification import TRUSTED_LEVELS
+            from businesses.verification.levels import TRUSTED_LEVELS
 
             queryset = queryset.filter(
                 verification_level__in=TRUSTED_LEVELS,
@@ -179,11 +174,6 @@ class BusinessDetailView(BusinessQuerysetMixin, DetailView):
         categories.sort(key=lambda item: item.name.lower())
         context["products"] = products
         context["categories"] = categories
-        context["retail_locations"] = [
-            location
-            for location in self.object.retail_locations.all()
-            if location.is_active
-        ]
         context["videos"] = list(self.object.videos.all())
         return context
 
@@ -197,9 +187,6 @@ class SubmissionHubView(LoginRequiredMixin, TemplateView):
         context["owned_businesses"] = Business.objects.filter(
             owner=user,
         ).order_by("name")
-        context["submissions"] = ManufacturerSubmission.objects.filter(
-            submitted_by=user,
-        ).select_related("business", "product")[:20]
         context["owned_products"] = Product.objects.filter(
             business__owner=user,
         ).select_related("business", "category")[:50]
@@ -208,32 +195,47 @@ class SubmissionHubView(LoginRequiredMixin, TemplateView):
 
 class CompanySubmitView(LoginRequiredMixin, FormView):
     template_name = "businesses/submit_company.html"
-    form_class = CompanySubmissionForm
+    form_class = OwnerCompanyForm
     success_url = reverse_lazy("businesses:submit")
+
+    def dispatch(self, request, *args, **kwargs):
+        self.business = None
+        pk = kwargs.get("pk")
+        if pk:
+            self.business = get_object_or_404(
+                Business,
+                pk=pk,
+                owner=request.user,
+            )
+        return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
+        kwargs["business"] = self.business
         return kwargs
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["business"] = self.business
+        return context
+
     def form_valid(self, form):
-        submission = form.save()
-        if submission.status == ManufacturerSubmission.Status.APPLIED:
+        form.save()
+        if self.business:
+            messages.success(self.request, "Company profile updated.")
+        else:
             messages.success(
                 self.request,
-                "Company profile saved and published on Simudza.",
-            )
-        else:
-            messages.info(
-                self.request,
-                "Company submission received and is pending review.",
+                "Company profile saved. It will stay offline until Simudza reviews "
+                "it and confirms your ownership.",
             )
         return super().form_valid(form)
 
 
 class ProductSubmitView(LoginRequiredMixin, FormView):
     template_name = "businesses/submit_product.html"
-    form_class = ProductSubmissionForm
+    form_class = OwnerProductForm
     success_url = reverse_lazy("businesses:submit")
 
     def dispatch(self, request, *args, **kwargs):
@@ -259,44 +261,12 @@ class ProductSubmitView(LoginRequiredMixin, FormView):
         return context
 
     def form_valid(self, form):
-        submission = form.save()
-        if submission.status == ManufacturerSubmission.Status.APPLIED:
-            if submission.kind == ManufacturerSubmission.Kind.NEW_PRODUCT:
-                messages.success(
-                    self.request,
-                    "Product submitted. It is pending review before it appears "
-                    "in the directory.",
-                )
-            else:
-                messages.success(
-                    self.request,
-                    "Product information updated.",
-                )
+        form.save()
+        if self.product:
+            messages.success(self.request, "Product information updated.")
         else:
-            messages.info(
+            messages.success(
                 self.request,
-                "Product submission received and is pending review.",
-            )
-        return super().form_valid(form)
-
-
-class RetailLocationSubmitView(LoginRequiredMixin, FormView):
-    template_name = "businesses/submit_location.html"
-    form_class = RetailLocationSubmissionForm
-    success_url = reverse_lazy("businesses:submit")
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.request.user
-        return kwargs
-
-    def form_valid(self, form):
-        submission = form.save()
-        if submission.status == ManufacturerSubmission.Status.APPLIED:
-            messages.success(self.request, "Retail location saved.")
-        else:
-            messages.info(
-                self.request,
-                "Retail location submission received and is pending review.",
+                "Product saved. It is pending review before it appears in the directory.",
             )
         return super().form_valid(form)

@@ -4,7 +4,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from businesses.models import Business
-from businesses.verification import VerificationLevel
+from businesses.verification.levels import VerificationLevel
 from categories.models import Category
 from products.models import Product
 from reviews.models import (
@@ -123,7 +123,7 @@ class ListingReportTests(TestCase):
             {
                 "kind": "product",
                 "pk": self.product.pk,
-                "level": VerificationLevel.SIMUDZA_CHECKED,
+                "level": VerificationLevel.SIMUDZA_VERIFIED,
             },
             HTTP_HOST="localhost",
         )

@@ -40,22 +40,15 @@
                 </div>
 
                 <div class="business-card__meta">
-                    <h2 class="business-card__name group-hover:underline">
-                        {{ business.name }}
-                    </h2>
+                    <div class="business-card__title-row">
+                        <h2 class="business-card__name group-hover:underline">
+                            {{ business.name }}
+                        </h2>
+                        {% include "partials/verification_level_badge.html" with level_meta=business.level_meta %}
+                    </div>
                     <p class="business-card__type">
-                        {{ business.get_business_type_display }}
+                        {{ business.get_business_type_display }}{% if business.town_or_city %} · {{ business.town_or_city }}{% endif %}{% if business.product_count %} · {{ business.product_count }} product{{ business.product_count|pluralize }}{% endif %}
                     </p>
-                    {% if business.town_or_city or business.product_count %}
-                        <p class="business-card__detail">
-                            {% if business.town_or_city %}{{ business.town_or_city }}{% endif %}
-                            {% if business.town_or_city and business.product_count %} · {% endif %}
-                            {% if business.product_count %}
-                                {{ business.product_count }} product{{ business.product_count|pluralize }}
-                            {% endif %}
-                        </p>
-                    {% endif %}
-                    {% include "partials/verified_badge.html" with level_meta=business.level_meta verification_reference=business.verification_reference verified_at=business.verified_at %}
                 </div>
             </a>
         {% endfor %}

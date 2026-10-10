@@ -1,54 +1,56 @@
 from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
+from django.db.models import Q
 from django.urls import reverse
-from django.utils import timezone
-from django.utils.text import slugify
-
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 from wagtail.images import get_image_model
 
-from .videos import VideoLink
-from .verification import (
+from simudza.utils.slugs import save_with_unique_slug, unique_slug
+
+from .videos import BusinessVideoKind, VideoLink
+from .verification.levels import (
+    LifecycleStatus,
     VerificationLevel,
     freshness_for,
     is_trusted_level,
     level_meta,
-    search_cutoff,
+    searchable_q,
 )
 
 
 def unique_business_slug(name, *, exclude_pk=None):
-    base = slugify(name) or "business"
-    candidate = base
-    suffix = 2
-    queryset = Business.objects.all()
-    if exclude_pk:
-        queryset = queryset.exclude(pk=exclude_pk)
-    while queryset.filter(slug=candidate).exists():
-        candidate = f"{base}-{suffix}"
-        suffix += 1
-    return candidate
+    return unique_slug(Business, name, fallback="business", exclude_pk=exclude_pk)
+
+
+def save_business_with_unique_slug(business, *, name=None, save=None):
+    return save_with_unique_slug(
+        business, name or business.name, fallback="business", save=save
+    )
+
+
+def business_served_q(prefix=""):
+    """Record state: is_active=False takes the listing (and its products) offline."""
+    return Q(**{f"{prefix}is_active": True})
+
+
+def business_searchable_q(prefix=""):
+    return business_served_q(prefix) & searchable_q(prefix)
 
 
 class BusinessQuerySet(models.QuerySet):
+    def served(self):
+        return self.filter(business_served_q())
+
     def visible_in_search(self):
-        cutoff = search_cutoff()
-        return self.filter(verified_at__gte=cutoff).exclude(
-            verification_level=VerificationLevel.DISCONTINUED,
-        )
+        return self.filter(business_searchable_q())
 
 
 class Business(ClusterableModel):
     class BusinessType(models.TextChoices):
         MANUFACTURER = "manufacturer", "Manufacturer"
-        FARMER = "farmer", "Farmer"
-        PRODUCER = "producer", "Producer"
-        RETAILER = "retailer", "Retailer"
-        WHOLESALER = "wholesaler", "Wholesaler"
-        SERVICE = "service", "Service"
-        BRAND = "brand", "Brand"
+        SERVICE_PROVIDER = "service_provider", "Service Provider"
         OTHER = "other", "Other"
 
     name = models.CharField(max_length=200, db_index=True)
@@ -101,13 +103,23 @@ class Business(ClusterableModel):
     verification_reference = models.CharField(
         max_length=300,
         blank=True,
-        help_text="Source name or URL when level is Verified source.",
+        help_text="Source name or URL when level is Information source checked.",
+    )
+
+    lifecycle_status = models.CharField(
+        max_length=20,
+        choices=LifecycleStatus.choices,
+        default=LifecycleStatus.ACTIVE,
+        db_index=True,
+        help_text=(
+            "Discontinued keeps the page online with a notice but removes the "
+            "business and its products from search."
+        ),
     )
 
     verified_at = models.DateTimeField(
         blank=True,
         null=True,
-        default=timezone.now,
     )
 
     verified_by = models.ForeignKey(
@@ -132,8 +144,28 @@ class Business(ClusterableModel):
         related_name="owned_businesses",
     )
 
+    confirmed_owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text=(
+            "User whose ownership staff confirmed. A confirmed owner's edits "
+            "count as Information source checked; only superusers grant "
+            "Simudza Verified."
+        ),
+    )
+
+    owner_confirmed_at = models.DateTimeField(blank=True, null=True)
+
     is_active = models.BooleanField(
         default=True,
+        help_text=(
+            "Untick to take this listing and its products offline (pages return "
+            "404). To record that the company has stopped trading, set the "
+            "lifecycle status to Discontinued instead."
+        ),
     )
 
     created_at = models.DateTimeField(
@@ -155,6 +187,8 @@ class Business(ClusterableModel):
 
     class Meta:
         ordering = ["name"]
+        verbose_name = "business"
+        verbose_name_plural = "businesses"
         indexes = [
             GinIndex(
                 fields=["quality_issues"],
@@ -177,6 +211,22 @@ class Business(ClusterableModel):
     def is_trusted(self):
         return is_trusted_level(self.verification_level)
 
+    @property
+    def is_discontinued(self):
+        return self.lifecycle_status == LifecycleStatus.DISCONTINUED
+
+    @property
+    def owner_is_confirmed(self):
+        return self.owner_id is not None and self.owner_id == self.confirmed_owner_id
+
+    def is_confirmed_owner(self, user):
+        return (
+            user is not None
+            and user.pk is not None
+            and self.owner_is_confirmed
+            and self.owner_id == user.pk
+        )
+
     def get_absolute_url(self):
         return reverse(
             "businesses:detail",
@@ -191,208 +241,13 @@ class BusinessVideo(VideoLink):
         related_name="videos",
     )
 
+    kind = models.CharField(
+        max_length=30,
+        choices=BusinessVideoKind.choices,
+        default=BusinessVideoKind.OTHER,
+    )
+
     class Meta(VideoLink.Meta):
         verbose_name = "business video"
         verbose_name_plural = "business videos"
 
-
-class RetailLocation(models.Model):
-    """Where a business’s products can be bought (stores, markets, depots)."""
-
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.CASCADE,
-        related_name="retail_locations",
-    )
-
-    name = models.CharField(
-        max_length=200,
-        help_text="Store, market, or outlet name.",
-    )
-
-    address = models.TextField(blank=True)
-
-    town_or_city = models.CharField(
-        max_length=100,
-        blank=True,
-    )
-
-    phone = models.CharField(
-        max_length=50,
-        blank=True,
-    )
-
-    notes = models.TextField(
-        blank=True,
-        help_text="Opening hours, stock notes, or other details.",
-    )
-
-    is_active = models.BooleanField(default=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["town_or_city", "name"]
-
-    def __str__(self):
-        if self.town_or_city:
-            return f"{self.name} ({self.town_or_city})"
-        return self.name
-
-
-class ManufacturerSubmission(models.Model):
-    """
-    Manufacturer/business submission for company, product, or retail updates.
-    Owner submissions are applied immediately; others stay pending for review.
-    """
-
-    class Kind(models.TextChoices):
-        COMPANY_PROFILE = "company_profile", "Company profile"
-        NEW_PRODUCT = "new_product", "New product"
-        PRODUCT_UPDATE = "product_update", "Product update"
-        RETAIL_LOCATION = "retail_location", "Retail location"
-
-    class Status(models.TextChoices):
-        PENDING = "pending", "Pending review"
-        APPLIED = "applied", "Applied"
-        REJECTED = "rejected", "Rejected"
-
-    kind = models.CharField(
-        max_length=30,
-        choices=Kind.choices,
-    )
-
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        default=Status.PENDING,
-    )
-
-    submitted_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="manufacturer_submissions",
-    )
-
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="submissions",
-    )
-
-    product = models.ForeignKey(
-        "products.Product",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="submissions",
-    )
-
-    retail_location = models.ForeignKey(
-        RetailLocation,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="submissions",
-    )
-
-    company_name = models.CharField(max_length=200, blank=True)
-    business_type = models.CharField(
-        max_length=30,
-        choices=Business.BusinessType.choices,
-        blank=True,
-    )
-    company_description = models.TextField(blank=True)
-    website = models.URLField(blank=True)
-    email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=50, blank=True)
-    address = models.TextField(blank=True)
-    town_or_city = models.CharField(max_length=100, blank=True)
-    logo_upload = models.ImageField(
-        upload_to="submissions/logos/",
-        blank=True,
-        null=True,
-    )
-
-    product_name = models.CharField(max_length=250, blank=True)
-    short_description = models.CharField(max_length=300, blank=True)
-    product_description = models.TextField(blank=True)
-    category = models.ForeignKey(
-        "categories.Category",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="+",
-    )
-    origin_type = models.CharField(max_length=30, blank=True)
-    brand_name = models.CharField(max_length=200, blank=True)
-    sku = models.CharField(max_length=100, blank=True)
-    barcode = models.CharField(max_length=100, blank=True)
-    size_value = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        blank=True,
-        null=True,
-    )
-    size_unit = models.CharField(max_length=30, blank=True)
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        blank=True,
-        null=True,
-    )
-    product_image_upload = models.ImageField(
-        upload_to="submissions/products/",
-        blank=True,
-        null=True,
-    )
-
-    location_name = models.CharField(max_length=200, blank=True)
-    location_address = models.TextField(blank=True)
-    location_town_or_city = models.CharField(max_length=100, blank=True)
-    location_phone = models.CharField(max_length=50, blank=True)
-    location_notes = models.TextField(blank=True)
-
-    submitter_notes = models.TextField(
-        blank=True,
-        help_text="Anything reviewers should know.",
-    )
-    review_notes = models.TextField(blank=True)
-
-    reviewed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="reviewed_manufacturer_submissions",
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    applied_at = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"{self.get_kind_display()} · {self.get_status_display()}"
-
-    def can_auto_apply(self, user=None):
-        user = user or self.submitted_by
-        if self.kind == self.Kind.COMPANY_PROFILE:
-            if self.business_id is None:
-                return True
-            return self.business.owner_id == user.id
-        if self.kind in {self.Kind.NEW_PRODUCT, self.Kind.RETAIL_LOCATION}:
-            return bool(
-                self.business_id and self.business.owner_id == user.id
-            )
-        if self.kind == self.Kind.PRODUCT_UPDATE:
-            return bool(
-                self.product_id
-                and self.product.business.owner_id == user.id
-            )
-        return False

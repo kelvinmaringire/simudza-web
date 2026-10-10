@@ -6,7 +6,6 @@ from .views import (
     BusinessResultsView,
     CompanySubmitView,
     ProductSubmitView,
-    RetailLocationSubmitView,
     SubmissionHubView,
 )
 
@@ -17,16 +16,16 @@ urlpatterns = [
     path("results/", BusinessResultsView.as_view(), name="results"),
     path("submit/", SubmissionHubView.as_view(), name="submit"),
     path("submit/company/", CompanySubmitView.as_view(), name="submit_company"),
+    path(
+        "submit/company/<int:pk>/",
+        CompanySubmitView.as_view(),
+        name="submit_company_update",
+    ),
     path("submit/product/", ProductSubmitView.as_view(), name="submit_product"),
     path(
         "submit/product/<int:product_id>/",
         ProductSubmitView.as_view(),
         name="submit_product_update",
-    ),
-    path(
-        "submit/location/",
-        RetailLocationSubmitView.as_view(),
-        name="submit_location",
     ),
     path("<slug:slug>/", BusinessDetailView.as_view(), name="detail"),
 ]

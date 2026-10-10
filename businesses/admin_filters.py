@@ -28,6 +28,7 @@ class BusinessQualityFilterSet(WagtailFilterSet):
         fields = [
             "business_type",
             "verification_level",
+            "lifecycle_status",
             "is_active",
         ]
 

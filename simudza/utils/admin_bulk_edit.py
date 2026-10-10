@@ -24,6 +24,7 @@ from simudza.utils.bulk_edit import (
     BulkEditValidationError,
     apply_bulk_changes,
     preview_bulk_changes,
+    validate_verification_level_bulk,
 )
 
 
@@ -196,6 +197,8 @@ def make_bulk_edit_action(
 
             if request.POST.get("confirm") != "1":
                 try:
+                    if use_verification:
+                        validate_verification_level_bulk(request.user, values)
                     change_rows, unchanged_count = preview_bulk_changes(
                         objects,
                         values,

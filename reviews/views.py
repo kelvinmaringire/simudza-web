@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 
 from businesses.models import Business
-from businesses.verification_workflow import notify_owner_of_report
+from businesses.verification.workflow import notify_owner_of_report
 from products.models import Product
 
 from .forms_public import ListingReportForm

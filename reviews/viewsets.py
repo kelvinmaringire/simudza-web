@@ -188,6 +188,7 @@ class BusinessReviewViewSet(ImportExportViewSetMixin, ModelViewSet):
 class ReviewsViewSetGroup(ModelViewSetGroup):
     menu_label = "Reviews"
     menu_icon = "comment"
+    menu_order = 640
     items = (
         ProductReviewViewSet,
         BusinessReviewViewSet,

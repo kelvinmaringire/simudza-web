@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .models import ATTENTION_ISSUES, Category
+from .models import ATTENTION_ISSUES, Category, issue_flag
 
 ISSUE_LABELS = {
     "inactive_with_products": "Inactive but has products",
@@ -11,8 +11,18 @@ ISSUE_LABELS = {
 
 
 def category_issues(category: Category) -> list[str]:
-    row = Category.objects.filter(pk=category.pk)
-    return [code for code in ATTENTION_ISSUES if row.with_issue(code).exists()]
+    """Issue codes for one category; reuses ``with_attention()`` flags when already loaded."""
+    flags = [issue_flag(code) for code in ATTENTION_ISSUES]
+    if all(hasattr(category, flag) for flag in flags):
+        values = {flag: getattr(category, flag) for flag in flags}
+    else:
+        values = (
+            Category.objects.filter(pk=category.pk)
+            .with_attention()
+            .values(*flags)
+            .first()
+        ) or {}
+    return [code for code in ATTENTION_ISSUES if values.get(issue_flag(code))]
 
 
 def category_issue_labels(category: Category) -> list[str]:

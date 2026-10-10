@@ -1,0 +1,42 @@
+/* Wagtail admin GridPanel: responsive grid sized by each field's max characters (--chars). */
+.simudza-form-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2rem;
+    container-type: inline-size;
+}
+
+.simudza-form-grid__cell {
+    --chars: 30;
+    flex: 1 1 clamp(11rem, calc(var(--chars) * 1ch + 3rem), 26rem);
+    min-width: 0;
+    max-width: 100%;
+}
+
+.simudza-form-grid__cell input:not([type="checkbox"]):not([type="radio"]),
+.simudza-form-grid__cell select {
+    max-width: calc(var(--chars) * 1ch + 3rem);
+}
+
+.simudza-form-grid__cell--wide {
+    flex-basis: 100%;
+}
+
+.simudza-form-grid__cell--wide input:not([type="checkbox"]):not([type="radio"]),
+.simudza-form-grid__cell--wide select {
+    max-width: none;
+}
+
+/* Related fields that share a row; stack when narrow. */
+.simudza-form-grid__pair {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 2rem;
+}
+
+@container (min-width: 36rem) {
+    .simudza-form-grid__pair {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

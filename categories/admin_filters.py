@@ -15,6 +15,10 @@ class CategoryAttentionFilterSet(WagtailFilterSet):
         ],
         method="filter_needs_attention",
     )
+    parent = django_filters.ModelChoiceFilter(
+        label=_("Parent"),
+        queryset=Category.objects.with_tree_path().order_by("tree_path_names"),
+    )
     issue = django_filters.ChoiceFilter(
         label=_("Issue"),
         choices=[("", "---------")] + list(ISSUE_LABELS.items()),

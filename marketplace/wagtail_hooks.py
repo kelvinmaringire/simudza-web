@@ -27,7 +27,7 @@ def register_cart_analytics_urls():
     ]
 
 
-@hooks.register("register_admin_menu_item")
+@hooks.register(MarketplaceViewSetGroup.submenu_hook)
 def register_cart_analytics_menu_item():
     class CartAnalyticsMenuItem(MenuItem):
         def is_shown(self, request):
@@ -38,5 +38,10 @@ def register_cart_analytics_menu_item():
         reverse("simudza_cart_analytics_index"),
         name="cart-analytics",
         icon_name="shopping-cart",
-        order=196,
+        order=4,
     )
+
+
+@hooks.register("register_icons")
+def register_marketplace_icons(icons):
+    return icons + ["marketplace/icons/shopping-cart.svg"]

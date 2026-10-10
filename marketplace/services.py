@@ -41,7 +41,7 @@ def get_marketplace_products():
     """Published products with at least one sellable variant."""
     return (
         Product.objects.with_sellable_variants()
-        .filter(status=Product.ProductStatus.PUBLISHED)
+        .served()
         .select_related(
             "business",
             "category",
@@ -88,7 +88,7 @@ def apply_marketplace_filters(queryset, filters):
     if filters.get("max_price") is not None:
         queryset = queryset.filter(from_price__lte=filters["max_price"])
     if filters.get("verified"):
-        from businesses.verification import TRUSTED_LEVELS
+        from businesses.verification.levels import TRUSTED_LEVELS
 
         queryset = queryset.filter(business__verification_level__in=TRUSTED_LEVELS)
     return queryset

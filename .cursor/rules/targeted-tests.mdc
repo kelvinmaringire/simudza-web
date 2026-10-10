@@ -22,7 +22,7 @@ After making changes, run only the tests that cover the code you touched. Do **n
 docker compose exec -T web python manage.py test categories
 
 # One module / class / method
-docker compose exec -T web python manage.py test businesses.test_verification_workflow
+docker compose exec -T web python manage.py test businesses.tests.test_verification_workflow
 docker compose exec -T web python manage.py test categories.tests.test_hierarchy.CategoryHierarchyTests.test_deep_cycle_rejected
 
 # Several labels at once

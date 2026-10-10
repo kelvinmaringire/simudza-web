@@ -2,7 +2,7 @@
 Normalisation helpers shared by duplicate detection.
 
 Everything here is pure (no database access) so the same keys can be computed
-for saved records, imports, or not-yet-applied submissions.
+for saved records and imports.
 """
 
 import re

@@ -6,7 +6,7 @@
         <span aria-hidden="true">{{ level_meta.emoji }}</span>
         {{ level_meta.label }}
     </span>
-    {% if level_meta.level == "verified_source" and verification_reference %}
+    {% if level_meta.shows_reference and verification_reference %}
         <span class="text-xs text-base-content/60{% if class %} {{ class }}{% endif %}">
             · {{ verification_reference }}
         </span>

@@ -1,8 +1,6 @@
 from django.db.models import Prefetch, Q
 from django.views.generic import DetailView
 
-from businesses.models import RetailLocation
-
 from .models import Product, ProductImage
 
 RELATED_PRODUCT_LIMIT = 8
@@ -19,22 +17,15 @@ class ProductQuerysetMixin:
                 "pk",
             ),
         )
-        retail = Prefetch(
-            "business__retail_locations",
-            queryset=RetailLocation.objects.filter(is_active=True).order_by(
-                "town_or_city",
-                "name",
-            ),
-        )
         return (
-            Product.objects.filter(status=Product.ProductStatus.PUBLISHED)
+            Product.objects.served()
             .select_related(
                 "business",
                 "business__logo",
                 "category",
                 "image",
             )
-            .prefetch_related(gallery, retail, "videos")
+            .prefetch_related(gallery, "videos")
             .order_by("name")
         )
 
@@ -112,10 +103,6 @@ class ProductDetailView(ProductQuerysetMixin, DetailView):
         context["product_variants"] = product.variants.order_by(
             "sort_order",
             "pk",
-        )
-        business = product.business
-        context["retail_locations"] = (
-            list(business.retail_locations.all()) if business else []
         )
         context["videos"] = list(product.videos.all())
         context["related_products"] = self.get_related_products(product)

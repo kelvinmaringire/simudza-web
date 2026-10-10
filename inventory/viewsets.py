@@ -22,7 +22,7 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
     menu_label = "Inventory"
     menu_icon = "table"
 
-    add_to_admin_menu = True
+    add_to_admin_menu = False
     copy_view_enabled = False
 
     list_display = [

@@ -1,0 +1,3 @@
+<div class="simudza-form-grid__cell{% if cell.wide %} simudza-form-grid__cell--wide{% endif %}" style="--chars: {{ cell.chars }}">
+    {% include "wagtailadmin/panels/multi_field_panel_child.html" with child=cell.child %}
+</div>

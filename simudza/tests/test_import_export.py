@@ -19,7 +19,34 @@ class BusinessResourceTests(TestCase):
         exported = resource.export(Business.objects.filter(pk=self.business.pk))
         reimport = resource.import_data(exported, dry_run=True)
         self.assertFalse(reimport.has_errors())
-        self.assertEqual(reimport.totals["update"], 1)
+        self.assertEqual(reimport.totals["new"], 0)
+        self.assertEqual(reimport.totals["skip"], 1)
+
+    def test_export_includes_id_timestamps_and_quality_score(self):
+        self.business.refresh_from_db()
+        dataset = BusinessResource().export(Business.objects.filter(pk=self.business.pk))
+        for header in ("id", "created_at", "updated_at", "quality_score"):
+            self.assertIn(header, dataset.headers)
+        row = dataset.dict[0]
+        self.assertEqual(row["id"], str(self.business.pk))
+        self.assertEqual(row["quality_score"], str(self.business.quality_score))
+
+    def test_import_ignores_readonly_columns(self):
+        self.business.refresh_from_db()
+        created_at = self.business.created_at
+        score = self.business.quality_score
+        dataset = Dataset()
+        dataset.headers = ["id", "slug", "name", "quality_score", "created_at", "updated_at"]
+        dataset.append([99999, "export-co", "Renamed Co", 10, "2000-01-01 00:00:00", ""])
+        result = BusinessResource().import_data(dataset)
+        self.assertFalse(result.has_errors())
+        self.assertFalse(result.has_validation_errors())
+
+        self.business.refresh_from_db()
+        self.assertEqual(self.business.name, "Renamed Co")
+        self.assertEqual(self.business.created_at, created_at)
+        self.assertEqual(self.business.quality_score, score)
+        self.assertFalse(Business.objects.filter(pk=99999).exists())
 
     def test_invalid_verification_level_errors_on_dry_run(self):
         dataset = Dataset()

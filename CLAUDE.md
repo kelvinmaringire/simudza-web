@@ -17,9 +17,9 @@ Mirror for Cursor: [.cursor/rules/database-first-architecture.mdc](.cursor/rules
 
 ## Domain layout (verification example)
 
-- `businesses/verification.py` — levels, freshness, shared constants
-- `businesses/verification_workflow.py` — writes, owner/staff flows, exceptions
-- `businesses/verification_dashboard.py` — staff dashboard aggregations
+- `businesses/verification/levels.py` — levels, lifecycle status, freshness, shared constants
+- `businesses/verification/workflow.py` — writes, owner/staff flows, exceptions
+- `businesses/verification/dashboard.py` — staff dashboard aggregations
 - `businesses/services.py` — submission apply and related side effects
 
 New cross-cutting listing behavior should follow that pattern, not views or templates alone.

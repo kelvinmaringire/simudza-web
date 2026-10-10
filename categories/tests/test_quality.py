@@ -40,6 +40,30 @@ class CategoryNoPublishedProductsTests(TestCase):
             Category.objects.needing_attention(), [self.beverages]
         )
 
+    def test_with_attention_matches_issue_rules(self):
+        self.food.is_active = False
+        self.food.save()
+        Product.objects.create(
+            business=self.business, category=self.food, name="Hamper", slug="hamper"
+        )
+        rows = {c.slug: c for c in Category.objects.with_attention()}
+        for slug, category in rows.items():
+            self.assertEqual(
+                category.attention_count,
+                len(category_issues(Category.objects.get(slug=slug))),
+                slug,
+            )
+        self.assertEqual(rows["food"].attention_count, 1)
+        self.assertTrue(rows["food"].issue_inactive_with_products)
+        self.assertEqual(rows["beverages"].attention_count, 1)
+        self.assertTrue(rows["beverages"].issue_no_published_products)
+        self.assertEqual(rows["tea"].attention_count, 0)
+
+    def test_category_issues_reuses_loaded_flags(self):
+        beverages = Category.objects.with_attention().get(pk=self.beverages.pk)
+        with self.assertNumQueries(0):
+            self.assertEqual(category_issues(beverages), ["no_published_products"])
+
     def test_inactive_top_level_with_products_is_still_flagged(self):
         Product.objects.create(
             business=self.business,

@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from businesses.models import Business
-from businesses.verification import FreshnessTier
+from businesses.verification.levels import FreshnessTier
 from categories.models import Category
 from products.forms import ProductForm, unique_product_slug
 from inventory.models import Inventory

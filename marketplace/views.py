@@ -129,7 +129,7 @@ class MarketplaceProductDetailView(DetailView):
             ),
         )
         return (
-            Product.objects.filter(status=Product.ProductStatus.PUBLISHED)
+            Product.objects.served()
             .select_related(
                 "business",
                 "business__logo",

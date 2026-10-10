@@ -4,7 +4,12 @@ from django.test import TestCase
 from django.urls import reverse
 
 from businesses.models import Business, BusinessVideo
-from businesses.videos import VideoKind, validate_youtube_url, youtube_video_id
+from businesses.videos import (
+    BusinessVideoKind,
+    ProductVideoKind,
+    validate_youtube_url,
+    youtube_video_id,
+)
 from categories.models import Category
 from products.models import Product, ProductVideo
 
@@ -59,7 +64,7 @@ class VideoDetailPageTests(TestCase):
             business=self.business,
             url=f"https://youtu.be/{VIDEO_ID}",
             title="Inside our mill",
-            kind=VideoKind.FACTORY_TOUR,
+            kind=BusinessVideoKind.BUSINESS_TOUR,
         )
         response = self.client.get(self.business.get_absolute_url())
         self.assertContains(
@@ -67,20 +72,20 @@ class VideoDetailPageTests(TestCase):
             f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}",
         )
         self.assertContains(response, "Inside our mill")
-        self.assertContains(response, "Factory tour")
+        self.assertContains(response, "Factory or business tour")
 
     def test_product_page_embeds_videos(self):
         ProductVideo.objects.create(
             product=self.product,
             url=f"https://www.youtube.com/watch?v={VIDEO_ID}",
-            kind=VideoKind.DEMONSTRATION,
+            kind=ProductVideoKind.SERVICE_DEMONSTRATION,
         )
         response = self.client.get(self.product.get_absolute_url())
         self.assertContains(
             response,
             f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}",
         )
-        self.assertContains(response, "Product demonstration")
+        self.assertContains(response, "Service demonstration")
 
     def test_no_video_section_without_videos(self):
         for url in (
@@ -116,7 +121,7 @@ class BusinessVideoAdminTests(TestCase):
             "videos-MAX_NUM_FORMS": "1000",
             "videos-0-url": f"https://youtu.be/{VIDEO_ID}",
             "videos-0-title": "Farm visit",
-            "videos-0-kind": VideoKind.INTERVIEW,
+            "videos-0-kind": BusinessVideoKind.PROJECT_PORTFOLIO,
             "videos-0-ORDER": "1",
         }
         response = self.client.post(url, data)
@@ -124,3 +129,22 @@ class BusinessVideoAdminTests(TestCase):
         video = self.business.videos.get()
         self.assertEqual(video.title, "Farm visit")
         self.assertEqual(video.youtube_id, VIDEO_ID)
+        self.assertEqual(video.kind, BusinessVideoKind.PROJECT_PORTFOLIO)
+
+
+class VideoKindChoicesTests(TestCase):
+    """Business and product videos offer separate, short lists of kinds."""
+
+    def test_business_videos_offer_company_kinds_only(self):
+        values = set(dict(BusinessVideo._meta.get_field("kind").choices))
+        self.assertEqual(values, set(BusinessVideoKind.values))
+        self.assertNotIn("service_demonstration", values)
+
+    def test_product_videos_offer_product_and_service_kinds_only(self):
+        values = set(dict(ProductVideo._meta.get_field("kind").choices))
+        self.assertEqual(values, set(ProductVideoKind.values))
+        self.assertNotIn("project_portfolio", values)
+
+    def test_lists_stay_short_for_admins(self):
+        self.assertLessEqual(len(BusinessVideoKind.choices), 8)
+        self.assertLessEqual(len(ProductVideoKind.choices), 8)

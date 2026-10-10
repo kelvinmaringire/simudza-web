@@ -23,6 +23,7 @@ class DirectoryListingViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, Mo
     menu_label = "Directory"
     menu_icon = "list-ul"
 
+    menu_order = 620
     add_to_admin_menu = True
     copy_view_enabled = False
 

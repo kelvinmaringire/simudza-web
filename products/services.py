@@ -24,7 +24,7 @@ def upsert_default_variant(
 ):
     """
     Update the product's first variant, or create one if none exist.
-    Used by manufacturer submissions and other single-variant write paths.
+    Used by owner product saves and other single-variant write paths.
     """
     variant = product.variants.order_by("sort_order", "pk").first()
     if variant is None:

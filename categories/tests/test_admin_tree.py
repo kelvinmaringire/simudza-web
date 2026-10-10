@@ -65,6 +65,29 @@ class CategoryAdminTreeListTests(TestCase):
         self.assertLess(content.rindex(f'"{food_url}"'), content.rindex(f'"{beverages_url}"'))
         self.assertLess(content.rindex(f'"{beverages_url}"'), content.rindex(f'"{tea_url}"'))
 
+    def _count_index_queries(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(reverse("category:index"), HTTP_HOST="localhost")
+        self.assertEqual(response.status_code, 200)
+        return len(ctx.captured_queries)
+
+    def test_index_query_count_does_not_grow_with_categories(self):
+        baseline = self._count_index_queries()
+        for i in range(10):
+            Category.objects.create(name=f"Sub {i}", slug=f"sub-{i}", parent=self.food)
+        self.assertEqual(self._count_index_queries(), baseline)
+
+    def test_index_sortable_by_attention(self):
+        response = self.client.get(
+            reverse("category:index"),
+            {"ordering": "-attention_count"},
+            HTTP_HOST="localhost",
+        )
+        self.assertEqual(response.status_code, 200)
+
     def test_index_sortable_by_path_descending(self):
         response = self.client.get(
             reverse("category:index"),

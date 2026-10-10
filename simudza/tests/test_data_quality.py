@@ -23,6 +23,7 @@ class ProductQualityTests(TestCase):
             email="maker@example.com",
             phone="+263771234567",
             website="https://example.com",
+            verified_at=timezone.now(),
         )
         self.category = Category.objects.create(name="Food", slug="food")
 
@@ -34,6 +35,7 @@ class ProductQualityTests(TestCase):
             "slug": "sample",
             "short_description": "Tasty",
             "description": "Longer text",
+            "verified_at": timezone.now(),
         }
         defaults.update(kwargs)
         product = Product.objects.create(**defaults)
@@ -61,12 +63,14 @@ class ProductQualityTests(TestCase):
         report = evaluate_product(product)
         self.assertIn("verification_expired", report.issues)
 
-    def test_invalid_contact_on_business(self):
-        self.business.email = "not-an-email"
+    def test_free_text_contact_is_accepted(self):
+        self.business.email = "sales at maker dot co dot zw"
+        self.business.phone = "ask for Tendai"
         self.business.save()
         product = self._product()
         report = evaluate_product(product)
-        self.assertIn("invalid_contact", report.issues)
+        self.assertNotIn("invalid_contact", report.issues)
+        self.assertTrue(next(c for c in report.checks if c.code == "contact").passed)
 
     def test_duplicate_suspected(self):
         other = self._product(name="Other", slug="other")
@@ -106,6 +110,7 @@ class ProductQualitySignalTests(TestCase):
             website="https://co.example",
             email="a@b.com",
             phone="1234567",
+            verified_at=timezone.now(),
         )
         self.category = Category.objects.create(name="C", slug="c")
         self.product = Product.objects.create(
@@ -114,6 +119,7 @@ class ProductQualitySignalTests(TestCase):
             name="P",
             slug="p",
             short_description="s",
+            verified_at=timezone.now(),
         )
         upsert_default_variant(self.product, price="1")
 

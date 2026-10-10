@@ -2,19 +2,20 @@ from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.db.models import Count, F, Min, Q
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.text import slugify
 
 from django.conf import settings
 
-from businesses.videos import VideoLink
-from businesses.verification import (
+from businesses.models import business_served_q
+from businesses.videos import ProductVideoKind, VideoLink
+from businesses.verification.levels import (
+    LifecycleStatus,
     VerificationLevel,
     freshness_for,
     is_trusted_level,
     level_meta,
     older_verified_at,
-    search_cutoff,
+    searchable_q,
 )
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
@@ -37,17 +38,28 @@ class ProductVariantQuerySet(models.QuerySet):
         ).distinct()
 
 
+def product_served_q(prefix=""):
+    """Record state: published, and its business has not been taken offline."""
+    return Q(**{f"{prefix}status": Product.ProductStatus.PUBLISHED}) & business_served_q(
+        f"{prefix}business__"
+    )
+
+
+def product_searchable_q(prefix=""):
+    """Served, and both the product and its business are fresh and active."""
+    return (
+        product_served_q(prefix)
+        & searchable_q(prefix)
+        & searchable_q(f"{prefix}business__")
+    )
+
+
 class ProductQuerySet(models.QuerySet):
+    def served(self):
+        return self.filter(product_served_q())
+
     def visible_in_search(self):
-        cutoff = search_cutoff()
-        return self.filter(
-            verified_at__gte=cutoff,
-            business__verified_at__gte=cutoff,
-        ).exclude(
-            verification_level=VerificationLevel.DISCONTINUED,
-        ).exclude(
-            business__verification_level=VerificationLevel.DISCONTINUED,
-        )
+        return self.filter(product_searchable_q())
 
     def with_sellable_variants(self):
         sellable_filter = Q(
@@ -176,7 +188,6 @@ class Product(ClusterableModel):
     verified_at = models.DateTimeField(
         blank=True,
         null=True,
-        default=timezone.now,
     )
 
     verified_by = models.ForeignKey(
@@ -197,7 +208,18 @@ class Product(ClusterableModel):
     verification_reference = models.CharField(
         max_length=300,
         blank=True,
-        help_text="Source name or URL when level is Verified source.",
+        help_text="Source name or URL when level is Information source checked.",
+    )
+
+    lifecycle_status = models.CharField(
+        max_length=20,
+        choices=LifecycleStatus.choices,
+        default=LifecycleStatus.ACTIVE,
+        db_index=True,
+        help_text=(
+            "Discontinued keeps the page online with a notice but removes the "
+            "product from search."
+        ),
     )
 
     created_at = models.DateTimeField(
@@ -241,21 +263,18 @@ class Product(ClusterableModel):
         return freshness_for(self.effective_verified_at)
 
     @property
-    def effective_level(self):
-        if self.business_id and (
-            self.business.verification_level
-            == VerificationLevel.DISCONTINUED
-        ):
-            return VerificationLevel.DISCONTINUED
-        return self.verification_level
+    def is_discontinued(self):
+        if self.lifecycle_status == LifecycleStatus.DISCONTINUED:
+            return True
+        return bool(self.business_id and self.business.is_discontinued)
 
     @property
     def level_meta(self):
-        return level_meta(self.effective_level)
+        return level_meta(self.verification_level)
 
     @property
     def is_trusted(self):
-        return is_trusted_level(self.effective_level)
+        return is_trusted_level(self.verification_level)
 
     @property
     def inherits_business_status(self):
@@ -489,6 +508,12 @@ class ProductVideo(VideoLink):
         Product,
         on_delete=models.CASCADE,
         related_name="videos",
+    )
+
+    kind = models.CharField(
+        max_length=30,
+        choices=ProductVideoKind.choices,
+        default=ProductVideoKind.OTHER,
     )
 
     class Meta(VideoLink.Meta):

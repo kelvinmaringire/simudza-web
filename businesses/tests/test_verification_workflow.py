@@ -9,10 +9,10 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from businesses.models import Business, ManufacturerSubmission
-from businesses.services import apply_submission
-from businesses.verification import VerificationLevel, TRUSTED_LEVELS
-from businesses.verification_workflow import (
+from businesses.models import Business
+from businesses.services import owner_save_product
+from businesses.verification.levels import LifecycleStatus, VerificationLevel, TRUSTED_LEVELS
+from businesses.verification.workflow import (
     businesses_due_for_reminder,
     verification_exceptions,
 )
@@ -41,6 +41,7 @@ class VerificationWorkflowTests(TestCase):
             name="Owned Co",
             slug="owned-co",
             owner=self.owner,
+            confirmed_owner=self.owner,
             verified_at=days_ago(120),
         )
         self.product = Product.objects.create(
@@ -76,15 +77,31 @@ class VerificationWorkflowTests(TestCase):
         self.assertGreater(self.business.verified_at, days_ago(1))
         self.assertEqual(
             self.business.verification_level,
-            VerificationLevel.VERIFIED_MANUFACTURER,
+            VerificationLevel.SOURCE_VERIFIED,
         )
         self.assertEqual(self.business.verified_by, self.owner)
         self.assertIsNone(self.business.verification_reminder_sent_at)
         self.assertGreater(self.product.verified_at, days_ago(1))
         self.assertEqual(
             self.product.verification_level,
-            VerificationLevel.VERIFIED_MANUFACTURER,
+            VerificationLevel.SOURCE_VERIFIED,
         )
+
+    def test_owner_confirm_keeps_simudza_verified_level(self):
+        for listing in (self.business, self.product):
+            listing.verification_level = VerificationLevel.SIMUDZA_VERIFIED
+            listing.save(update_fields=["verification_level"])
+        self.client.force_login(self.owner)
+        self.client.post(
+            reverse("accounts:owner_confirm"),
+            {"kind": "all", "business": self.business.pk},
+        )
+        for listing in (self.business, self.product):
+            listing.refresh_from_db()
+            self.assertEqual(
+                listing.verification_level, VerificationLevel.SIMUDZA_VERIFIED
+            )
+            self.assertGreater(listing.verified_at, days_ago(1))
 
     def test_owner_confirm_single_product(self):
         self.client.force_login(self.owner)
@@ -121,16 +138,19 @@ class VerificationWorkflowTests(TestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, ReportStatus.OPEN)
 
-    def test_owner_product_update_submission_counts_as_verification(self):
-        submission = ManufacturerSubmission.objects.create(
-            kind=ManufacturerSubmission.Kind.PRODUCT_UPDATE,
-            submitted_by=self.owner,
-            business=self.business,
+    def test_owner_product_update_counts_as_verification(self):
+        self.business.confirmed_owner = self.owner
+        self.business.save(update_fields=["confirmed_owner"])
+        owner_save_product(
+            self.owner,
+            self.business,
+            {
+                "name": "Owned Item v2",
+                "category": self.category,
+                "price": Decimal("11.00"),
+            },
             product=self.product,
-            product_name="Owned Item v2",
-            price="11.00",
         )
-        apply_submission(submission)
         self.product.refresh_from_db()
         self.variant.refresh_from_db()
         self.assertEqual(self.product.name, "Owned Item v2")
@@ -138,8 +158,43 @@ class VerificationWorkflowTests(TestCase):
         self.assertGreater(self.product.verified_at, days_ago(1))
         self.assertEqual(
             self.product.verification_level,
-            VerificationLevel.VERIFIED_MANUFACTURER,
+            VerificationLevel.SOURCE_VERIFIED,
         )
+
+    def test_owner_edit_of_simudza_verified_drops_level_and_emails_superusers(self):
+        User = get_user_model()
+        User.objects.create_superuser("root", "root@example.com", "pass")
+        User.objects.create_superuser("quiet", "", "pass")
+        self.product.verification_level = VerificationLevel.SIMUDZA_VERIFIED
+        self.product.save(update_fields=["verification_level"])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            owner_save_product(
+                self.owner,
+                self.business,
+                {"name": "Owned Item v2", "category": self.category},
+                product=self.product,
+            )
+
+        self.product.refresh_from_db()
+        self.assertEqual(
+            self.product.verification_level, VerificationLevel.SOURCE_VERIFIED
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["root@example.com"])
+        self.assertIn("Owned Item v2", mail.outbox[0].subject)
+        self.assertIn(f"/admin/product/edit/{self.product.pk}/", mail.outbox[0].body)
+
+    def test_owner_edit_of_other_levels_sends_no_reverification_email(self):
+        get_user_model().objects.create_superuser("root", "root@example.com", "pass")
+        with self.captureOnCommitCallbacks(execute=True):
+            owner_save_product(
+                self.owner,
+                self.business,
+                {"name": "Owned Item v2", "category": self.category},
+                product=self.product,
+            )
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_dashboard_shows_owner_listings(self):
         self.client.force_login(self.owner)
@@ -231,28 +286,53 @@ class VerificationWorkflowTests(TestCase):
         row = self._exception_for(self.product, "product")
         self.assertEqual(row["severity"], "high")
 
-    def test_staff_verify_records_source_and_clears_exception(self):
+    def test_superuser_verify_records_source_and_clears_exception(self):
+        superuser = get_user_model().objects.create_superuser(
+            "root", "root@example.com", "pass"
+        )
         BusinessReview.objects.create(
             business=self.orphan,
             reason=ReportReason.BUSINESS_CLOSED,
             status=ReportStatus.OPEN,
         )
-        self.client.force_login(self.staff)
+        self.client.force_login(superuser)
         self.client.post(
             reverse("accounts:verify_listing"),
             {
                 "kind": "business",
                 "pk": self.orphan.pk,
-                "level": VerificationLevel.SIMUDZA_CHECKED,
+                "level": VerificationLevel.SIMUDZA_VERIFIED,
             },
         )
         self.orphan.refresh_from_db()
         self.assertEqual(
             self.orphan.verification_level,
-            VerificationLevel.SIMUDZA_CHECKED,
+            VerificationLevel.SIMUDZA_VERIFIED,
         )
-        self.assertEqual(self.orphan.verified_by, self.staff)
+        self.assertEqual(self.orphan.verified_by, superuser)
         self.assertIsNone(self._exception_for(self.orphan, "business"))
+
+    def test_staff_cannot_set_simudza_verified(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            reverse("accounts:verify_listing"),
+            {
+                "kind": "business",
+                "pk": self.orphan.pk,
+                "level": VerificationLevel.SIMUDZA_VERIFIED,
+            },
+            follow=True,
+        )
+        self.assertContains(response, "Only superusers can mark listings as Simudza Verified")
+        self.orphan.refresh_from_db()
+        self.assertEqual(self.orphan.verification_level, VerificationLevel.UNVERIFIED)
+
+    def test_staff_level_choices_exclude_simudza_verified(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("accounts:dashboard"))
+        levels = {meta.level for meta in response.context["verification_level_choices"]}
+        self.assertNotIn(VerificationLevel.SIMUDZA_VERIFIED, levels)
+        self.assertIn(VerificationLevel.SOURCE_VERIFIED, levels)
 
     def test_staff_set_verified_source_with_reference(self):
         self.client.force_login(self.staff)
@@ -261,14 +341,14 @@ class VerificationWorkflowTests(TestCase):
             {
                 "kind": "product",
                 "pk": self.product.pk,
-                "level": VerificationLevel.VERIFIED_SOURCE,
+                "level": VerificationLevel.SOURCE_VERIFIED,
                 "reference": "ZimTrade registry #123",
             },
         )
         self.product.refresh_from_db()
         self.assertEqual(
             self.product.verification_level,
-            VerificationLevel.VERIFIED_SOURCE,
+            VerificationLevel.SOURCE_VERIFIED,
         )
         self.assertEqual(
             self.product.verification_reference,
@@ -276,11 +356,17 @@ class VerificationWorkflowTests(TestCase):
         )
 
     def test_discontinued_business_hidden_from_search(self):
-        self.business.verification_level = VerificationLevel.DISCONTINUED
+        self.business.lifecycle_status = LifecycleStatus.DISCONTINUED
         self.business.verified_at = timezone.now()
         self.business.save()
         self.assertFalse(
             Business.objects.visible_in_search().filter(pk=self.business.pk).exists()
+        )
+
+    def test_trusted_levels_are_simudza_and_source_verified(self):
+        self.assertEqual(
+            TRUSTED_LEVELS,
+            {VerificationLevel.SIMUDZA_VERIFIED, VerificationLevel.SOURCE_VERIFIED},
         )
 
     def test_trusted_levels_filter(self):
@@ -292,7 +378,7 @@ class VerificationWorkflowTests(TestCase):
                 verification_level__in=TRUSTED_LEVELS,
             ).exists()
         )
-        self.business.verification_level = VerificationLevel.VERIFIED_MANUFACTURER
+        self.business.verification_level = VerificationLevel.SIMUDZA_VERIFIED
         self.business.save(update_fields=["verification_level"])
         self.assertTrue(
             Business.objects.filter(
@@ -302,7 +388,7 @@ class VerificationWorkflowTests(TestCase):
         )
 
     def test_discontinued_excluded_from_exceptions(self):
-        self.orphan.verification_level = VerificationLevel.DISCONTINUED
+        self.orphan.lifecycle_status = LifecycleStatus.DISCONTINUED
         self.orphan.save()
         self.assertIsNone(self._exception_for(self.orphan, "business"))
 

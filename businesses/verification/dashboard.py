@@ -8,7 +8,7 @@ from django.db.models.functions import Least
 from django.utils import timezone
 
 from businesses.models import Business
-from businesses.verification import (
+from businesses.verification.levels import (
     CURRENT_DAYS,
     FRESHNESS_BY_TIER,
     LEVEL_META,

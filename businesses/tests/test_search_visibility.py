@@ -6,45 +6,19 @@ from django.urls import reverse
 from django.utils import timezone
 
 from businesses.models import Business
-from businesses.verification import FreshnessTier, freshness_for
+from businesses.verification.levels import FreshnessTier, LifecycleStatus, VerificationLevel
 from categories.models import Category
 from directory.models import DirectoryListing
 from products.models import Product
+from products.test_helpers import add_sellable_variant
 
 
-class VerificationFreshnessTests(TestCase):
-    def setUp(self):
-        self.now = timezone.now()
-
-    def test_freshness_tier_boundaries(self):
-        cases = [
-            (0, FreshnessTier.CURRENT),
-            (90, FreshnessTier.CURRENT),
-            (91, FreshnessTier.NEEDS),
-            (180, FreshnessTier.NEEDS),
-            (181, FreshnessTier.STALE),
-            (365, FreshnessTier.STALE),
-            (366, FreshnessTier.HIDDEN),
-            (None, FreshnessTier.HIDDEN),
-        ]
-        for days, expected in cases:
-            with self.subTest(days=days):
-                dt = None if days is None else self.now - timedelta(days=days)
-                self.assertEqual(freshness_for(dt, now=self.now).tier, expected)
-
-
-class VerificationVisibilityTests(TestCase):
+class SearchVisibilityTests(TestCase):
     def setUp(self):
         owner = get_user_model().objects.create_user(
             "owner",
             "owner@example.com",
             "pass",
-        )
-        self.staff = get_user_model().objects.create_user(
-            "staff",
-            "staff@example.com",
-            "pass",
-            is_staff=True,
         )
         self.category = Category.objects.create(name="Cat", slug="cat")
         self.business = Business.objects.create(
@@ -59,8 +33,6 @@ class VerificationVisibilityTests(TestCase):
             owner=owner,
             verified_at=timezone.now() - timedelta(days=400),
         )
-        from products.test_helpers import add_sellable_variant
-
         self.product = Product.objects.create(
             business=self.business,
             category=self.category,
@@ -146,55 +118,72 @@ class VerificationVisibilityTests(TestCase):
         )
         self.assertEqual(detail.status_code, 200)
 
-    def test_verify_listing_requires_staff_and_post(self):
+    def test_every_verification_level_is_searchable(self):
+        for level in VerificationLevel:
+            with self.subTest(level=level):
+                Business.objects.filter(pk=self.business.pk).update(
+                    verification_level=level
+                )
+                self.assertTrue(
+                    Business.objects.visible_in_search()
+                    .filter(pk=self.business.pk)
+                    .exists()
+                )
+
+    def test_discontinued_is_a_lifecycle_status_not_a_level(self):
+        self.assertNotIn("discontinued", VerificationLevel.values)
+        self.assertIn("discontinued", LifecycleStatus.values)
+
+    def test_directory_hides_discontinued_product_and_business(self):
         client = Client()
-        url = reverse("accounts:verify_listing")
-        self.hidden_business.verified_at = timezone.now() - timedelta(days=400)
-        self.hidden_business.save(update_fields=["verified_at"])
-
-        client.force_login(get_user_model().objects.create_user("member", "m@x.com", "pass"))
-        denied = client.post(
-            url,
-            {"kind": "business", "pk": self.hidden_business.pk},
-            HTTP_HOST="localhost",
+        Product.objects.filter(pk=self.product.pk).update(
+            lifecycle_status=LifecycleStatus.DISCONTINUED
         )
-        self.assertEqual(denied.status_code, 403)
+        index = client.get(reverse("directory:index"), HTTP_HOST="localhost")
+        self.assertNotContains(index, "Fresh Item")
 
-        client.force_login(self.staff)
-        self.assertEqual(client.get(url, HTTP_HOST="localhost").status_code, 405)
-
-        ok = client.post(
-            url,
-            {
-                "kind": "business",
-                "pk": self.hidden_business.pk,
-                "level": "simudza_checked",
-            },
-            HTTP_HOST="localhost",
+        Product.objects.filter(pk=self.product.pk).update(
+            lifecycle_status=LifecycleStatus.ACTIVE
         )
-        self.assertEqual(ok.status_code, 302)
-        self.hidden_business.refresh_from_db()
-        self.assertGreaterEqual(self.hidden_business.verified_at, timezone.now() - timedelta(minutes=1))
-
-
-class ProductEffectiveVerificationTests(TestCase):
-    def setUp(self):
-        owner = get_user_model().objects.create_user("o", "o@x.com", "pass")
-        self.category = Category.objects.create(name="C", slug="c")
-        self.business = Business.objects.create(
-            name="Biz",
-            slug="biz",
-            owner=owner,
-            verified_at=timezone.now() - timedelta(days=200),
+        Business.objects.filter(pk=self.business.pk).update(
+            lifecycle_status=LifecycleStatus.DISCONTINUED
         )
+        index = client.get(reverse("directory:index"), HTTP_HOST="localhost")
+        self.assertNotContains(index, "Fresh Item")
 
-    def test_effective_verified_at_uses_older_business_date(self):
-        product = Product.objects.create(
-            business=self.business,
-            category=self.category,
-            name="P",
-            slug="p",
-            verified_at=timezone.now(),
+    def test_inactive_business_and_its_products_are_not_served(self):
+        Business.objects.filter(pk=self.business.pk).update(is_active=False)
+        client = Client()
+
+        self.assertFalse(Business.objects.visible_in_search().filter(pk=self.business.pk).exists())
+        self.assertFalse(Product.objects.visible_in_search().filter(pk=self.product.pk).exists())
+        self.assertFalse(Product.objects.served().filter(pk=self.product.pk).exists())
+
+        for url in ("directory:index", "marketplace:index", "businesses:index"):
+            with self.subTest(url=url):
+                response = client.get(reverse(url), HTTP_HOST="localhost")
+                self.assertNotContains(response, "Fresh Item")
+                self.assertNotContains(response, "Fresh Co")
+
+        for url in (
+            self.business.get_absolute_url(),
+            self.product.get_absolute_url(),
+            self.product.get_marketplace_url(),
+        ):
+            with self.subTest(url=url):
+                response = client.get(url, HTTP_HOST="localhost")
+                self.assertEqual(response.status_code, 404)
+
+    def test_discontinued_business_is_served_but_not_searchable(self):
+        Business.objects.filter(pk=self.business.pk).update(
+            lifecycle_status=LifecycleStatus.DISCONTINUED,
+            verification_level=VerificationLevel.SIMUDZA_VERIFIED,
         )
-        self.assertEqual(product.effective_verified_at, self.business.verified_at)
-        self.assertEqual(product.freshness.tier, FreshnessTier.STALE)
+        client = Client()
+        self.assertFalse(Business.objects.visible_in_search().filter(pk=self.business.pk).exists())
+        self.assertTrue(Business.objects.served().filter(pk=self.business.pk).exists())
+        for url in (self.business.get_absolute_url(), self.product.get_absolute_url()):
+            with self.subTest(url=url):
+                response = client.get(url, HTTP_HOST="localhost")
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "discontinued or withdrawn")

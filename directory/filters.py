@@ -1,20 +1,17 @@
 import django_filters
 from django.db.models import Q
 
-from businesses.verification import TRUSTED_LEVELS, search_cutoff
+from businesses.verification.levels import TRUSTED_LEVELS
 from categories.models import Category
-from products.models import Product
+from products.models import Product, product_searchable_q
 
 from .models import DirectoryListing
 
 
 def _directory_base_qs():
-    cutoff = search_cutoff()
     return DirectoryListing.objects.filter(
+        product_searchable_q("product__"),
         show_in_directory=True,
-        product__status=Product.ProductStatus.PUBLISHED,
-        product__verified_at__gte=cutoff,
-        product__business__verified_at__gte=cutoff,
     )
 
 

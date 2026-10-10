@@ -21,7 +21,6 @@ from .admin_filters import CategoryAttentionFilterSet
 from .forms import CategoryForm
 from .models import Category
 from .panels import CategoryIssuesPanel
-from .quality import category_issues
 from .resources import CategoryResource
 
 
@@ -83,10 +82,6 @@ class CategoryChooserViewSet(ChooserViewSet):
 category_chooser_viewset = CategoryChooserViewSet("category_chooser")
 
 
-def _category_attention_count(category):
-    return len(category_issues(category))
-
-
 class CategoryTreeTitleColumn(TitleColumn):
     """Title cell showing the full path, with every ancestor linked."""
 
@@ -114,7 +109,7 @@ class CategoryIndexView(BulkEditIndexView):
     default_ordering = "tree_path_names"
 
     def get_base_queryset(self):
-        return super().get_base_queryset().with_tree_path()
+        return super().get_base_queryset().with_tree_path().with_attention()
 
     def _get_ancestor_url(self, pk):
         if self.edit_url_name and self.user_has_permission("change"):
@@ -150,15 +145,16 @@ class CategoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
     menu_label = "Categories"
     menu_icon = "folder-open-inverse"
 
-    add_to_admin_menu = True
+    add_to_admin_menu = False
     filterset_class = CategoryAttentionFilterSet
 
     list_display = [
         "name",
         Column(
-            "attention",
+            "attention_count",
             label=_("Needs attention"),
-            accessor=_category_attention_count,
+            accessor="attention_count",
+            sort_key="attention_count",
         ),
         "is_active",
     ]

@@ -2,8 +2,7 @@ from django.db.models import F
 from django.shortcuts import redirect
 from django.views.generic import DetailView, ListView
 
-from businesses.verification import search_cutoff
-from products.models import Product
+from products.models import product_searchable_q, product_served_q
 
 from .filters import DirectoryListingFilter, build_directory_category_tree
 from .models import DirectoryListing, DirectoryPage
@@ -48,13 +47,10 @@ class DirectoryListingQuerysetMixin:
         return self._filterset
 
     def get_base_queryset(self):
-        cutoff = search_cutoff()
         return (
             DirectoryListing.objects.filter(
+                product_searchable_q("product__"),
                 show_in_directory=True,
-                product__status=Product.ProductStatus.PUBLISHED,
-                product__verified_at__gte=cutoff,
-                product__business__verified_at__gte=cutoff,
             )
             .select_related(
                 "product",
@@ -129,8 +125,8 @@ class DirectoryProductDetailView(DetailView):
 
     def get_queryset(self):
         return DirectoryListing.objects.filter(
+            product_served_q("product__"),
             show_in_directory=True,
-            product__status=Product.ProductStatus.PUBLISHED,
         ).select_related("product")
 
     def get(self, request, *args, **kwargs):

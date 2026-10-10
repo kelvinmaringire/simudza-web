@@ -8,12 +8,12 @@
 
 {% block dashboard_subheading %}
 <p class="hidden truncate text-sm text-base-content/60 sm:block">
-    {% if product %}Change the details shoppers see for this product.{% else %}Submit product details and an image. New products are saved as pending review.{% endif %}
+    {% if product %}Change the details shoppers see for this product.{% else %}Add product details and an image. New products are saved as pending review.{% endif %}
 </p>
 {% endblock %}
 
 {% block dashboard_actions %}
-<a href="{% url 'businesses:submit' %}" class="btn btn-ghost btn-sm hidden sm:inline-flex">← All submissions</a>
+<a href="{% url 'businesses:submit' %}" class="btn btn-ghost btn-sm hidden sm:inline-flex">← Business hub</a>
 {% endblock %}
 
 {% block dashboard_content %}
@@ -31,22 +31,18 @@
                 <legend class="text-base font-semibold">Product</legend>
                 {% if product %}
                     {{ form.business }}
-                    <input type="hidden" name="product" value="{{ product.pk }}" />
                 {% else %}
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        {% include "businesses/partials/form_field.html" with field=form.business %}
-                        {% include "businesses/partials/form_field.html" with field=form.product label="Existing product (optional)" %}
-                    </div>
+                    {% include "businesses/partials/form_field.html" with field=form.business label="Company" %}
                 {% endif %}
                 <div class="grid gap-4 sm:grid-cols-2">
-                    {% include "businesses/partials/form_field.html" with field=form.product_name label="Product name" %}
+                    {% include "businesses/partials/form_field.html" with field=form.name label="Product name" %}
                     {% include "businesses/partials/form_field.html" with field=form.brand_name label="Brand" %}
                     {% include "businesses/partials/form_field.html" with field=form.category %}
                     {% include "businesses/partials/form_field.html" with field=form.origin_type label="Product type" %}
                 </div>
                 {% include "businesses/partials/form_field.html" with field=form.short_description %}
-                {% include "businesses/partials/form_field.html" with field=form.product_description label="Description / specifications" %}
-                {% include "businesses/partials/form_field.html" with field=form.product_image_upload label="Product image" %}
+                {% include "businesses/partials/form_field.html" with field=form.description label="Description / specifications" %}
+                {% include "businesses/partials/form_field.html" with field=form.image_upload label="Product image" %}
             </div>
         </fieldset>
 
@@ -63,13 +59,6 @@
             </div>
         </fieldset>
 
-        <fieldset class="card border-base-300 bg-base-100 border shadow-sm">
-            <div class="card-body gap-4 p-4 sm:p-6">
-                <legend class="text-base font-semibold">For the Simudza team</legend>
-                {% include "businesses/partials/form_field.html" with field=form.submitter_notes label="Notes for reviewers" %}
-            </div>
-        </fieldset>
-
         <div class="flex flex-wrap items-center justify-end gap-2">
             <a href="{% url 'businesses:submit' %}" class="btn btn-ghost">Cancel</a>
             <button type="submit" class="btn btn-primary">
@@ -78,10 +67,6 @@
         </div>
     </form>
 
-    {% if product %}
-        {% include "businesses/partials/submit_help.html" with tip="Updating your own product also marks it as verified today." %}
-    {% else %}
-        {% include "businesses/partials/submit_help.html" with tip="New products are reviewed by the Simudza team before they appear in the directory." %}
-    {% endif %}
+    {% include "businesses/partials/submit_help.html" with tip="New products stay pending until Simudza publishes them. Confirmed owners get verified when they update existing listings." %}
 </div>
 {% endblock %}

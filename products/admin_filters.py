@@ -27,6 +27,8 @@ class ProductQualityFilterSet(WagtailFilterSet):
         model = Product
         fields = [
             "status",
+            "lifecycle_status",
+            "verification_level",
             "origin_type",
             "featured",
             "category",

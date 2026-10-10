@@ -3,7 +3,7 @@ from import_export.widgets import ForeignKeyWidget
 
 from businesses.models import Business
 from categories.models import Category
-from products.forms import unique_product_slug
+from products.forms import save_product_with_unique_slug
 from simudza.utils.import_export_mixins import ImportUserMixin, VerificationLevelMixin
 
 from .models import Product, ProductVariant
@@ -35,6 +35,7 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
             "origin_type",
             "brand_name",
             "status",
+            "lifecycle_status",
             "featured",
             "verification_level",
             "verification_reference",
@@ -53,8 +54,14 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
                 .first()
             )
             should_set_slug = previous_status == Product.ProductStatus.DRAFT
-        if should_set_slug:
-            instance.slug = unique_product_slug(name, exclude_pk=instance.pk)
+        instance._generate_slug_from = name if should_set_slug else None
+
+    def do_instance_save(self, instance, is_create):
+        name = getattr(instance, "_generate_slug_from", None)
+        if name:
+            save_product_with_unique_slug(instance, name=name)
+        else:
+            instance.save()
 
 
 class ProductVariantResource(resources.ModelResource):

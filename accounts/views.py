@@ -17,8 +17,8 @@ from django.views import View
 from django.views.generic import FormView, TemplateView
 
 from businesses.models import Business
-from businesses.verification import VerificationLevel, level_legend
-from businesses.verification_dashboard import (
+from businesses.verification.levels import VerificationLevel, level_legend
+from businesses.verification.dashboard import (
     business_level_counts,
     business_tier_counts,
     flagged_businesses,
@@ -30,7 +30,10 @@ from businesses.verification_dashboard import (
     product_tier_counts,
     tier_count_rows,
 )
-from businesses.verification_workflow import (
+from businesses.verification.workflow import (
+    LevelNotAllowed,
+    OwnershipNotConfirmed,
+    can_grant_level,
     owner_confirm_business,
     owner_confirm_products,
     owner_listings,
@@ -127,7 +130,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         if user.is_staff:
             context["verification_level_legend"] = level_legend()
-            context["verification_level_choices"] = level_legend()
+            context["verification_level_choices"] = [
+                meta for meta in level_legend() if can_grant_level(user, meta.level)
+            ]
             context["verification_legend"] = freshness_legend()
             context["business_level_rows"] = level_count_rows(
                 business_level_counts(),
@@ -159,6 +164,17 @@ class OwnerConfirmView(LoginRequiredMixin, View):
             pk=request.POST.get("business"),
             owner=request.user,
         )
+        try:
+            self._confirm(request, business, kind)
+        except OwnershipNotConfirmed:
+            messages.error(
+                request,
+                f'Simudza has not yet confirmed that you represent "{business.name}". '
+                "You can keep editing it, but it can't be marked as verified until we do.",
+            )
+        return redirect(reverse("accounts:dashboard") + "#my-listings")
+
+    def _confirm(self, request, business, kind):
         if kind == "business":
             owner_confirm_business(business, request.user)
             messages.success(request, f'Thanks — "{business.name}" is confirmed as accurate.')
@@ -186,7 +202,6 @@ class OwnerConfirmView(LoginRequiredMixin, View):
             messages.success(request, f'Confirmed "{product.name}" as accurate.')
         else:
             messages.error(request, "Unknown listing type.")
-        return redirect(reverse("accounts:dashboard") + "#my-listings")
 
 
 class VerifyListingView(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -207,21 +222,20 @@ class VerifyListingView(LoginRequiredMixin, UserPassesTestMixin, View):
             return redirect(reverse("accounts:dashboard") + "#verification")
 
         if kind == "business":
-            business = get_object_or_404(Business, pk=pk)
-            staff_set_level(business, request.user, level, reference)
-            messages.success(
-                request,
-                f'Set "{business.name}" to {business.get_verification_level_display()}.',
-            )
+            listing = get_object_or_404(Business, pk=pk)
         elif kind == "product":
-            product = get_object_or_404(Product, pk=pk)
-            staff_set_level(product, request.user, level, reference)
-            messages.success(
-                request,
-                f'Set "{product.name}" to {product.get_verification_level_display()}.',
-            )
+            listing = get_object_or_404(Product, pk=pk)
         else:
             messages.error(request, "Unknown listing type.")
             return redirect(reverse("accounts:dashboard") + "#verification")
 
+        try:
+            staff_set_level(listing, request.user, level, reference)
+        except LevelNotAllowed as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(
+                request,
+                f'Set "{listing.name}" to {listing.get_verification_level_display()}.',
+            )
         return redirect(reverse("accounts:dashboard") + "#verification")

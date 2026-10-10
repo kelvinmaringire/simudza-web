@@ -287,6 +287,10 @@ WAGTAILSEARCH_BACKENDS = {
 # e.g. in notification emails. Don't include '/admin' or a trailing slash
 WAGTAILADMIN_BASE_URL = os.getenv("WAGTAILADMIN_BASE_URL", "http://localhost:8000")
 
+# Wagtail image collection for logos uploaded from the owner dashboard. Looked up
+# by name (ids differ between environments) and created under Root if missing.
+BUSINESS_LOGO_COLLECTION_NAME = "Businesses"
+
 # Allowed file extensions for documents in the document library.
 # This can be omitted to allow all files, but note that this may present a security risk
 # if untrusted users are allowed to upload files -

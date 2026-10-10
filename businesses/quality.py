@@ -2,23 +2,16 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
-from django.core.exceptions import ValidationError
-from django.core.validators import EmailValidator, URLValidator
 from django.utils import timezone
 
-from businesses.verification import FreshnessTier, freshness_for
+from businesses.verification.levels import FreshnessTier, freshness_for
 
 from .models import Business
 
-PHONE_MIN_DIGITS = 7
-_phone_digit_re = re.compile(r"\d")
-
 ISSUE_LABELS = {
-    "missing_contact": "Missing contact",
-    "invalid_contact": "Invalid contact",
+    "missing_contact": "Not contactable (no website, email or phone)",
     "missing_logo": "Missing logo",
     "verification_expired": "Verification expired",
     "duplicate_suspected": "Duplicate suspected",
@@ -42,59 +35,26 @@ class QualityReport:
     max_score: int = 10
 
 
-def _phone_valid(phone: str) -> bool:
-    if not phone or not phone.strip():
-        return False
-    digits = len(_phone_digit_re.findall(phone))
-    return digits >= PHONE_MIN_DIGITS
+def _filled(value) -> bool:
+    return bool(value and value.strip())
 
 
-def _email_valid(email: str) -> bool:
-    if not email or not email.strip():
-        return False
-    try:
-        EmailValidator()(email)
-        return True
-    except ValidationError:
-        return False
-
-
-def _website_valid(website: str) -> bool:
-    if not website or not website.strip():
-        return False
-    try:
-        URLValidator()(website)
-        return True
-    except ValidationError:
-        return False
-
-
-def contact_field_errors(*, email: str, phone: str, website: str) -> bool:
-    """True if any non-empty contact field fails validation."""
-    if email and email.strip() and not _email_valid(email):
-        return True
-    if website and website.strip() and not _website_valid(website):
-        return True
-    if phone and phone.strip() and not _phone_valid(phone):
-        return True
-    return False
-
-
-def has_valid_contact(*, email: str, phone: str) -> bool:
-    return _email_valid(email) or _phone_valid(phone)
+def is_contactable(business: Business) -> bool:
+    """
+    A website, email or phone is required. Address alone does not count:
+    it changes too easily to be the only way to reach a business.
+    """
+    return any(_filled(v) for v in (business.website, business.email, business.phone))
 
 
 def evaluate_business(business: Business, *, now=None) -> QualityReport:
     now = now or timezone.now()
     issues: list[str] = []
 
-    has_phone = bool(business.phone and business.phone.strip())
-    has_email = bool(business.email and business.email.strip())
-    has_location = bool(
-        (business.address and business.address.strip())
-        or (business.town_or_city and business.town_or_city.strip())
-    )
-    has_website = bool(business.website and business.website.strip())
+    has_phone = _filled(business.phone)
+    has_email = _filled(business.email)
+    has_location = _filled(business.address) or _filled(business.town_or_city)
+    has_website = _filled(business.website)
     freshness = freshness_for(business.verified_at, now=now)
     verification_ok = freshness.tier not in (
         FreshnessTier.STALE,
@@ -129,14 +89,8 @@ def evaluate_business(business: Business, *, now=None) -> QualityReport:
     )
     score = sum(1 for c in checks if c.passed)
 
-    if not has_phone and not has_email:
+    if not is_contactable(business):
         issues.append("missing_contact")
-    if contact_field_errors(
-        email=business.email or "",
-        phone=business.phone or "",
-        website=business.website or "",
-    ):
-        issues.append("invalid_contact")
     if business.logo_id is None:
         issues.append("missing_logo")
     if not verification_ok:
@@ -144,7 +98,7 @@ def evaluate_business(business: Business, *, now=None) -> QualityReport:
     if not published_products:
         issues.append("no_products")
 
-    from businesses.verification_dashboard import OPEN_REPORT_FILTER
+    from businesses.verification.dashboard import OPEN_REPORT_FILTER
     from duplicates.models import DuplicateFlag
     from reviews.models import BusinessReview
 

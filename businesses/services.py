@@ -1,202 +1,187 @@
-from django.core.files.base import ContentFile
+"""Saves businesses and products submitted through the Simudza owner dashboard."""
+
 from django.db import transaction
 from django.utils import timezone
 from wagtail.images import get_image_model
 
-from products.forms import unique_product_slug
+from products.forms import save_product_with_unique_slug
 from products.models import Product
 from products.services import upsert_default_variant
+from simudza.utils.collections import business_logo_collection
 
-from .models import (
-    Business,
-    ManufacturerSubmission,
-    RetailLocation,
-    unique_business_slug,
-)
-from .verification import VerificationLevel
+from .models import Business, save_business_with_unique_slug
+from .verification.levels import VerificationLevel, is_trusted_level
+from .verification.workflow import notify_superusers_of_owner_edit
 
 
-def _wagtail_image_from_upload(upload, *, title, user):
+def _apply_listing_trust(listing, business, *, user):
+    """
+    Set verification fields on a business or product after an owner write.
+    Owners never grant Simudza Verified: a confirmed owner's edit counts as
+    Information source checked. Returns True when the edit took a Simudza
+    Verified listing down, so a superuser must re-verify it.
+    """
+    was_simudza_verified = (
+        listing.pk is not None
+        and listing.verification_level == VerificationLevel.SIMUDZA_VERIFIED
+    )
+    if business.is_confirmed_owner(user):
+        listing.verified_at = timezone.now()
+        listing.verified_by = user
+        listing.verification_level = VerificationLevel.SOURCE_VERIFIED
+        listing.verification_reference = ""
+        if isinstance(listing, Business):
+            listing.verification_reminder_sent_at = None
+    elif is_trusted_level(listing.verification_level):
+        listing.verification_level = VerificationLevel.COMMUNITY_REPORTED
+    return was_simudza_verified
+
+
+def _notify_superusers_after_commit(listing, user):
+    transaction.on_commit(lambda: notify_superusers_of_owner_edit(listing, user))
+
+
+def _wagtail_image_from_upload(upload, *, title, user, collection=None):
     if not upload:
         return None
     Image = get_image_model()
     image = Image(title=(title or upload.name)[:255], uploaded_by_user=user)
+    if collection is not None:
+        image.collection = collection
     upload.seek(0)
-    image.file.save(
-        upload.name,
-        ContentFile(upload.read()),
-        save=True,
-    )
+    image.file = upload
+    image._set_image_file_metadata()
+    image.save()
     return image
 
 
-@transaction.atomic
-def apply_submission(submission, *, reviewer=None):
-    """Write a submission onto Business / Product / RetailLocation records."""
-    if submission.status == ManufacturerSubmission.Status.APPLIED:
-        return submission
+def _require_business_owner(business, user):
+    if business.owner_id != user.pk:
+        raise PermissionError("You can only edit companies you own.")
 
+
+def _require_product_owner(product, user):
+    if product.business.owner_id != user.pk:
+        raise PermissionError("You can only edit products you own.")
+
+
+@transaction.atomic
+def owner_save_company(user, data, *, business=None, logo_upload=None):
+    """
+    Create or update a Business from owner dashboard data.
+    ``data`` is a dict of Business field values (from a form's cleaned_data).
+    """
     from history.context import change_context
     from history.models import ChangeLog
 
-    kind = submission.kind
-    user = submission.submitted_by
+    creating = business is None
+    if not creating:
+        _require_business_owner(business, user)
 
-    with change_context(
-        user=reviewer or user,
-        source=ChangeLog.Source.SUBMISSION,
-        reason=f"Submission #{submission.pk}",
-    ):
-        return _apply_submission_body(submission, reviewer=reviewer, user=user, kind=kind)
-
-
-def _apply_submission_body(submission, *, reviewer, user, kind):
-    if kind == ManufacturerSubmission.Kind.COMPANY_PROFILE:
-        business = submission.business
-        creating = business is None
+    with change_context(user=user, source=ChangeLog.Source.SUBMISSION):
         if creating:
             business = Business(
                 owner=user,
                 verification_level=VerificationLevel.UNVERIFIED,
                 verified_at=None,
-                is_active=True,
+                is_active=False,
             )
-        business.name = submission.company_name or business.name
-        if submission.business_type:
-            business.business_type = submission.business_type
-        business.description = submission.company_description
-        business.website = submission.website
-        business.email = submission.email
-        business.phone = submission.phone
-        business.address = submission.address
-        business.town_or_city = submission.town_or_city
-        if not business.slug or creating:
-            business.slug = unique_business_slug(
-                business.name,
-                exclude_pk=business.pk,
-            )
-        if creating and business.owner_id is None:
-            business.owner = user
+        business.name = data.get("name") or business.name
+        if data.get("business_type"):
+            business.business_type = data["business_type"]
+        if "description" in data:
+            business.description = data.get("description") or ""
+        if "website" in data:
+            business.website = data.get("website") or ""
+        if "email" in data:
+            business.email = data.get("email") or ""
+        if "phone" in data:
+            business.phone = data.get("phone") or ""
+        if "address" in data:
+            business.address = data.get("address") or ""
+        if "town_or_city" in data:
+            business.town_or_city = data.get("town_or_city") or ""
         logo = _wagtail_image_from_upload(
-            submission.logo_upload,
+            logo_upload,
             title=f"{business.name} logo",
             user=user,
+            collection=business_logo_collection() if logo_upload else None,
         )
         if logo:
             business.logo = logo
-        if user is not None and business.owner_id == user.pk:
-            business.verified_at = timezone.now()
-            business.verified_by = user
-            business.verification_level = VerificationLevel.VERIFIED_MANUFACTURER
-            business.verification_reference = ""
-            business.verification_reminder_sent_at = None
-        elif reviewer is not None:
-            business.verification_level = VerificationLevel.COMMUNITY_REPORTED
-        business.save()
-        submission.business = business
+        needs_reverification = _apply_listing_trust(business, business, user=user)
+        if creating or not business.slug:
+            save_business_with_unique_slug(business)
+        else:
+            business.save()
+    if needs_reverification:
+        _notify_superusers_after_commit(business, user)
+    return business
 
-    elif kind == ManufacturerSubmission.Kind.NEW_PRODUCT:
-        if submission.business_id is None:
-            raise ValueError("New product submissions require a business.")
-        if submission.category_id is None:
-            raise ValueError("New product submissions require a category.")
-        product = Product(
-            business=submission.business,
-            name=submission.product_name,
-            short_description=submission.short_description,
-            description=submission.product_description,
-            category=submission.category,
-            origin_type=(
-                submission.origin_type or Product.OriginType.MADE_IN_ZIMBABWE
-            ),
-            brand_name=submission.brand_name,
-            status=Product.ProductStatus.PENDING,
-            slug=unique_product_slug(submission.product_name),
-        )
-        image = _wagtail_image_from_upload(
-            submission.product_image_upload,
-            title=submission.product_name,
-            user=user,
-        )
-        if image:
-            product.image = image
-        if user is not None and submission.business.owner_id == user.pk:
-            product.verified_at = timezone.now()
-            product.verified_by = user
-            product.verification_level = VerificationLevel.VERIFIED_MANUFACTURER
-        elif reviewer is not None and submission.business.owner_id != user.pk:
-            product.verification_level = VerificationLevel.COMMUNITY_REPORTED
-        product.save()
-        upsert_default_variant(
-            product,
-            sku=submission.sku,
-            barcode=submission.barcode,
-            size_value=submission.size_value,
-            size_unit=submission.size_unit,
-            price=submission.price,
-        )
-        submission.product = product
 
-    elif kind == ManufacturerSubmission.Kind.PRODUCT_UPDATE:
-        product = submission.product
-        if product is None:
-            raise ValueError("Product update submissions require a product.")
-        if submission.product_name:
-            product.name = submission.product_name
-        product.short_description = submission.short_description
-        product.description = submission.product_description
-        if submission.category_id:
-            product.category = submission.category
-        if submission.origin_type:
-            product.origin_type = submission.origin_type
-        product.brand_name = submission.brand_name
+@transaction.atomic
+def owner_save_product(user, business, data, *, product=None, image_upload=None):
+    """
+    Create or update a Product (and default variant) for an owned business.
+    """
+    from history.context import change_context
+    from history.models import ChangeLog
+
+    _require_business_owner(business, user)
+    creating = product is None
+    if not creating:
+        _require_product_owner(product, user)
+        if product.business_id != business.pk:
+            raise PermissionError("That product does not belong to the selected company.")
+
+    with change_context(user=user, source=ChangeLog.Source.SUBMISSION):
+        if creating:
+            if not data.get("category"):
+                raise ValueError("New products require a category.")
+            product = Product(
+                business=business,
+                name=data["name"],
+                short_description=data.get("short_description") or "",
+                description=data.get("description") or "",
+                category=data["category"],
+                origin_type=data.get("origin_type") or Product.OriginType.MADE_IN_ZIMBABWE,
+                brand_name=data.get("brand_name") or "",
+                status=Product.ProductStatus.PENDING,
+            )
+        else:
+            if data.get("name"):
+                product.name = data["name"]
+            if "short_description" in data:
+                product.short_description = data.get("short_description") or ""
+            if "description" in data:
+                product.description = data.get("description") or ""
+            if data.get("category"):
+                product.category = data["category"]
+            if data.get("origin_type"):
+                product.origin_type = data["origin_type"]
+            if "brand_name" in data:
+                product.brand_name = data.get("brand_name") or ""
+
         image = _wagtail_image_from_upload(
-            submission.product_image_upload,
+            image_upload,
             title=product.name,
             user=user,
         )
         if image:
             product.image = image
-        if user is not None and product.business.owner_id == user.pk:
-            product.verified_at = timezone.now()
-            product.verified_by = user
-            product.verification_level = VerificationLevel.VERIFIED_MANUFACTURER
-            product.verification_reference = ""
-        elif reviewer is not None and product.business.owner_id != user.pk:
-            product.verification_level = VerificationLevel.COMMUNITY_REPORTED
-        product.save()
+        needs_reverification = _apply_listing_trust(product, business, user=user)
+        if creating:
+            save_product_with_unique_slug(product)
+        else:
+            product.save()
         upsert_default_variant(
             product,
-            sku=submission.sku,
-            barcode=submission.barcode,
-            size_value=submission.size_value,
-            size_unit=submission.size_unit,
-            price=submission.price,
+            sku=data.get("sku") or "",
+            barcode=data.get("barcode") or "",
+            size_value=data.get("size_value"),
+            size_unit=data.get("size_unit") or "",
+            price=data.get("price"),
         )
-
-    elif kind == ManufacturerSubmission.Kind.RETAIL_LOCATION:
-        if submission.business_id is None:
-            raise ValueError("Retail location submissions require a business.")
-        location = submission.retail_location or RetailLocation(
-            business=submission.business,
-        )
-        location.business = submission.business
-        location.name = submission.location_name
-        location.address = submission.location_address
-        location.town_or_city = submission.location_town_or_city
-        location.phone = submission.location_phone
-        location.notes = submission.location_notes
-        location.is_active = True
-        location.save()
-        submission.retail_location = location
-
-    else:
-        raise ValueError(f"Unsupported submission kind: {kind}")
-
-    submission.status = ManufacturerSubmission.Status.APPLIED
-    submission.applied_at = timezone.now()
-    if reviewer is not None:
-        submission.reviewed_by = reviewer
-    submission.save()
-    return submission
-
+    if needs_reverification:
+        _notify_superusers_after_commit(product, user)
+    return product

@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Optional
 
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 CURRENT_DAYS = 90
@@ -17,14 +18,21 @@ OWNER_RESPONSE_GRACE_DAYS = 14
 
 
 class VerificationLevel(models.TextChoices):
-    VERIFIED_MANUFACTURER = (
-        "verified_manufacturer",
-        "Verified manufacturer",
+    """How reliable a listing's information is (not whether it is still trading)."""
+
+    SIMUDZA_VERIFIED = "simudza_verified", "Simudza Verified"
+    SOURCE_VERIFIED = "source_verified", "Information source checked"
+    COMMUNITY_REPORTED = (
+        "community_reported",
+        "Community reported — not verified by Simudza",
     )
-    SIMUDZA_CHECKED = "simudza_checked", "Simudza checked"
-    VERIFIED_SOURCE = "verified_source", "Verified source"
-    COMMUNITY_REPORTED = "community_reported", "Community reported"
-    UNVERIFIED = "unverified", "Unverified"
+    UNVERIFIED = "unverified", "Not yet verified"
+
+
+class LifecycleStatus(models.TextChoices):
+    """Whether a business is still trading / a product is still made."""
+
+    ACTIVE = "active", "Active"
     DISCONTINUED = "discontinued", "Discontinued / withdrawn"
 
 
@@ -36,70 +44,65 @@ class VerificationLevelMeta:
     badge_class: str
     emoji: str
     rank: int
+    shows_reference: bool = False
 
 
 LEVEL_META = {
-    VerificationLevel.VERIFIED_MANUFACTURER: VerificationLevelMeta(
-        level=VerificationLevel.VERIFIED_MANUFACTURER,
-        label="Verified manufacturer",
+    VerificationLevel.SIMUDZA_VERIFIED: VerificationLevelMeta(
+        level=VerificationLevel.SIMUDZA_VERIFIED,
+        label=VerificationLevel.SIMUDZA_VERIFIED.label,
         description=(
-            "Information supplied or confirmed by the manufacturer."
+            "Simudza checked this listing against defined evidence and completed "
+            "its verification process (registration documents, confirmed contact "
+            "details, or contact through an independently established channel)."
         ),
         badge_class="badge-success",
         emoji="🟢",
         rank=0,
     ),
-    VerificationLevel.SIMUDZA_CHECKED: VerificationLevelMeta(
-        level=VerificationLevel.SIMUDZA_CHECKED,
-        label="Simudza checked",
+    VerificationLevel.SOURCE_VERIFIED: VerificationLevelMeta(
+        level=VerificationLevel.SOURCE_VERIFIED,
+        label=VerificationLevel.SOURCE_VERIFIED.label,
         description=(
-            "Simudza staff confirmed directly (phone, site visit, or in-store)."
-        ),
-        badge_class="badge-secondary",
-        emoji="🟣",
-        rank=1,
-    ),
-    VerificationLevel.VERIFIED_SOURCE: VerificationLevelMeta(
-        level=VerificationLevel.VERIFIED_SOURCE,
-        label="Verified source",
-        description=(
-            "Corroborated through an authoritative source such as ZimTrade or SAZ."
+            "Simudza confirmed specific information against a reliable source, "
+            "such as the manufacturer's official website or catalogue, but has "
+            "not completed its full verification process."
         ),
         badge_class="badge-info",
         emoji="🔵",
-        rank=2,
+        rank=1,
+        shows_reference=True,
     ),
     VerificationLevel.COMMUNITY_REPORTED: VerificationLevelMeta(
         level=VerificationLevel.COMMUNITY_REPORTED,
-        label="Community reported",
-        description="Submitted by users but not independently verified.",
+        label=VerificationLevel.COMMUNITY_REPORTED.label,
+        description=(
+            "Submitted by a customer, retailer, supplier, or member of the public. "
+            "Simudza has not independently verified it."
+        ),
         badge_class="badge-warning",
         emoji="🟡",
-        rank=3,
+        rank=2,
     ),
     VerificationLevel.UNVERIFIED: VerificationLevelMeta(
         level=VerificationLevel.UNVERIFIED,
-        label="Unverified",
-        description="Discovered or listed, awaiting confirmation.",
+        label=VerificationLevel.UNVERIFIED.label,
+        description=(
+            "Listed in Simudza's database, but the required verification checks "
+            "have not been completed."
+        ),
         badge_class="badge-ghost",
         emoji="⚪",
-        rank=4,
-    ),
-    VerificationLevel.DISCONTINUED: VerificationLevelMeta(
-        level=VerificationLevel.DISCONTINUED,
-        label="Discontinued / withdrawn",
-        description="Historical listing, no longer confirmed as active.",
-        badge_class="badge-error",
-        emoji="🔴",
-        rank=5,
+        rank=3,
     ),
 }
 
+# Levels the public "Verified only" filter accepts, and the levels an
+# unconfirmed edit drops back to Community reported.
 TRUSTED_LEVELS = frozenset(
     {
-        VerificationLevel.VERIFIED_MANUFACTURER,
-        VerificationLevel.SIMUDZA_CHECKED,
-        VerificationLevel.VERIFIED_SOURCE,
+        VerificationLevel.SIMUDZA_VERIFIED,
+        VerificationLevel.SOURCE_VERIFIED,
     }
 )
 
@@ -180,6 +183,19 @@ FRESHNESS_BY_TIER = {
 
 def search_cutoff() -> datetime:
     return timezone.now() - timezone.timedelta(days=HIDE_AFTER_DAYS)
+
+
+def searchable_q(prefix: str = "") -> Q:
+    """
+    Visibility rule for one listing; prefix reaches it through relations.
+    Every verification level is searchable; discontinued or stale listings are not.
+    """
+    return Q(
+        **{
+            f"{prefix}verified_at__gte": search_cutoff(),
+            f"{prefix}lifecycle_status": LifecycleStatus.ACTIVE,
+        }
+    )
 
 
 def age_days(dt: Optional[datetime], *, now: Optional[datetime] = None) -> Optional[int]:

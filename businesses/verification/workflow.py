@@ -13,7 +13,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db.models import Q
+from django.db.models import F, Q
 from django.db.models.functions import Least
 from django.urls import reverse
 from django.utils import timezone
@@ -23,17 +23,18 @@ from history.services import update_with_history
 from products.models import Product
 from reviews.models import BusinessReview, ProductReview
 
-from .models import Business
-from .verification_dashboard import (
+from ..models import Business
+from .dashboard import (
     OPEN_REPORT_FILTER,
     resolve_open_reports_for_business,
     resolve_open_reports_for_product,
 )
-from .verification import (
+from .levels import (
     CURRENT_DAYS,
     NEEDS_DAYS,
     OWNER_RESPONSE_GRACE_DAYS,
     REMINDER_INTERVAL_DAYS,
+    LifecycleStatus,
     VerificationLevel,
     FreshnessTier,
     age_days,
@@ -48,6 +49,34 @@ def _site_url(path):
 
 
 # --- Verifying --------------------------------------------------------------
+
+
+class LevelNotAllowed(PermissionError):
+    """The user may not grant this verification level."""
+
+
+def can_grant_level(user, level):
+    """Only superusers can mark a listing Simudza Verified."""
+    if level != VerificationLevel.SIMUDZA_VERIFIED:
+        return True
+    return bool(user is not None and user.is_superuser)
+
+
+def can_change_level(user, old_level, new_level):
+    """Editing other fields of a Simudza Verified listing keeps its level; raising to it needs a superuser."""
+    return old_level == new_level or can_grant_level(user, new_level)
+
+
+def level_change_error(user, old_level, new_level):
+    if can_change_level(user, old_level, new_level):
+        return None
+    return f"Only superusers can mark listings as {VerificationLevel(new_level).label}."
+
+
+def default_staff_level(user):
+    if can_grant_level(user, VerificationLevel.SIMUDZA_VERIFIED):
+        return VerificationLevel.SIMUDZA_VERIFIED
+    return VerificationLevel.SOURCE_VERIFIED
 
 
 def mark_verified(obj, *, user=None, level, reference="", when=None, reason=None):
@@ -69,11 +98,61 @@ def mark_verified(obj, *, user=None, level, reference="", when=None, reason=None
     return when
 
 
+class OwnershipNotConfirmed(PermissionError):
+    """The user owns the listing but staff have not confirmed the claim yet."""
+
+
+def set_ownership_confirmed(business, confirmed, *, when=None):
+    """Update ownership confirmation in memory; the caller saves."""
+    if confirmed:
+        if business.owner_id is None:
+            raise ValueError("Cannot confirm ownership of a business without an owner.")
+        if business.owner_is_confirmed:
+            return
+        business.confirmed_owner_id = business.owner_id
+        business.owner_confirmed_at = when or timezone.now()
+    else:
+        business.confirmed_owner = None
+        business.owner_confirmed_at = None
+
+
+def confirm_ownership(business, staff_user, *, when=None):
+    set_ownership_confirmed(business, True, when=when)
+    with change_context(user=staff_user, reason="Ownership confirmed by staff"):
+        business.save(update_fields=["confirmed_owner", "owner_confirmed_at"])
+    return business.owner_confirmed_at
+
+
+def revoke_ownership(business, staff_user):
+    set_ownership_confirmed(business, False)
+    with change_context(user=staff_user, reason="Ownership confirmation revoked"):
+        business.save(update_fields=["confirmed_owner", "owner_confirmed_at"])
+
+
+def _require_confirmed_owner(business, user):
+    if not business.is_confirmed_owner(user):
+        raise OwnershipNotConfirmed(
+            f"{user} is not a staff-confirmed owner of {business.name}."
+        )
+
+
+def owner_level(current_level):
+    """
+    Level after a confirmed owner vouches for unchanged information: owners never
+    grant Simudza Verified, but confirming does not take it away either.
+    """
+    if current_level == VerificationLevel.SIMUDZA_VERIFIED:
+        return VerificationLevel.SIMUDZA_VERIFIED
+    return VerificationLevel.SOURCE_VERIFIED
+
+
 def owner_confirm_business(business, user):
+    _require_confirmed_owner(business, user)
     when = mark_verified(
         business,
         user=user,
-        level=VerificationLevel.VERIFIED_MANUFACTURER,
+        level=owner_level(business.verification_level),
+        reference=business.verification_reference,
         reason="Owner confirmed listing",
     )
     with change_context(user=user, reason="Owner confirmed listing"):
@@ -83,20 +162,61 @@ def owner_confirm_business(business, user):
 
 
 def owner_confirm_products(business, user, products=None):
+    _require_confirmed_owner(business, user)
     when = timezone.now()
     queryset = products if products is not None else business.products.all()
+    simudza_verified = Q(verification_level=VerificationLevel.SIMUDZA_VERIFIED)
     with change_context(user=user, reason="Owner confirmed listing"):
         count = update_with_history(
-            queryset,
+            queryset.filter(simudza_verified),
             verified_at=when,
             verified_by=user,
-            verification_level=VerificationLevel.VERIFIED_MANUFACTURER,
+        )
+        count += update_with_history(
+            queryset.exclude(simudza_verified),
+            verified_at=when,
+            verified_by=user,
+            verification_level=VerificationLevel.SOURCE_VERIFIED,
             verification_reference="",
         )
     return count
 
 
+def notify_superusers_of_owner_edit(listing, owner):
+    """Email superusers that an owner edit dropped a Simudza Verified listing."""
+    from django.contrib.auth import get_user_model
+
+    recipients = list(
+        get_user_model()
+        .objects.filter(is_superuser=True, is_active=True)
+        .exclude(email="")
+        .values_list("email", flat=True)
+    )
+    if not recipients:
+        return False
+    kind = "business" if isinstance(listing, Business) else "product"
+    send_mail(
+        subject=f"Re-verify {listing.name}: owner edited a Simudza Verified listing",
+        message="\n".join(
+            [
+                f"{owner} edited the {kind} “{listing.name}”, which was Simudza Verified.",
+                f"It is now “{VerificationLevel.SOURCE_VERIFIED.label}” until a superuser "
+                "re-verifies it.",
+                "",
+                "If everything is correct, set it back to Simudza Verified:",
+                _site_url(f"/admin/{kind}/edit/{listing.pk}/"),
+            ]
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=recipients,
+        fail_silently=True,
+    )
+    return True
+
+
 def staff_set_level(obj, user, level, reference=""):
+    if not can_grant_level(user, level):
+        raise LevelNotAllowed(level_change_error(user, None, level))
     when = mark_verified(obj, user=user, level=level, reference=reference)
     if is_trusted_level(level):
         if isinstance(obj, Business):
@@ -107,12 +227,12 @@ def staff_set_level(obj, user, level, reference=""):
 
 
 def staff_verify_business(business, user, *, level=None, reference=""):
-    level = level or VerificationLevel.SIMUDZA_CHECKED
+    level = level or default_staff_level(user)
     return staff_set_level(business, user, level, reference)
 
 
 def staff_verify_product(product, user, *, level=None, reference=""):
-    level = level or VerificationLevel.SIMUDZA_CHECKED
+    level = level or default_staff_level(user)
     return staff_set_level(product, user, level, reference)
 
 
@@ -157,6 +277,7 @@ def owner_listings(user):
         rows.append(
             {
                 "obj": business,
+                "can_confirm": business.is_confirmed_owner(user),
                 "freshness": business.freshness,
                 "level_meta": business.level_meta,
                 "verified_at": business.verified_at,
@@ -183,7 +304,7 @@ def _due_products(business, *, now):
 
 
 def _business_is_due(business, *, now):
-    if business.verification_level == VerificationLevel.DISCONTINUED:
+    if business.is_discontinued:
         return False
     cutoff = now - timedelta(days=CURRENT_DAYS)
     if business.verified_at is None or business.verified_at < cutoff:
@@ -192,7 +313,7 @@ def _business_is_due(business, *, now):
 
 
 def _owner_email(business):
-    if business.owner_id and business.owner.email:
+    if business.owner_is_confirmed and business.owner.email:
         return business.owner.email
     return business.email
 
@@ -200,8 +321,12 @@ def _owner_email(business):
 def businesses_due_for_reminder(*, now=None):
     now = now or timezone.now()
     resend_before = now - timedelta(days=REMINDER_INTERVAL_DAYS)
-    candidates = Business.objects.filter(owner__isnull=False, is_active=True).exclude(
-        verification_level=VerificationLevel.DISCONTINUED,
+    candidates = Business.objects.filter(
+        owner__isnull=False,
+        confirmed_owner=F("owner"),
+        is_active=True,
+    ).exclude(
+        lifecycle_status=LifecycleStatus.DISCONTINUED,
     ).filter(
         Q(verification_reminder_sent_at__isnull=True)
         | Q(verification_reminder_sent_at__lt=resend_before)
@@ -276,6 +401,16 @@ def _fmt(dt):
     return f"{dt.day} {dt:%B %Y}" if dt else "never"
 
 
+def _owner_confirmed_after(listing, business, report):
+    """The confirmed owner re-verified the listing after a customer reported it."""
+    return bool(
+        listing.verified_at
+        and listing.verified_at > report.created_at
+        and business.owner_is_confirmed
+        and listing.verified_by_id == business.confirmed_owner_id
+    )
+
+
 # --- Exceptions for staff ---------------------------------------------------
 
 
@@ -306,13 +441,9 @@ def verification_exceptions(*, now=None, limit=EXCEPTIONS_LIMIT):
         .order_by("created_at")
     ):
         product = report.product
-        if product.verification_level == VerificationLevel.DISCONTINUED:
+        if product.is_discontinued:
             continue
-        conflict = (
-            product.verification_level == VerificationLevel.VERIFIED_MANUFACTURER
-            and product.verified_at
-            and product.verified_at > report.created_at
-        )
+        conflict = _owner_confirmed_after(product, product.business, report)
         add(
             ("product", product.pk),
             _exception_row(
@@ -332,13 +463,9 @@ def verification_exceptions(*, now=None, limit=EXCEPTIONS_LIMIT):
         .order_by("created_at")
     ):
         business = report.business
-        if business.verification_level == VerificationLevel.DISCONTINUED:
+        if business.is_discontinued:
             continue
-        conflict = (
-            business.verification_level == VerificationLevel.VERIFIED_MANUFACTURER
-            and business.verified_at
-            and business.verified_at > report.created_at
-        )
+        conflict = _owner_confirmed_after(business, business, report)
         add(
             ("business", business.pk),
             _exception_row(
@@ -355,7 +482,7 @@ def verification_exceptions(*, now=None, limit=EXCEPTIONS_LIMIT):
 
     # 2. Due listings with no manufacturer account to confirm them.
     for business in Business.objects.filter(owner__isnull=True).exclude(
-        verification_level=VerificationLevel.DISCONTINUED,
+        lifecycle_status=LifecycleStatus.DISCONTINUED,
     ).filter(
         Q(verified_at__isnull=True) | Q(verified_at__lt=current_cutoff)
     ):
@@ -370,8 +497,8 @@ def verification_exceptions(*, now=None, limit=EXCEPTIONS_LIMIT):
         )
     for product in (
         Product.objects.select_related("business")
-        .exclude(verification_level=VerificationLevel.DISCONTINUED)
-        .exclude(business__verification_level=VerificationLevel.DISCONTINUED)
+        .exclude(lifecycle_status=LifecycleStatus.DISCONTINUED)
+        .exclude(business__lifecycle_status=LifecycleStatus.DISCONTINUED)
         .filter(business__owner__isnull=True)
         .annotate(effective_at=Least("verified_at", "business__verified_at"))
         .filter(
@@ -392,12 +519,29 @@ def verification_exceptions(*, now=None, limit=EXCEPTIONS_LIMIT):
             ),
         )
 
-    # 3. Owner was reminded but let it go stale.
+    # 3. Ownership claims that staff have not confirmed yet.
+    for business in (
+        Business.objects.filter(owner__isnull=False)
+        .exclude(confirmed_owner=F("owner"))
+        .exclude(lifecycle_status=LifecycleStatus.DISCONTINUED)
+        .select_related("owner")
+    ):
+        add(
+            ("business", business.pk),
+            _exception_row(
+                business,
+                kind="business",
+                severity="medium",
+                reason=f"Ownership claimed by {business.owner} awaits staff confirmation",
+            ),
+        )
+
+    # 4. Owner was reminded but let it go stale.
     for business in Business.objects.filter(
         owner__isnull=False,
         verification_reminder_sent_at__lt=grace_cutoff,
     ).exclude(
-        verification_level=VerificationLevel.DISCONTINUED,
+        lifecycle_status=LifecycleStatus.DISCONTINUED,
     ).select_related("owner"):
         stale_products = business.products.filter(
             Q(verified_at__isnull=True) | Q(verified_at__lt=stale_cutoff)

@@ -1,6 +1,7 @@
 from django.utils.translation import gettext_lazy as _
 from wagtail.admin.panels import FieldPanel, ObjectList
 from wagtail.admin.ui.tables import Column, DateColumn
+from wagtail.admin.viewsets.base import ViewSetGroup
 from wagtail.admin.viewsets.model import ModelViewSet
 
 from .forms import DuplicateReviewForm
@@ -13,9 +14,8 @@ class DuplicateFlagViewSet(ModelViewSet):
 
     name = "duplicate_flag"
     menu_label = _("Possible duplicates")
-    menu_icon = "duplicate"
-    menu_order = 210
-    add_to_admin_menu = True
+    menu_icon = "copy"
+    add_to_admin_menu = False
 
     add_view_enabled = False
     copy_view_enabled = False
@@ -88,3 +88,13 @@ class DuplicateFlagViewSet(ModelViewSet):
             .get_queryset(request)
             .select_related("business_a", "business_b", "product_a", "product_b")
         )
+
+
+class DataQualityViewSetGroup(ViewSetGroup):
+    """Sidebar group; the data-quality queues page joins via submenu_hook."""
+
+    menu_label = _("Data quality")
+    menu_icon = "warning"
+    menu_order = 650
+    submenu_hook = "register_data_quality_menu_item"
+    items = (DuplicateFlagViewSet,)

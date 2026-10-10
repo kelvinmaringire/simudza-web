@@ -22,13 +22,28 @@ YOUTUBE_SHORT_HOSTS = {"youtu.be", "www.youtu.be"}
 YOUTUBE_PATH_PREFIXES = ("embed", "shorts", "live", "v")
 
 
-class VideoKind(models.TextChoices):
-    DEMONSTRATION = "demonstration", "Product demonstration"
-    FACTORY_TOUR = "factory_tour", "Factory tour"
+class BusinessVideoKind(models.TextChoices):
+    """Videos about the company: who they are, where they work, what they can deliver."""
+
+    BUSINESS_TOUR = "business_tour", "Factory or business tour"
     MANUFACTURING = "manufacturing", "Manufacturing process"
+    PROJECT_PORTFOLIO = "project_portfolio", "Project portfolio"
+    INTERVIEW = "interview", "Producer or business interview"
+    CAPACITY_SUPPLY = "capacity_supply", "Products, capacity and supply"
+    TESTIMONIAL = "testimonial", "Customer testimonial"
     ADVERTISEMENT = "advertisement", "Advertisement"
-    INTERVIEW = "interview", "Farmer / producer interview"
-    REVIEW = "review", "Product review"
+    OTHER = "other", "Other"
+
+
+class ProductVideoKind(models.TextChoices):
+    """Videos about one product or service: what it does and how to use it."""
+
+    PRODUCT_DEMONSTRATION = "demonstration", "Product demonstration"
+    SERVICE_DEMONSTRATION = "service_demonstration", "Service demonstration"
+    HOW_TO = "how_to", "How-to and educational"
+    MANUFACTURING = "manufacturing", "Manufacturing process"
+    TESTIMONIAL = "testimonial", "Customer testimonial"
+    ADVERTISEMENT = "advertisement", "Advertisement"
     OTHER = "other", "Other"
 
 
@@ -63,7 +78,10 @@ def validate_youtube_url(url):
 
 
 class VideoLink(Orderable):
-    """YouTube link attached to a listing; subclasses add the ParentalKey."""
+    """
+    YouTube link attached to a listing. Subclasses add the ParentalKey and a
+    ``kind`` field with their own choices.
+    """
 
     url = models.URLField(
         "YouTube link",
@@ -74,12 +92,6 @@ class VideoLink(Orderable):
     title = models.CharField(
         max_length=200,
         blank=True,
-    )
-
-    kind = models.CharField(
-        max_length=30,
-        choices=VideoKind.choices,
-        default=VideoKind.OTHER,
     )
 
     panels = [

@@ -85,45 +85,16 @@
                 <li>
                     <a href="{% url 'businesses:submit' %}" class="{% if url_name == 'submit' %}menu-active{% endif %}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-                        Manufacturer submissions
+                        Business hub
                     </a>
                     <ul>
                         <li>
-                            <a href="{% url 'businesses:submit_company' %}" class="{% if url_name == 'submit_company' %}menu-active{% endif %}">Company profile</a>
+                            <a href="{% url 'businesses:submit_company' %}" class="{% if url_name == 'submit_company' or url_name == 'submit_company_update' %}menu-active{% endif %}">Company profile</a>
                         </li>
                         <li>
                             <a href="{% url 'businesses:submit_product' %}" class="{% if url_name == 'submit_product' or url_name == 'submit_product_update' %}menu-active{% endif %}">Products</a>
                         </li>
-                        <li>
-                            <a href="{% url 'businesses:submit_location' %}" class="{% if url_name == 'submit_location' %}menu-active{% endif %}">Retail locations</a>
-                        </li>
                     </ul>
-                </li>
-
-                <li class="menu-title mt-2">Explore</li>
-                <li>
-                    <a href="{% url 'marketplace:index' %}">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-                        Marketplace
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'directory:index' %}">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M3 14h6v3h6v-3h6"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
-                        Directory
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'businesses:index' %}">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg>
-                        Companies
-                    </a>
-                </li>
-                <li>
-                    <a href="/">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="m3 11 9-8 9 8"></path><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"></path></svg>
-                        Home
-                    </a>
                 </li>
 
                 {% if user.is_staff %}

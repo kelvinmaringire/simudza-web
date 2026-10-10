@@ -1,17 +1,17 @@
 {% extends "accounts/dashboard_base.html" %}
 
-{% block title %}Submit company profile{% endblock %}
+{% block title %}{% if business %}Update company profile{% else %}Submit company profile{% endif %}{% endblock %}
 
 {% block dashboard_body_class %}template-business-submit-company{% endblock %}
 
-{% block dashboard_heading %}Company profile{% endblock %}
+{% block dashboard_heading %}{% if business %}Update {{ business.name }}{% else %}Company profile{% endif %}{% endblock %}
 
 {% block dashboard_subheading %}
 <p class="hidden truncate text-sm text-base-content/60 sm:block">Submit or update your company description, logo, location and contact details.</p>
 {% endblock %}
 
 {% block dashboard_actions %}
-<a href="{% url 'businesses:submit' %}" class="btn btn-ghost btn-sm hidden sm:inline-flex">← All submissions</a>
+<a href="{% url 'businesses:submit' %}" class="btn btn-ghost btn-sm hidden sm:inline-flex">← Business hub</a>
 {% endblock %}
 
 {% block dashboard_content %}
@@ -27,12 +27,11 @@
         <fieldset class="card border-base-300 bg-base-100 border shadow-sm">
             <div class="card-body gap-4 p-4 sm:p-6">
                 <legend class="text-base font-semibold">Company details</legend>
-                {% include "businesses/partials/form_field.html" with field=form.business %}
                 <div class="grid gap-4 sm:grid-cols-2">
-                    {% include "businesses/partials/form_field.html" with field=form.company_name label="Company name" %}
+                    {% include "businesses/partials/form_field.html" with field=form.name label="Company name" %}
                     {% include "businesses/partials/form_field.html" with field=form.business_type %}
                 </div>
-                {% include "businesses/partials/form_field.html" with field=form.company_description label="Description" %}
+                {% include "businesses/partials/form_field.html" with field=form.description label="Description" %}
                 {% include "businesses/partials/form_field.html" with field=form.logo_upload label="Logo" %}
             </div>
         </fieldset>
@@ -50,19 +49,14 @@
             </div>
         </fieldset>
 
-        <fieldset class="card border-base-300 bg-base-100 border shadow-sm">
-            <div class="card-body gap-4 p-4 sm:p-6">
-                <legend class="text-base font-semibold">For the Simudza team</legend>
-                {% include "businesses/partials/form_field.html" with field=form.submitter_notes label="Notes for reviewers" %}
-            </div>
-        </fieldset>
-
         <div class="flex flex-wrap items-center justify-end gap-2">
             <a href="{% url 'businesses:submit' %}" class="btn btn-ghost">Cancel</a>
-            <button type="submit" class="btn btn-primary">Submit company profile</button>
+            <button type="submit" class="btn btn-primary">
+                {% if business %}Save changes{% else %}Register company{% endif %}
+            </button>
         </div>
     </form>
 
-    {% include "businesses/partials/submit_help.html" with tip="Updating your own company profile also marks it as verified today." %}
+    {% include "businesses/partials/submit_help.html" with tip="Once Simudza confirms you represent this company, your updates can mark the listing as verified." %}
 </div>
 {% endblock %}

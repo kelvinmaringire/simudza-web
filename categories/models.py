@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import BooleanField, Case, Count, ExpressionWrapper, Q, Value, When
 from django.urls import reverse
 
 
@@ -11,10 +11,17 @@ ATTENTION_ISSUES = {
 }
 
 
+def issue_flag(code):
+    """Annotation name set by ``with_attention()`` for one issue."""
+    return f"issue_{code}"
+
+
 class CategoryQuerySet(models.QuerySet):
     def with_product_counts(self):
         from products.models import Product
 
+        if "product_count" in self.query.annotations:
+            return self
         return self.annotate(
             published_count=Count(
                 "products",
@@ -31,6 +38,24 @@ class CategoryQuerySet(models.QuerySet):
         for condition in ATTENTION_ISSUES.values():
             conditions |= condition
         return self.with_product_counts().filter(conditions)
+
+    def with_attention(self):
+        """Annotate ``issue_<code>`` flags and their total ``attention_count`` in one query."""
+        if "attention_count" in self.query.annotations:
+            return self
+        return self.with_product_counts().annotate(
+            **{
+                issue_flag(code): ExpressionWrapper(condition, output_field=BooleanField())
+                for code, condition in ATTENTION_ISSUES.items()
+            },
+            attention_count=sum(
+                (
+                    Case(When(condition, then=Value(1)), default=Value(0))
+                    for condition in ATTENTION_ISSUES.values()
+                ),
+                Value(0),
+            ),
+        )
 
     def with_tree_path(self):
         """Annotate ``tree_path_ids`` / ``tree_path_names`` (root → self)."""
@@ -81,7 +106,11 @@ class Category(models.Model):
     def __str__(self):
         from .hierarchy import iter_ancestors
 
-        names = [a.name for a in iter_ancestors(self)][::-1]
+        path = getattr(self, "tree_path_names", None)
+        if path:
+            names = path[:-1]
+        else:
+            names = [a.name for a in iter_ancestors(self)][::-1]
         return " → ".join([*names, self.name])
 
     def clean(self):

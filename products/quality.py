@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 from django.utils import timezone
 
-from businesses.quality import contact_field_errors, has_valid_contact
-from businesses.verification import (
+from businesses.quality import is_contactable
+from businesses.verification.levels import (
     FreshnessTier,
     freshness_for,
     older_verified_at,
@@ -19,7 +19,6 @@ ISSUE_LABELS = {
     "missing_image": "Missing image",
     "verification_expired": "Verification expired",
     "duplicate_suspected": "Duplicate suspected",
-    "invalid_contact": "Invalid contact",
     "customer_reported": "Customer reported outdated information",
 }
 
@@ -74,10 +73,7 @@ def evaluate_product(
         except Exception:
             pass
 
-    contact_ok = has_valid_contact(
-        email=business.email or "",
-        phone=business.phone or "",
-    )
+    contact_ok = is_contactable(business)
     verified_at = older_verified_at(product.verified_at, business.verified_at)
     freshness = freshness_for(verified_at, now=now)
     verification_ok = freshness.tier not in (
@@ -117,13 +113,6 @@ def evaluate_product(
         issues.append("missing_image")
     if not verification_ok:
         issues.append("verification_expired")
-    if contact_field_errors(
-        email=business.email or "",
-        phone=business.phone or "",
-        website=business.website or "",
-    ):
-        issues.append("invalid_contact")
-
     if duplicate_ids is None:
         duplicate_ids = _product_ids_with_open_duplicates([product.pk])
     if reported_ids is None:
@@ -155,7 +144,7 @@ def _product_ids_with_open_duplicates(product_ids) -> set[int]:
 
 
 def _product_ids_with_open_reports(product_ids) -> set[int]:
-    from businesses.verification_dashboard import OPEN_REPORT_FILTER
+    from businesses.verification.dashboard import OPEN_REPORT_FILTER
     from reviews.models import ProductReview
 
     return set(

@@ -5,7 +5,6 @@ from wagtail.admin.forms.choosers import BaseFilterForm
 from wagtail.admin.panels import (
     FieldPanel,
     InlinePanel,
-    MultiFieldPanel,
     ObjectList,
 )
 from wagtail.admin.ui.tables import Column
@@ -19,6 +18,7 @@ from history.panels import ChangeHistoryPanel
 from .admin_filters import BusinessQualityFilterSet
 from .panels import DataQualityPanel
 from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
+from simudza.utils.admin_grid import GridPanel, GridRow
 from simudza.utils.admin_import_export import ImportExportViewSetMixin
 
 from .forms import BusinessForm
@@ -100,6 +100,7 @@ class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
             companions=("verification_reference",),
         ),
         BulkEditField("business_type"),
+        BulkEditField("lifecycle_status"),
         BulkEditField("is_active"),
         BulkEditField("town_or_city"),
     ]
@@ -108,6 +109,7 @@ class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
     menu_label = "Businesses"
     menu_icon = "home"
 
+    menu_order = 600
     add_to_admin_menu = True
     filterset_class = BusinessQualityFilterSet
 
@@ -124,12 +126,14 @@ class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
         "verified_at",
         "verification_reference",
         "town_or_city",
+        "lifecycle_status",
         "is_active",
     ]
 
     list_filter = [
         "business_type",
         "verification_level",
+        "lifecycle_status",
         "is_active",
         "issue",
         "quality_score_max",
@@ -150,22 +154,19 @@ class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
     # never appeared before.
     edit_handler = ObjectList(
         [
-            MultiFieldPanel(
+            GridPanel(
                 [
-                    FieldPanel("name"),
-                    FieldPanel("business_type"),
+                    GridRow([FieldPanel("name"), FieldPanel("business_type")]),
                     FieldPanel("description"),
                     FieldPanel("logo"),
                 ],
                 heading="Business details",
             ),
-            MultiFieldPanel(
+            GridPanel(
                 [
-                    FieldPanel("website"),
-                    FieldPanel("email"),
-                    FieldPanel("phone"),
+                    GridRow([FieldPanel("website"), FieldPanel("email")]),
+                    GridRow([FieldPanel("phone"), FieldPanel("town_or_city")]),
                     FieldPanel("address"),
-                    FieldPanel("town_or_city"),
                 ],
                 heading="Contact",
             ),
@@ -175,13 +176,13 @@ class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
                 heading="Videos",
                 help_text="YouTube links, e.g. factory tours or producer interviews.",
             ),
-            MultiFieldPanel(
+            GridPanel(
                 [
                     FieldPanel("verification_level"),
                     FieldPanel("verification_reference"),
-                    FieldPanel("verified_at"),
-                    FieldPanel("owner"),
-                    FieldPanel("is_active"),
+                    GridRow([FieldPanel("verified_at"), FieldPanel("owner")]),
+                    GridRow([FieldPanel("owner_confirmed"), FieldPanel("is_active")]),
+                    GridRow([FieldPanel("lifecycle_status")]),
                 ],
                 heading="Verification",
             ),
@@ -212,6 +213,9 @@ class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
         "verified_by",
         "verification_reminder_sent_at",
         "owner",
+        "confirmed_owner",
+        "owner_confirmed_at",
+        "lifecycle_status",
         "is_active",
         "created_at",
         "updated_at",

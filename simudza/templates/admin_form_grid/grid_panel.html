@@ -1,0 +1,17 @@
+{% load wagtailadmin_tags %}
+{% if self.help_text %}
+    {% help_block status="info" %}{{ self.help_text }}{% endhelp_block %}
+{% endif %}
+<div class="simudza-form-grid">
+    {% for row in self.cells %}
+        {% if row.pair %}
+            <div class="simudza-form-grid__pair">
+                {% for cell in row.pair %}
+                    {% include "admin_form_grid/grid_cell.html" %}
+                {% endfor %}
+            </div>
+        {% else %}
+            {% include "admin_form_grid/grid_cell.html" with cell=row %}
+        {% endif %}
+    {% endfor %}
+</div>

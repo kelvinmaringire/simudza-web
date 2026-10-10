@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from businesses.verification_workflow import monitor
+from businesses.verification.workflow import monitor
 
 
 class Command(BaseCommand):

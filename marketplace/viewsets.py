@@ -217,6 +217,7 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
 
 class MarketplaceViewSetGroup(ModelViewSetGroup):
     menu_label = "Marketplace"
-    menu_icon = "cart"
-    menu_order = 200
+    menu_icon = "shopping-cart"
+    menu_order = 630
+    submenu_hook = "register_marketplace_menu_item"
     items = (CartViewSet(), OrderViewSet(), CheckoutViewSet())

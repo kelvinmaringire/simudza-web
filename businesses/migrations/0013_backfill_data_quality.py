@@ -2,6 +2,14 @@ from django.db import migrations
 
 
 def backfill_quality(apps, schema_editor):
+    # Live models select every current column, which breaks on fresh databases
+    # once later migrations add fields; there is nothing to backfill there.
+    if not (
+        apps.get_model("businesses", "Business").objects.exists()
+        or apps.get_model("products", "Product").objects.exists()
+    ):
+        return
+
     # Uses live models and quality checks, which read duplicates, reviews and
     # inventory tables — every app touched must be listed in dependencies.
     from businesses.models import Business

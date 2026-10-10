@@ -60,6 +60,14 @@ def validate_category_parent_bulk(objects, parent_value):
             raise BulkEditValidationError(exc.message_dict["parent"]) from exc
 
 
+def validate_verification_level_bulk(user, values):
+    from businesses.verification.workflow import can_grant_level, level_change_error
+
+    level = values.get("verification_level")
+    if level and not can_grant_level(user, level):
+        raise BulkEditValidationError(level_change_error(user, None, level))
+
+
 def _field_diffs_for_object(obj, values, *, applier_field_names):
     from history.formatting import format_field_value
 
@@ -144,6 +152,8 @@ def apply_bulk_changes(
 ):
     if validate_category_parent and "parent" in values:
         validate_category_parent_bulk(objects, values["parent"])
+    if use_verification_applier:
+        validate_verification_level_bulk(user, values)
 
     updated = 0
     unchanged = 0
@@ -158,7 +168,7 @@ def apply_bulk_changes(
                 obj_changed = False
 
                 if use_verification_applier and "verification_level" in values:
-                    from businesses.verification_workflow import staff_set_level
+                    from businesses.verification.workflow import staff_set_level
 
                     level = values["verification_level"]
                     reference = values.get("verification_reference", "")

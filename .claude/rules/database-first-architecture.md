@@ -16,7 +16,7 @@ The product is the registry (businesses, products, verification, directory, revi
 
 ## Do
 
-- Add new listing states as model fields + migration + domain helpers (shared enums in `businesses/verification.py`).
+- Add new listing states as model fields + migration + domain helpers (shared enums in `businesses/verification/levels.py`).
 - Route all writes through one path (e.g. `mark_verified`, `apply_submission`, `staff_set_level`).
 - Share filters via constants/querysets (`TRUSTED_LEVELS`, `visible_in_search()`), not copy-paste in marketplace/directory/views.
 

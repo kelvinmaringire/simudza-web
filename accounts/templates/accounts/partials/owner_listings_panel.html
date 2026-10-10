@@ -38,17 +38,26 @@
                             </p>
                         </div>
                         <div class="flex flex-wrap gap-2">
-                            <a href="{% url 'businesses:submit_company' %}" class="btn btn-ghost btn-sm">Update details</a>
-                            <form method="post" action="{% url 'accounts:owner_confirm' %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="kind" value="all" />
-                                <input type="hidden" name="business" value="{{ row.obj.pk }}" />
-                                <button type="submit" class="btn btn-primary btn-sm">
-                                    ✓ Confirm everything is accurate
-                                </button>
-                            </form>
+                            <a href="{% url 'businesses:submit_company_update' row.obj.pk %}" class="btn btn-ghost btn-sm">Update details</a>
+                            {% if row.can_confirm %}
+                                <form method="post" action="{% url 'accounts:owner_confirm' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="kind" value="all" />
+                                    <input type="hidden" name="business" value="{{ row.obj.pk }}" />
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        ✓ Confirm everything is accurate
+                                    </button>
+                                </form>
+                            {% endif %}
                         </div>
                     </div>
+
+                    {% if not row.can_confirm %}
+                        <div role="status" class="alert alert-info alert-soft text-sm">
+                            Simudza is confirming that you represent this company. Until then you can edit it,
+                            but it stays unverified and is not shown in search.
+                        </div>
+                    {% endif %}
 
                     {% if row.products %}
                         <div class="overflow-x-auto rounded-box border border-base-300">
@@ -86,6 +95,7 @@
                                             <td class="text-right">
                                                 <div class="flex flex-wrap justify-end gap-1">
                                                     <a href="{% url 'businesses:submit_product_update' product_row.obj.pk %}" class="btn btn-ghost btn-xs">Update</a>
+                                                    {% if row.can_confirm %}
                                                     <form method="post" action="{% url 'accounts:owner_confirm' %}">
                                                         {% csrf_token %}
                                                         <input type="hidden" name="kind" value="product" />
@@ -93,6 +103,7 @@
                                                         <input type="hidden" name="pk" value="{{ product_row.obj.pk }}" />
                                                         <button type="submit" class="btn btn-outline btn-primary btn-xs">Still accurate</button>
                                                     </form>
+                                                    {% endif %}
                                                 </div>
                                             </td>
                                         </tr>

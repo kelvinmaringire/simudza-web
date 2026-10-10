@@ -3,7 +3,7 @@
 **Database-first:** Simudza is a registry database with surfaces (public site, marketplace, owner/staff dashboard, Wagtail admin, emails, cron). Do not build a website that happens to have a database.
 
 - **Truth:** PostgreSQL schema (fields, defaults, migrations).
-- **Rules:** Python domain layer—`services.py`, `verification.py`, `verification_workflow.py`, `verification_dashboard.py`, model querysets (e.g. `visible_in_search()`).
+- **Rules:** Python domain layer—`services.py`, `verification/levels.py`, `verification/workflow.py`, `verification/dashboard.py`, model querysets (e.g. `visible_in_search()`).
 - **Surfaces:** Templates and views render and collect input; they call domain code and display properties like `level_meta`, `is_trusted`, `freshness`—no duplicated trust/visibility logic in HTML.
 
 When adding behavior, ask: *would a second client (API, export, job) use the same function without copying template `if` blocks?* If not, push logic down.

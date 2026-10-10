@@ -5,8 +5,8 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from businesses.models import Business
-from businesses.verification import VerificationLevel
-from businesses.verification_workflow import bulk_set_level
+from businesses.verification.levels import VerificationLevel
+from businesses.verification.workflow import bulk_set_level
 from categories.models import Category
 from history.models import ChangeLog
 from products.models import Product
@@ -84,12 +84,28 @@ class BulkEditDomainTests(TestCase):
         bulk_set_level(
             [business],
             self.staff,
-            VerificationLevel.SIMUDZA_CHECKED,
+            VerificationLevel.SIMUDZA_VERIFIED,
             reference="ref-1",
         )
         business.refresh_from_db()
-        self.assertEqual(business.verification_level, VerificationLevel.SIMUDZA_CHECKED)
+        self.assertEqual(business.verification_level, VerificationLevel.SIMUDZA_VERIFIED)
         self.assertEqual(business.verification_reference, "ref-1")
+
+    def test_non_superuser_cannot_bulk_set_simudza_verified(self):
+        staff = get_user_model().objects.create_user(
+            "plainstaff", "ps@example.com", "pass", is_staff=True
+        )
+        business = Business.objects.create(name="W Biz", slug="w-biz")
+        with self.assertRaises(BulkEditValidationError):
+            apply_bulk_changes(
+                [business],
+                {"verification_level": VerificationLevel.SIMUDZA_VERIFIED},
+                user=staff,
+                reason="Not allowed",
+                use_verification_applier=True,
+            )
+        business.refresh_from_db()
+        self.assertEqual(business.verification_level, VerificationLevel.UNVERIFIED)
 
 
 class BulkEditAdminViewTests(TestCase):

@@ -6,8 +6,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from businesses.models import Business
-from businesses.verification import VerificationLevel
-from businesses.verification_workflow import owner_confirm_products
+from businesses.verification.levels import VerificationLevel
+from businesses.verification.workflow import owner_confirm_products
 from categories.models import Category
 from history.context import change_context
 from history.models import ChangeLog
@@ -82,7 +82,8 @@ class ChangeLogCaptureTests(TestCase):
         User = get_user_model()
         owner = User.objects.create_user("owner", "owner@x.com", "pass")
         self.business.owner = owner
-        self.business.save(update_fields=["owner"])
+        self.business.confirmed_owner = owner
+        self.business.save(update_fields=["owner", "confirmed_owner"])
 
         with self.captureOnCommitCallbacks(execute=True):
             with change_context(user=owner, source=ChangeLog.Source.DASHBOARD):

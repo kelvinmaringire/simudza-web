@@ -100,6 +100,7 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
         BulkEditField("business"),
         BulkEditField("category"),
         BulkEditField("status"),
+        BulkEditField("lifecycle_status"),
         BulkEditField("origin_type"),
         BulkEditField("brand_name"),
         BulkEditField("featured"),
@@ -113,9 +114,8 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
     name = "product"
     menu_label = "Products"
     menu_icon = "tag"
-    menu_order = 200
 
-    add_to_admin_menu = True
+    add_to_admin_menu = False
     filterset_class = ProductQualityFilterSet
 
     list_display = [
@@ -130,6 +130,7 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
         "category",
         "origin_type",
         "status",
+        "lifecycle_status",
         "verified_at",
         "verification_level",
         "verification_reference",
@@ -138,6 +139,8 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
 
     list_filter = [
         "status",
+        "lifecycle_status",
+        "verification_level",
         "origin_type",
         "featured",
         "category",
@@ -181,6 +184,7 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
             MultiFieldPanel(
                 [
                     FieldPanel("status"),
+                    FieldPanel("lifecycle_status"),
                     FieldPanel("featured"),
                     FieldPanel("verified_at"),
                     FieldPanel("verification_level"),
@@ -215,6 +219,7 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
         "origin_type",
         "brand_name",
         "status",
+        "lifecycle_status",
         "featured",
         "image",
         "verified_at",
@@ -247,9 +252,8 @@ class ProductVariantViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, Mode
     name = "product_variant"
     menu_label = "Product variants"
     menu_icon = "list-ul"
-    menu_order = 201
 
-    add_to_admin_menu = True
+    add_to_admin_menu = False
 
     list_display = [
         Column("product", label=_("Product"), accessor="product"),

@@ -8,6 +8,7 @@ from simudza.utils.admin_data_quality import (
     DataQualityIndexView,
     user_can_view_data_quality,
 )
+from duplicates.viewsets import DataQualityViewSetGroup
 from businesses.quality import (
     listings_needing_attention_count as businesses_needing_attention,
 )
@@ -68,18 +69,18 @@ def register_data_quality_urls():
     ]
 
 
-@hooks.register("register_admin_menu_item")
+@hooks.register(DataQualityViewSetGroup.submenu_hook)
 def register_data_quality_menu_item():
     class DataQualityMenuItem(MenuItem):
         def is_shown(self, request):
             return user_can_view_data_quality(request.user)
 
     return DataQualityMenuItem(
-        "Data quality",
+        "Quality queues",
         reverse("simudza_data_quality_index"),
         name="data-quality",
         icon_name="warning",
-        order=195,
+        order=0,
     )
 
 
