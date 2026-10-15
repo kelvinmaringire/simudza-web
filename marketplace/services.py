@@ -1,12 +1,12 @@
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 
 from businesses.models import Business
 from categories.models import Category
-from products.models import Product, ProductVariant
+from products.models import Product
 
-from .models import Cart, CartItem
+from .offers import sellable_variants, with_sellable_variants
 
 SORT_OPTIONS = (
     ("featured", "Featured"),
@@ -28,11 +28,7 @@ RELATED_PRODUCT_LIMIT = 8
 
 SELLABLE_VARIANTS_PREFETCH = Prefetch(
     "variants",
-    queryset=(
-        ProductVariant.objects.sellable()
-        .select_related("inventory")
-        .order_by("sort_order", "pk")
-    ),
+    queryset=sellable_variants().order_by("sort_order", "pk"),
     to_attr="sellable_variants_list",
 )
 
@@ -40,7 +36,7 @@ SELLABLE_VARIANTS_PREFETCH = Prefetch(
 def get_marketplace_products():
     """Published products with at least one sellable variant."""
     return (
-        Product.objects.with_sellable_variants()
+        with_sellable_variants(Product.objects.all())
         .served()
         .select_related(
             "business",
@@ -62,7 +58,7 @@ def filter_marketplace_products(queryset, search_query):
         | Q(short_description__icontains=search_query)
         | Q(business__name__icontains=search_query)
         | Q(category__name__icontains=search_query)
-        | Q(variants__sku__icontains=search_query)
+        | Q(variants__inventory__sku__icontains=search_query)
     ).distinct()
 
 
@@ -149,9 +145,6 @@ def get_related_marketplace_products(product, limit=RELATED_PRODUCT_LIMIT):
 
 def get_sellable_variants_for_product(product):
     return list(
-        ProductVariant.objects.sellable()
-        .filter(product=product)
-        .select_related("inventory")
-        .order_by("sort_order", "pk")
+        sellable_variants().filter(product=product).order_by("sort_order", "pk")
     )
 

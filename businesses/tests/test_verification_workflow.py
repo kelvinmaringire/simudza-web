@@ -51,7 +51,7 @@ class VerificationWorkflowTests(TestCase):
             slug="owned-item",
             verified_at=days_ago(120),
         )
-        from products.test_helpers import add_sellable_variant
+        from marketplace.test_helpers import add_sellable_variant
 
         self.variant = add_sellable_variant(self.product, price="10.00")
         self.orphan = Business.objects.create(
@@ -154,7 +154,7 @@ class VerificationWorkflowTests(TestCase):
         self.product.refresh_from_db()
         self.variant.refresh_from_db()
         self.assertEqual(self.product.name, "Owned Item v2")
-        self.assertEqual(self.variant.price, Decimal("11.00"))
+        self.assertEqual(self.variant.offer.price, Decimal("11.00"))
         self.assertGreater(self.product.verified_at, days_ago(1))
         self.assertEqual(
             self.product.verification_level,
@@ -213,7 +213,7 @@ class VerificationWorkflowTests(TestCase):
     def test_report_emails_owner(self):
         self.client.post(
             reverse("reviews:report_product", args=[self.product.slug]),
-            {"reason": ReportReason.PRICE_INCORRECT, "details": "Now $12"},
+            {"reason": ReportReason.PRODUCT_UNAVAILABLE, "details": "Not in shops"},
         )
         self.assertEqual(ProductReview.objects.filter(product=self.product).count(), 1)
         self.assertEqual(len(mail.outbox), 1)

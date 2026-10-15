@@ -1,0 +1,51 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n %}
+
+{% block main_content %}
+    <table class="listing">
+        <thead>
+            <tr>
+                <th>{% trans "Record" %}</th>
+                <th>{% trans "Field" %}</th>
+                <th>{% trans "Current value (will be replaced)" %}</th>
+                <th>{% trans "Restore to" %}</th>
+                <th>{% trans "Status" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item, blocker in rows %}
+                <tr{% if item.pk == entry.pk %} class="selected"{% endif %}>
+                    <td>{{ item.object_repr }}</td>
+                    <td>{{ item.field_display }}</td>
+                    <td>{{ item.new_value_display }}</td>
+                    <td>{{ item.old_value_display }}</td>
+                    <td>{% if blocker %}{{ blocker }}{% else %}{% trans "Can be undone" %}{% endif %}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if entry_blocker and not batch_undoable %}
+        <p class="help-block help-warning">{{ entry_blocker }}</p>
+        <a href="{{ back_url }}" class="button button-secondary">{% trans "Back" %}</a>
+    {% else %}
+        <form method="post" class="w-mt-8">
+            {% csrf_token %}
+            <div class="w-field__wrapper">
+                <label class="w-field__label" for="undo-reason">{% trans "Reason (optional)" %}</label>
+                <div class="w-field__input">
+                    <input type="text" id="undo-reason" name="reason" maxlength="255">
+                </div>
+            </div>
+            {% if not entry_blocker %}
+                <button type="submit" name="scope" value="entry" class="button">{% trans "Undo this change" %}</button>
+            {% endif %}
+            {% if batch_undoable %}
+                <button type="submit" name="scope" value="batch" class="button{% if not entry_blocker %} button-secondary{% endif %}">
+                    {% blocktrans count counter=batch_size %}Undo all {{ counter }} change made together{% plural %}Undo all {{ counter }} changes made together{% endblocktrans %}
+                </button>
+            {% endif %}
+            <a href="{{ back_url }}" class="button button-secondary">{% trans "Cancel" %}</a>
+        </form>
+    {% endif %}
+{% endblock %}

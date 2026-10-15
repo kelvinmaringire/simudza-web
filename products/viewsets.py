@@ -4,7 +4,6 @@ from wagtail.admin.forms.choosers import BaseFilterForm
 from wagtail.admin.panels import (
     FieldPanel,
     InlinePanel,
-    MultiFieldPanel,
     ObjectList,
 )
 from wagtail.admin.ui.tables import Column
@@ -16,13 +15,16 @@ from duplicates.panels import PossibleDuplicatesPanel
 from history.panels import ChangeHistoryPanel
 
 from .admin_filters import ProductQualityFilterSet
-from .panels import DataQualityPanel
+from .panels import CollapsedInlinePanel, DataQualityPanel
+from .quality import MAX_SCORE
 from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
+from simudza.utils.admin_grid import GridPanel, GridRow
 from simudza.utils.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_save_actions import SaveActionsViewSetMixin
 
-from .forms import ProductForm, ProductVariantForm
-from .models import Product, ProductVariant
-from .resources import ProductResource, ProductVariantResource
+from .forms import ProductForm
+from .models import Product
+from .resources import ProductResource
 
 
 class ProductChooserFilterForm(BaseFilterForm):
@@ -42,7 +44,6 @@ class ProductChooserFilterForm(BaseFilterForm):
                 Q(name__icontains=search_query)
                 | Q(slug__icontains=search_query)
                 | Q(brand_name__icontains=search_query)
-                | Q(variants__sku__icontains=search_query)
                 | Q(business__name__icontains=search_query)
             ).distinct()
             self.is_searching = True
@@ -89,10 +90,12 @@ product_chooser_viewset = ProductChooserViewSet("product_chooser")
 
 
 def _product_quality_display(product):
-    return f"{product.quality_score}/10"
+    return f"{product.quality_score}/{MAX_SCORE}"
 
 
-class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
+class ProductViewSet(
+    SaveActionsViewSetMixin, BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet
+):
     model = Product
     resource_class = ProductResource
 
@@ -155,44 +158,43 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
         "short_description",
         "description",
         "brand_name",
-        "variants__sku",
-        "variants__barcode",
         "slug",
     ]
 
     edit_handler = ObjectList(
         [
-            MultiFieldPanel(
+            GridPanel(
                 [
-                    FieldPanel("business"),
-                    FieldPanel("name"),
-                    FieldPanel("short_description"),
+                    GridRow([FieldPanel("name"), FieldPanel("business")]),
+                    GridRow([FieldPanel("category"), FieldPanel("short_description")]),
                     FieldPanel("description"),
-                    FieldPanel("category"),
                     FieldPanel("image"),
                 ],
                 heading="Product details",
             ),
-            MultiFieldPanel(
+            GridPanel(
                 [
-                    FieldPanel("origin_type"),
-                    FieldPanel("brand_name"),
+                    GridRow([FieldPanel("origin_type"), FieldPanel("brand_name")]),
                 ],
                 heading="Origin & identity",
             ),
-            InlinePanel("variants", label="Variant", min_num=1),
-            MultiFieldPanel(
+            CollapsedInlinePanel(
+                "variants",
+                label="Variant",
+                help_text="Optional. Add variants only for different flavours, sizes or packaging.",
+            ),
+            GridPanel(
                 [
-                    FieldPanel("status"),
-                    FieldPanel("lifecycle_status"),
-                    FieldPanel("featured"),
-                    FieldPanel("verified_at"),
-                    FieldPanel("verification_level"),
-                    FieldPanel("verification_reference"),
+                    GridRow([FieldPanel("status"), FieldPanel("lifecycle_status")]),
+                    GridRow([FieldPanel("verification_level")]),
+                    GridRow([FieldPanel("verified_at")]),
+                    GridRow(
+                        [FieldPanel("verification_reference"), FieldPanel("featured")]
+                    ),
                 ],
                 heading="Publishing",
             ),
-            InlinePanel("images", label="Gallery image"),
+            CollapsedInlinePanel("images", label="Gallery image"),
             InlinePanel(
                 "videos",
                 label="Video",
@@ -230,114 +232,3 @@ class ProductViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSe
         "updated_at",
     ]
 
-
-def _variant_available_stock(variant):
-    try:
-        return variant.inventory.available_quantity
-    except Exception:
-        return 0
-
-
-class ProductVariantViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
-    model = ProductVariant
-    resource_class = ProductVariantResource
-
-    bulk_edit_fields = [
-        BulkEditField("is_available"),
-        BulkEditField("price"),
-        BulkEditField("packaging"),
-        BulkEditField("size_unit"),
-    ]
-
-    name = "product_variant"
-    menu_label = "Product variants"
-    menu_icon = "list-ul"
-
-    add_to_admin_menu = False
-
-    list_display = [
-        Column("product", label=_("Product"), accessor="product"),
-        Column("label", label=_("Label"), accessor="label"),
-        "sku",
-        "price",
-        "is_available",
-        Column(
-            "available_stock",
-            label=_("Available stock"),
-            accessor=_variant_available_stock,
-        ),
-    ]
-
-    list_filter = [
-        "is_available",
-        "product__business",
-        "product__category",
-    ]
-
-    search_fields = [
-        "name",
-        "sku",
-        "barcode",
-        "product__name",
-    ]
-
-    def get_queryset(self, request):
-        return (
-            super()
-            .get_queryset(request)
-            .select_related("product", "inventory")
-            .order_by("product__name", "sort_order", "pk")
-        )
-
-    edit_handler = ObjectList(
-        [
-            MultiFieldPanel(
-                [FieldPanel("product")],
-                heading="Product",
-            ),
-            MultiFieldPanel(
-                [
-                    FieldPanel("name"),
-                    FieldPanel("sku"),
-                    FieldPanel("barcode"),
-                ],
-                heading="Identity",
-            ),
-            MultiFieldPanel(
-                [
-                    FieldPanel("size_value"),
-                    FieldPanel("size_unit"),
-                    FieldPanel("packaging"),
-                ],
-                heading="Size & packaging",
-            ),
-            MultiFieldPanel(
-                [
-                    FieldPanel("price"),
-                    FieldPanel("is_available"),
-                ],
-                heading="Pricing & availability",
-            ),
-            InlinePanel("images", label="Variant image"),
-            FieldPanel("change_reason"),
-            ChangeHistoryPanel(),
-        ],
-        base_form_class=ProductVariantForm,
-    )
-
-    inspect_view_enabled = True
-
-    inspect_view_fields = [
-        "product",
-        "name",
-        "label",
-        "sku",
-        "barcode",
-        "size_value",
-        "size_unit",
-        "packaging",
-        "price",
-        "is_available",
-        "created_at",
-        "updated_at",
-    ]

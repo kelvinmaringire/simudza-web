@@ -2,7 +2,9 @@ from import_export import fields, resources
 from import_export.widgets import ForeignKeyWidget
 
 from accounts.models import CustomUser
-from .models import Cart, Checkout, Order
+from inventory.resources import ProductVariantBySkuWidget
+from inventory.services import inventory_for_variant
+from .models import Cart, Checkout, Order, VariantOffer
 from products.models import Product
 
 
@@ -20,6 +22,37 @@ def _format_cart_items(cart):
     ):
         parts.append(f"{item.variant.product.name} x{item.quantity}")
     return "; ".join(parts)
+
+
+class VariantOfferResource(resources.ModelResource):
+    product = fields.Field(
+        column_name="product",
+        attribute="variant__product",
+        widget=ForeignKeyWidget(Product, "slug"),
+        readonly=True,
+    )
+    variant_sku = fields.Field(
+        column_name="variant_sku",
+        attribute="variant",
+        widget=ProductVariantBySkuWidget(),
+    )
+
+    class Meta:
+        model = VariantOffer
+        import_id_fields = ("variant",)
+        skip_unchanged = True
+        fields = (
+            "id",
+            "product",
+            "variant_sku",
+            "price",
+            "is_available",
+        )
+        export_order = fields
+
+    def dehydrate_variant_sku(self, offer):
+        inventory = inventory_for_variant(offer.variant)
+        return (inventory.sku if inventory else "") or "-"
 
 
 class CartResource(resources.ModelResource):

@@ -20,6 +20,7 @@ from wagtail.admin.views.bulk_action import BulkAction
 from wagtail.admin.views.generic.models import IndexView
 from wagtail.permissions import ModelPermissionPolicy
 
+from simudza.utils.admin_bulk_delete import make_bulk_delete_action
 from simudza.utils.bulk_edit import (
     BulkEditValidationError,
     apply_bulk_changes,
@@ -276,7 +277,8 @@ class BulkEditIndexView(IndexView):
 class BulkEditViewSetMixin:
     """
     Enable bulk edit on a ModelViewSet. Declare ``bulk_edit_fields`` and register
-    ``bulk_edit_action`` via ``register_bulk_action`` in wagtail_hooks.
+    ``bulk_edit_action`` (and ``bulk_delete_action`` if wanted) via
+    ``register_bulk_action`` in wagtail_hooks.
     """
 
     bulk_edit_fields: list[BulkEditField] = []
@@ -296,4 +298,7 @@ class BulkEditViewSetMixin:
             validate_category_parent=getattr(
                 cls, "bulk_edit_validate_category_parent", False
             ),
+        )
+        cls.bulk_delete_action = make_bulk_delete_action(
+            model, url_namespace=getattr(cls, "name", None)
         )

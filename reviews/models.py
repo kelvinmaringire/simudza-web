@@ -14,7 +14,12 @@ class ReportReason(models.TextChoices):
     DUPLICATE_LISTING = "duplicate_listing", "Duplicate listing"
 
 
-PRODUCT_REPORT_REASONS = tuple(ReportReason.choices)
+# Directory listings have no price; PRICE_INCORRECT stays valid for existing reports.
+PRODUCT_REPORT_REASONS = tuple(
+    (value, label)
+    for value, label in ReportReason.choices
+    if value != ReportReason.PRICE_INCORRECT
+)
 
 BUSINESS_REPORT_REASONS = (
     (ReportReason.BUSINESS_CLOSED, ReportReason.BUSINESS_CLOSED.label),

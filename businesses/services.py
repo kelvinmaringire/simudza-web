@@ -4,6 +4,8 @@ from django.db import transaction
 from django.utils import timezone
 from wagtail.images import get_image_model
 
+from inventory.services import set_variant_identifiers
+from marketplace.offers import set_variant_price
 from products.forms import save_product_with_unique_slug
 from products.models import Product
 from products.services import upsert_default_variant
@@ -174,14 +176,17 @@ def owner_save_product(user, business, data, *, product=None, image_upload=None)
             save_product_with_unique_slug(product)
         else:
             product.save()
-        upsert_default_variant(
+        variant = upsert_default_variant(
             product,
-            sku=data.get("sku") or "",
-            barcode=data.get("barcode") or "",
             size_value=data.get("size_value"),
             size_unit=data.get("size_unit") or "",
-            price=data.get("price"),
         )
+        set_variant_identifiers(
+            variant,
+            sku=data.get("sku") or "",
+            barcode=data.get("barcode") or "",
+        )
+        set_variant_price(variant, data.get("price"))
     if needs_reverification:
         _notify_superusers_after_commit(product, user)
     return product

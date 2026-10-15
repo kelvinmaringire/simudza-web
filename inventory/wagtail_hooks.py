@@ -1,6 +1,5 @@
 from wagtail import hooks
 
-from . import signals  # noqa: F401
 from .viewsets import InventoryViewSet
 
 

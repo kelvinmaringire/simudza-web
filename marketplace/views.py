@@ -168,17 +168,17 @@ class MarketplaceProductDetailView(DetailView):
             offer = {
                 "@type": "Offer",
                 "priceCurrency": "USD",
-                "price": str(variant.price),
+                "price": str(variant.offer.price),
                 "availability": (
                     "https://schema.org/InStock"
                     if available > 0
                     else "https://schema.org/OutOfStock"
                 ),
             }
-            if variant.sku:
-                offer["sku"] = variant.sku
-            if variant.barcode:
-                offer["gtin"] = variant.barcode
+            if variant.inventory.sku:
+                offer["sku"] = variant.inventory.sku
+            if variant.inventory.barcode:
+                offer["gtin"] = variant.inventory.barcode
             offers.append(offer)
 
         data = {
@@ -224,11 +224,11 @@ class MarketplaceProductDetailView(DetailView):
                 {
                     "id": variant.pk,
                     "label": variant.label,
-                    "price": str(variant.price),
+                    "price": str(variant.offer.price),
                     "sizeDisplay": variant.size_display,
                     "packaging": variant.packaging,
-                    "sku": variant.sku,
-                    "barcode": variant.barcode,
+                    "sku": variant.inventory.sku,
+                    "barcode": variant.inventory.barcode,
                     "maxQty": variant.inventory.available_quantity,
                 }
             )

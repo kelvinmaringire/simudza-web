@@ -7,7 +7,7 @@ from wagtail.admin.forms.models import formfield_for_dbfield
 
 from businesses.verification.levels import LifecycleStatus, VerificationLevel
 
-from .models import Product, ProductVariant
+from .models import Product
 
 
 def unique_product_slug(name, *, exclude_pk=None):
@@ -111,36 +111,3 @@ class ProductForm(WagtailAdminModelForm):
                     product.save()
                 self.save_m2m()
         return product
-
-
-class ProductVariantForm(WagtailAdminModelForm):
-    change_reason = forms.CharField(
-        required=False,
-        max_length=500,
-        label="Reason for change",
-        help_text="Optional note stored in change history.",
-    )
-
-    class Meta:
-        model = ProductVariant
-        formfield_callback = formfield_for_dbfield
-        fields = [
-            "product",
-            "name",
-            "sku",
-            "barcode",
-            "size_value",
-            "size_unit",
-            "packaging",
-            "price",
-            "is_available",
-        ]
-
-    def save(self, commit=True):
-        variant = super().save(commit=False)
-        reason = (self.cleaned_data.get("change_reason") or "").strip()
-        with change_context(reason=reason):
-            if commit:
-                variant.save()
-                self.save_m2m()
-        return variant

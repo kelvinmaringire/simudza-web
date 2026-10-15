@@ -3,6 +3,8 @@ from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from wagtail.admin.panels import Panel
 
+from inventory.services import inventory_for_variant
+
 from .models import DuplicateFlag
 
 EDIT_URL_NAMES = {
@@ -17,18 +19,24 @@ def _edit_link(kind, obj):
     )
 
 
+def _variant_summary(variant):
+    inventory = inventory_for_variant(variant)
+    sku = inventory.sku if inventory else ""
+    barcode = inventory.barcode if inventory else ""
+    return " · ".join(
+        part
+        for part in (
+            variant.label,
+            f"SKU {sku}" if sku else "",
+            f"barcode {barcode}" if barcode else "",
+        )
+        if part
+    )
+
+
 def _product_rows(product):
     variants = "; ".join(
-        " · ".join(
-            part
-            for part in (
-                v.label,
-                f"SKU {v.sku}" if v.sku else "",
-                f"barcode {v.barcode}" if v.barcode else "",
-            )
-            if part
-        )
-        for v in product.variants.all()
+        _variant_summary(v) for v in product.variants.select_related("inventory")
     )
     return [
         (_("Business"), product.business),

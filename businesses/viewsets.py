@@ -20,6 +20,7 @@ from .panels import DataQualityPanel
 from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
 from simudza.utils.admin_grid import GridPanel, GridRow
 from simudza.utils.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_save_actions import SaveActionsViewSetMixin
 
 from .forms import BusinessForm
 from .models import Business
@@ -89,7 +90,9 @@ def _business_quality_display(business):
     return f"{business.quality_score}/10"
 
 
-class BusinessViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
+class BusinessViewSet(
+    SaveActionsViewSetMixin, BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet
+):
     model = Business
     resource_class = BusinessResource
 

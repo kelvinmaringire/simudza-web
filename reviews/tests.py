@@ -78,6 +78,18 @@ class ListingReportTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(BusinessReview.objects.count(), 0)
 
+    def test_price_reason_not_offered_or_accepted_for_product(self):
+        response = self.client.get(self.product.get_absolute_url(), HTTP_HOST="localhost")
+        self.assertNotContains(response, "Price incorrect")
+
+        url = reverse("reviews:report_product", kwargs={"slug": self.product.slug})
+        self.client.post(
+            url,
+            {"reason": ReportReason.PRICE_INCORRECT},
+            HTTP_HOST="localhost",
+        )
+        self.assertEqual(ProductReview.objects.count(), 0)
+
     def test_honeypot_drops_submission(self):
         url = reverse("reviews:report_product", kwargs={"slug": self.product.slug})
         response = self.client.post(

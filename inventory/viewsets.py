@@ -27,6 +27,8 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
 
     list_display = [
         "variant",
+        "sku",
+        "barcode",
         "quantity",
         "reserved_quantity",
         "available_quantity",
@@ -43,17 +45,25 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
     search_fields = [
         "variant__product__name",
         "variant__product__slug",
-        "variant__sku",
+        "sku",
+        "barcode",
         "variant__product__brand_name",
         "variant__product__business__name",
     ]
 
-    # Inventory is auto-created with each product — edit stock only.
+    # Inventory is auto-created with each variant — edit identifiers and stock only.
     edit_handler = ObjectList(
         [
             MultiFieldPanel(
                 [
                     FieldPanel("variant", read_only=True),
+                    FieldPanel("sku"),
+                    FieldPanel("barcode"),
+                ],
+                heading="Identifiers",
+            ),
+            MultiFieldPanel(
+                [
                     FieldPanel("quantity"),
                     FieldPanel("reserved_quantity"),
                     FieldPanel("low_stock_threshold"),
@@ -68,6 +78,8 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
 
     inspect_view_fields = [
         "variant",
+        "sku",
+        "barcode",
         "quantity",
         "reserved_quantity",
         "available_quantity",

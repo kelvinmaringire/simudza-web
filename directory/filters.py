@@ -176,7 +176,7 @@ class DirectoryListingFilter(django_filters.FilterSet):
             | Q(product__brand_name__icontains=value)
             | Q(product__short_description__icontains=value)
             | Q(product__description__icontains=value)
-            | Q(product__variants__sku__icontains=value)
+            | Q(product__variants__inventory__sku__icontains=value)
             | Q(product__business__name__icontains=value)
             | Q(product__category__name__icontains=value)
         ).distinct()

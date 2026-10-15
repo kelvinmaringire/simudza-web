@@ -46,9 +46,9 @@ class ChangeHistoryPanel(Panel):
                     format_html(
                         "<tr><td>{field}</td><td>{old}</td><td>{new}</td>"
                         "<td>{by}</td><td>{when}</td></tr>",
-                        field=row.field_label or row.get_action_display(),
-                        old=row.old_value or "—",
-                        new=row.new_value or "—",
+                        field=row.field_display,
+                        old=row.old_value_display,
+                        new=row.new_value_display,
                         by=row.changed_by_repr or "—",
                         when=row.changed_at.strftime("%d %B %Y %H:%M"),
                     )

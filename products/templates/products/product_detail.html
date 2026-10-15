@@ -17,12 +17,32 @@
     <section
         class="grid gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start lg:gap-8 xl:gap-10"
         aria-labelledby="product-title"
-        {% if gallery|length > 1 %}
+        {% if gallery|length > 1 or variant_options|length > 1 %}
         x-data="{
-            active: 0,
+            selectedId: {{ selected_variant.pk|default:0 }},
+            active: {{ initial_image_index }},
             count: {{ gallery|length }},
-            select(i, focus) {
+            variantLabels: {
+                {% for option in variant_options %}{{ option.variant.pk }}: '{{ option.variant.label|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}
+            },
+            selectVariant(id, index) {
+                this.selectedId = Number(id);
+                if (index !== null && index !== undefined && index !== '') {
+                    this.active = Number(index);
+                }
+                const url = new URL(window.location.href);
+                url.searchParams.set('variant', id);
+                window.history.replaceState({}, '', url);
+                const announcer = document.getElementById('product-variant-announcer');
+                if (announcer) {
+                    announcer.textContent = (this.variantLabels[this.selectedId] || '') + ' selected.';
+                }
+            },
+            select(i, focus, variantId) {
                 this.active = ((i % this.count) + this.count) % this.count;
+                if (variantId) {
+                    this.selectVariant(variantId, i);
+                }
                 if (!focus) return;
                 this.$nextTick(() => {
                     const options = this.$refs.thumbs && this.$refs.thumbs.querySelectorAll('[role=option]');
@@ -68,12 +88,12 @@
                             alt="{{ item.alt }}"
                             width="{{ slide.width }}"
                             height="{{ slide.height }}"
-                    draggable="false"
+                            draggable="false"
                             {% if gallery|length > 1 %}
                             x-show="active === {{ forloop.counter0 }}"
-                            {% if not forloop.first %}x-cloak{% endif %}
+                            {% if forloop.counter0 != initial_image_index %}x-cloak{% endif %}
                             {% endif %}
-                />
+                        />
                     {% endfor %}
             </div>
             {% if gallery|length > 1 %}
@@ -94,7 +114,8 @@
                                     class="product-gallery-thumb product-image-well product-image-well--thumb flex size-12 items-center justify-center p-1 transition outline-none sm:size-14"
                                     :aria-selected="active === {{ forloop.counter0 }}"
                                     :tabindex="active === {{ forloop.counter0 }} ? 0 : -1"
-                                    @click="select({{ forloop.counter0 }})"
+                                    data-variant="{{ item.variant_id|default:'' }}"
+                                    @click="select({{ forloop.counter0 }}, false, {% if item.variant_id %}{{ item.variant_id }}{% else %}null{% endif %})"
                                     aria-label="{{ item.alt }} ({{ forloop.counter }} of {{ gallery|length }})"
                                 >
                             <img
@@ -158,7 +179,7 @@
                 </p>
             {% endif %}
             <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                {% include "partials/verified_badge.html" with level_meta=product.level_meta verification_reference=product.verification_reference verified_at=product.effective_verified_at %}
+                {% include "partials/verified_badge.html" with level_meta=product.level_meta verification_reference=product.verification_reference %}
                 {% load review_report_tags %}
                 {% product_report_reason_choices as reason_choices %}
                 {% url 'reviews:report_product' product.slug as report_url %}
@@ -166,6 +187,98 @@
             </div>
             {% if request.GET.reported %}
                 <p class="mt-2 text-sm text-success" role="status">Thanks — your report was submitted.</p>
+            {% endif %}
+
+            {% if selected_variant %}
+                {% if variant_options|length > 1 %}
+                    <form
+                        method="get"
+                        action="{{ product.get_absolute_url }}"
+                        class="product-variant-picker mt-5 max-w-prose"
+                    >
+                        <fieldset>
+                            <legend class="text-sm text-base-content/65">
+                                Option:
+                                <span
+                                    class="font-semibold text-base-content"
+                                    {% if gallery|length > 1 or variant_options|length > 1 %}
+                                    x-text="variantLabels[selectedId]"
+                                    {% endif %}
+                                >{{ selected_variant.label }}</span>
+                            </legend>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                {% for option in variant_options %}
+                                    <label
+                                        for="variant-option-{{ option.variant.pk }}"
+                                        class="product-variant-option"
+                                    >
+                                        <input
+                                            id="variant-option-{{ option.variant.pk }}"
+                                            type="radio"
+                                            name="variant"
+                                            value="{{ option.variant.pk }}"
+                                            class="sr-only"
+                                            {% if option.variant == selected_variant %}checked{% endif %}
+                                            {% if gallery|length > 1 or variant_options|length > 1 %}
+                                            x-model.number="selectedId"
+                                            @change="selectVariant($event.target.value, {% if option.image_index != None %}{{ option.image_index }}{% else %}null{% endif %})"
+                                            {% endif %}
+                                        />
+                                        {% if option.swatch %}
+                                            {% image option.swatch fill-64x64 as swatch %}
+                                            <img
+                                                class="product-variant-option__swatch"
+                                                src="{{ swatch.url }}"
+                                                alt=""
+                                                width="32"
+                                                height="32"
+                                                draggable="false"
+                                            />
+                                        {% endif %}
+                                        <span class="min-w-0">
+                                            <span class="product-variant-option__label">{{ option.variant.label }}</span>
+                                            {% if option.variant.size_display and option.variant.size_display != option.variant.label %}
+                                                <span class="product-variant-option__meta">{{ option.variant.size_display }}</span>
+                                            {% endif %}
+                                        </span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            <noscript>
+                                <button type="submit" class="btn btn-sm btn-outline mt-3">Show option</button>
+                            </noscript>
+                        </fieldset>
+                    </form>
+                {% endif %}
+
+                {% for option in variant_options %}
+                    {% with variant=option.variant %}
+                        {% if variant.size_display or variant.packaging %}
+                            <dl
+                                class="product-variant-specs mt-4 max-w-prose"
+                                {% if variant_options|length > 1 %}
+                                x-show="selectedId === {{ variant.pk }}"
+                                {% if variant != selected_variant %}x-cloak{% endif %}
+                                {% endif %}
+                            >
+                                {% if variant.size_display %}
+                                    <div>
+                                        <dt>Size</dt>
+                                        <dd>{{ variant.size_display }}</dd>
+                                    </div>
+                                {% endif %}
+                                {% if variant.packaging %}
+                                    <div>
+                                        <dt>Packaging</dt>
+                                        <dd>{{ variant.packaging }}</dd>
+                                    </div>
+                                {% endif %}
+                            </dl>
+                        {% endif %}
+                    {% endwith %}
+                {% endfor %}
+
+                <p id="product-variant-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></p>
             {% endif %}
 
             {# Contact maker — directory pages don't add to cart here #}
@@ -245,36 +358,6 @@
 
     {# Below: Specs · Manufacturer — quiet, directory-like #}
     <div class="mt-8 max-w-3xl space-y-8 sm:mt-10 sm:space-y-9">
-        {% if product_variants %}
-            <section aria-labelledby="product-specs">
-                <h2 id="product-specs" class="text-base font-semibold tracking-tight">Variants</h2>
-                <div class="mt-2 overflow-x-auto">
-                    <table class="table table-sm text-sm">
-                        <thead>
-                            <tr>
-                                <th>Option</th>
-                                <th>Size</th>
-                                <th>Packaging</th>
-                                <th>SKU</th>
-                                <th>Barcode</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for variant in product_variants %}
-                                <tr>
-                                    <td>{{ variant.label }}</td>
-                                    <td>{{ variant.size_display|default:"—" }}</td>
-                                    <td>{{ variant.packaging|default:"—" }}</td>
-                                    <td>{{ variant.sku|default:"—" }}</td>
-                                    <td>{{ variant.barcode|default:"—" }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        {% endif %}
-
         {% include "partials/video_links.html" with videos=videos section_id="product-videos" %}
 
         {% if business %}

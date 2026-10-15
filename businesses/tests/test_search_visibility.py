@@ -10,7 +10,7 @@ from businesses.verification.levels import FreshnessTier, LifecycleStatus, Verif
 from categories.models import Category
 from directory.models import DirectoryListing
 from products.models import Product
-from products.test_helpers import add_sellable_variant
+from marketplace.test_helpers import add_sellable_variant
 
 
 class SearchVisibilityTests(TestCase):

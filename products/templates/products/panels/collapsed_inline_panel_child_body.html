@@ -1,0 +1,10 @@
+{% if child.form.non_field_errors %}
+    <ul>
+        {% for error in child.form.non_field_errors %}
+            <li class="error-message">
+                <span>{{ error|escape }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{{ child.render_form_content }}

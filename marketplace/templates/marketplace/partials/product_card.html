@@ -1,6 +1,6 @@
 {% load wagtailimages_tags %}
 {% if product.image %}{% image product.image fill-96x96 as cart_thumb %}{% endif %}
-{% with variants=product.sellable_variants_for_marketplace %}
+{% with variants=product.sellable_variants_list %}
 <article class="mp-card group">
     <div class="mp-card__media product-image-well">
         {% if product.image %}
@@ -52,7 +52,7 @@
             {% endif %}
             <span>{{ product.get_origin_type_display }}</span>
         </p>
-        {% include "partials/verified_badge.html" with level_meta=product.level_meta verification_reference=product.verification_reference verified_at=product.effective_verified_at %}
+        {% include "partials/verified_badge.html" with level_meta=product.level_meta verification_reference=product.verification_reference %}
 
         <div class="mp-card__footer">
             <p class="mp-card__price">
@@ -74,7 +74,7 @@
                         id: {{ v.pk }},
                         name: '{{ product.name|escapejs }}',
                         variantLabel: '{{ v.label|escapejs }}',
-                        price: '{{ v.price }}',
+                        price: '{{ v.offer.price }}',
                         imageUrl: '{% if product.image %}{{ cart_thumb.url|escapejs }}{% endif %}',
                         url: '{{ product.get_marketplace_url|escapejs }}',
                         maxQty: {{ v.inventory.available_quantity }}

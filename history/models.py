@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
 
@@ -30,6 +31,7 @@ class ChangeLog(models.Model):
         SYSTEM = "system", "System"
         WEB = "web", "Web"
         BULK_EDIT = "bulk_edit", "Bulk edit"
+        UNDO = "undo", "Undo"
 
     content_type = models.ForeignKey(
         ContentType,
@@ -47,6 +49,20 @@ class ChangeLog(models.Model):
     field_label = models.CharField(max_length=200, blank=True)
     old_value = models.TextField(blank=True)
     new_value = models.TextField(blank=True)
+
+    # Stored values (attname form, e.g. FK ids) used to undo; display text above is for people.
+    raw_captured = models.BooleanField(default=False)
+    old_raw = models.JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
+    new_raw = models.JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
+
+    undone_at = models.DateTimeField(null=True, blank=True)
+    undone_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
 
     changed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -85,3 +101,34 @@ class ChangeLog(models.Model):
         if self.field_name:
             return f"{self.object_repr}: {self.field_label or self.field_name}"
         return self.object_repr
+
+    @property
+    def may_be_undoable(self):
+        """Cheap check for listings; history.undo.undo_blocker has the full rules."""
+        return (
+            self.action == self.Action.UPDATED
+            and self.raw_captured
+            and self.undone_at is None
+        )
+
+    @property
+    def is_record_deletion(self):
+        return self.action == self.Action.DELETED and not self.field_name
+
+    @property
+    def field_display(self):
+        if self.is_record_deletion:
+            return "Whole record"
+        return self.field_label or self.field_name or "—"
+
+    @property
+    def old_value_display(self):
+        if self.is_record_deletion:
+            return self.object_repr
+        return self.old_value or "—"
+
+    @property
+    def new_value_display(self):
+        if self.is_record_deletion:
+            return "Deleted"
+        return self.new_value or "—"

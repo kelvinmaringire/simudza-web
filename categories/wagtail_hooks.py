@@ -9,3 +9,4 @@ def register_category_chooser_viewset():
 
 
 hooks.register("register_bulk_action", CategoryViewSet.bulk_edit_action)
+hooks.register("register_bulk_action", CategoryViewSet.bulk_delete_action)

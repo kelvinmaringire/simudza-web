@@ -14,3 +14,4 @@ def register_business_chooser_viewset():
 
 
 hooks.register("register_bulk_action", BusinessViewSet.bulk_edit_action)
+hooks.register("register_bulk_action", BusinessViewSet.bulk_delete_action)

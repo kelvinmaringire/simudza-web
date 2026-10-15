@@ -7,7 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from marketplace.models import Cart, CartEvent, CartItem
-from products.models import ProductVariant
+from marketplace.offers import price_for_variant, sellable_variants
 
 MAX_CART_LINES = 100
 
@@ -15,9 +15,9 @@ MAX_CART_LINES = 100
 def _sellable_variants_by_id(variant_ids):
     return {
         variant.pk: variant
-        for variant in ProductVariant.objects.sellable()
+        for variant in sellable_variants()
         .filter(pk__in=variant_ids)
-        .select_related("inventory", "product", "product__image")
+        .select_related("product", "product__image")
     }
 
 
@@ -76,7 +76,7 @@ def _apply_snapshot(cart, wanted, sellable):
 
     for variant_id, quantity in wanted.items():
         variant = sellable[variant_id]
-        price = variant.price
+        price = variant.offer.price
         if price is None:
             continue
 
@@ -197,7 +197,13 @@ def mark_cart_converted(cart, *, order):
 def serialize_cart_lines(cart):
     rows = (
         cart.items.filter(removed_at__isnull=True)
-        .select_related("variant", "variant__product", "variant__product__image", "variant__inventory")
+        .select_related(
+            "variant",
+            "variant__product",
+            "variant__product__image",
+            "variant__inventory",
+            "variant__offer",
+        )
         .order_by("sort_order", "pk")
     )
     lines = []
@@ -207,7 +213,9 @@ def serialize_cart_lines(cart):
         image_url = ""
         if product.image:
             image_url = product.image.get_rendition("fill-96x96").url
-        price = row.price_snapshot if row.price_snapshot is not None else variant.price
+        price = row.price_snapshot
+        if price is None:
+            price = price_for_variant(variant)
         lines.append(
             {
                 "id": variant.pk,

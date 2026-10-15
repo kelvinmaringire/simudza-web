@@ -31,6 +31,8 @@ BUSINESS_QUALITY_FIELDS = ("is_active", "email", "phone", "website", "verified_a
 
 REFRESH_BATCH_SIZE = 500
 
+MAX_SCORE = 9
+
 
 @dataclass(frozen=True)
 class Check:
@@ -44,7 +46,7 @@ class QualityReport:
     checks: tuple[Check, ...]
     issues: list[str]
     score: int
-    max_score: int = 10
+    max_score: int = MAX_SCORE
 
 
 def evaluate_product(
@@ -82,13 +84,6 @@ def evaluate_product(
     )
     has_website = bool(business.website and business.website.strip())
 
-    has_price = False
-    variants = product.variants.all()
-    if hasattr(variants, "_result_cache") and variants._result_cache is not None:
-        has_price = any(v.price is not None for v in variants)
-    else:
-        has_price = product.variants.filter(price__isnull=False).exists()
-
     origin_ok = product.origin_type != Product.OriginType.OTHER
 
     checks = (
@@ -100,7 +95,6 @@ def evaluate_product(
         Check("contact", "Contact information", contact_ok),
         Check("verification_date", "Verification date", verification_ok),
         Check("website", "Website", has_website),
-        Check("price", "Price", has_price),
         Check("origin", "Origin documented", origin_ok),
     )
     score = sum(1 for c in checks if c.passed)
@@ -174,7 +168,7 @@ def refresh_product_quality(product_or_qs, *, batch_size=REFRESH_BATCH_SIZE):
     qs = (
         qs.order_by("pk")
         .select_related("business", "category")
-        .prefetch_related("variants", "images")
+        .prefetch_related("images")
     )
     now = tz.now()
     last_pk = 0

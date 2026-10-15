@@ -1,7 +1,36 @@
+from django import forms
 from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.forms.models import formfield_for_dbfield
 
-from .models import Cart, Checkout, Order
+from history.context import change_context
+
+from .models import Cart, Checkout, Order, VariantOffer
+
+
+class VariantOfferForm(WagtailAdminModelForm):
+    change_reason = forms.CharField(
+        required=False,
+        max_length=500,
+        label="Reason for change",
+        help_text="Optional note stored in change history.",
+    )
+
+    class Meta:
+        model = VariantOffer
+        formfield_callback = formfield_for_dbfield
+        fields = [
+            "price",
+            "is_available",
+        ]
+
+    def save(self, commit=True):
+        offer = super().save(commit=False)
+        reason = (self.cleaned_data.get("change_reason") or "").strip()
+        with change_context(reason=reason):
+            if commit:
+                offer.save()
+                self.save_m2m()
+        return offer
 
 
 class CartForm(WagtailAdminModelForm):

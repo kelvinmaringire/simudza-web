@@ -205,3 +205,79 @@ class BulkEditAdminViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "bulk-actions.js")
         self.assertContains(response, "bulk-action-checkbox")
+
+
+class BulkDeleteAdminViewTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff = User.objects.create_superuser("admin", "admin@example.com", "pass")
+        self.viewer = User.objects.create_user(
+            "viewer", "viewer@example.com", "pass", is_staff=True
+        )
+        self.viewer.user_permissions.add(
+            Permission.objects.get(codename="access_admin"),
+            Permission.objects.get(
+                codename="view_product",
+                content_type=ContentType.objects.get_for_model(Product),
+            ),
+        )
+        self.business = Business.objects.create(name="Co", slug="co")
+        self.category = Category.objects.create(name="Food", slug="food")
+        self.products = [
+            Product.objects.create(
+                business=self.business,
+                category=self.category,
+                name=f"Product {i}",
+                slug=f"product-{i}",
+            )
+            for i in range(2)
+        ]
+        self.admin_host = {"HTTP_HOST": "localhost"}
+
+    def _delete_url(self, app_label, model_name, *pks, next_url="/admin/"):
+        base = reverse(
+            "wagtail_bulk_action",
+            kwargs={"app_label": app_label, "model_name": model_name, "action": "delete"},
+        )
+        ids = "&".join(f"id={pk}" for pk in pks)
+        return f"{base}?{ids}&next={next_url}"
+
+    def test_index_lists_delete_action(self):
+        self.client.force_login(self.staff)
+        for url_name, app_label, model_name in (
+            ("product:index", "products", "product"),
+            ("business:index", "businesses", "business"),
+            ("category:index", "categories", "category"),
+        ):
+            response = self.client.get(reverse(url_name), **self.admin_host)
+            self.assertContains(
+                response, f"/admin/bulk/{app_label}/{model_name}/delete/", msg_prefix=url_name
+            )
+
+    def test_confirm_then_delete_products(self):
+        pks = [p.pk for p in self.products]
+        url = self._delete_url("products", "product", *pks)
+        self.client.force_login(self.staff)
+
+        confirm = self.client.get(url, **self.admin_host)
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, "Yes, delete")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(url, **self.admin_host)
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Product.objects.filter(pk__in=pks).exists())
+
+    def test_protected_business_is_not_deleted(self):
+        url = self._delete_url("businesses", "business", self.business.pk)
+        self.client.force_login(self.staff)
+        response = self.client.post(url, follow=True, **self.admin_host)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Business.objects.filter(pk=self.business.pk).exists())
+        self.assertContains(response, "Nothing was deleted")
+
+    def test_viewer_without_delete_permission_cannot_delete(self):
+        url = self._delete_url("products", "product", self.products[0].pk)
+        self.client.force_login(self.viewer)
+        self.client.post(url, **self.admin_host)
+        self.assertTrue(Product.objects.filter(pk=self.products[0].pk).exists())

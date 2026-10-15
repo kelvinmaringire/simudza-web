@@ -3,6 +3,11 @@ from django.db import models
 from django.db.models import F, Q
 
 
+def in_stock_q(prefix=""):
+    """Has at least one unit that is not reserved."""
+    return Q(**{f"{prefix}quantity__gt": F(f"{prefix}reserved_quantity")})
+
+
 class Inventory(models.Model):
     """
     Stock record for a product variant. One row per variant, auto-created on save.
@@ -12,6 +17,16 @@ class Inventory(models.Model):
         "products.ProductVariant",
         on_delete=models.CASCADE,
         related_name="inventory",
+    )
+
+    sku = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    barcode = models.CharField(
+        max_length=100,
+        blank=True,
     )
 
     quantity = models.PositiveIntegerField(
@@ -42,6 +57,11 @@ class Inventory(models.Model):
                 condition=Q(reserved_quantity__lte=F("quantity")),
                 name="inventory_reserved_not_above_quantity",
             ),
+            models.UniqueConstraint(
+                fields=["barcode"],
+                condition=~Q(barcode=""),
+                name="unique_inventory_barcode_nonempty",
+            ),
         ]
 
     def __str__(self):
@@ -60,11 +80,22 @@ class Inventory(models.Model):
 
     def clean(self):
         super().clean()
+        errors = {}
         if self.reserved_quantity > self.quantity:
-            raise ValidationError(
-                {
-                    "reserved_quantity": (
-                        "Reserved quantity cannot exceed total quantity."
-                    ),
-                }
+            errors["reserved_quantity"] = (
+                "Reserved quantity cannot exceed total quantity."
             )
+        # Per-product uniqueness spans the variant FK, so a DB constraint can't hold it.
+        if self.sku and self.variant_id:
+            clash = (
+                Inventory.objects.filter(
+                    sku=self.sku,
+                    variant__product_id=self.variant.product_id,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            )
+            if clash:
+                errors["sku"] = "Another variant of this product already uses this SKU."
+        if errors:
+            raise ValidationError(errors)

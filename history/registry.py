@@ -58,15 +58,17 @@ TRACKED_FIELDS = {
     ],
     "products.ProductVariant": [
         "name",
-        "sku",
-        "barcode",
         "size_value",
         "size_unit",
         "packaging",
+    ],
+    "marketplace.VariantOffer": [
         "price",
         "is_available",
     ],
     "inventory.Inventory": [
+        "sku",
+        "barcode",
         "quantity",
         "low_stock_threshold",
     ],

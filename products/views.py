@@ -1,7 +1,9 @@
 from django.db.models import Prefetch, Q
 from django.views.generic import DetailView
 
-from .models import Product, ProductImage
+from marketplace.offers import product_has_sellable_variants
+
+from .models import Product, ProductImage, ProductVariantImage
 
 RELATED_PRODUCT_LIMIT = 8
 
@@ -30,6 +32,30 @@ class ProductQuerysetMixin:
         )
 
 
+def build_gallery(product, variants):
+    """Variant images first (tagged by variant), then product gallery, deduplicated by image id."""
+    gallery = []
+    seen = set()
+
+    def add(image, alt, variant_id=None):
+        if image is None or image.pk in seen:
+            return
+        seen.add(image.pk)
+        gallery.append({"image": image, "alt": alt, "variant_id": variant_id})
+
+    for variant in variants:
+        for item in variant.images.all():
+            add(
+                item.image,
+                item.alt_text or f"{product.name} — {variant.label}",
+                variant_id=variant.pk,
+            )
+    add(product.image, product.name, variant_id=None)
+    for item in product.images.all():
+        add(item.image, item.alt_text or product.name, variant_id=None)
+    return gallery
+
+
 class ProductDetailView(ProductQuerysetMixin, DetailView):
     """Public product detail used by the directory (not marketplace)."""
 
@@ -41,6 +67,57 @@ class ProductDetailView(ProductQuerysetMixin, DetailView):
 
     def get_queryset(self):
         return self.get_base_queryset()
+
+    def get_variants(self, product):
+        images = Prefetch(
+            "images",
+            queryset=ProductVariantImage.objects.select_related("image").order_by(
+                "sort_order", "pk"
+            ),
+        )
+        return list(
+            product.variants.prefetch_related(images).order_by("sort_order", "pk")
+        )
+
+    def get_selected_variant(self, variants):
+        wanted = self.request.GET.get("variant", "")
+        for variant in variants:
+            if str(variant.pk) == wanted:
+                return variant
+        return variants[0] if variants else None
+
+    def get_variant_context(self, product):
+        variants = self.get_variants(product)
+        selected = self.get_selected_variant(variants)
+        gallery = build_gallery(product, variants)
+
+        image_index_by_variant = {}
+        for index, item in enumerate(gallery):
+            vid = item.get("variant_id")
+            if vid is not None and vid not in image_index_by_variant:
+                image_index_by_variant[vid] = index
+
+        variant_options = []
+        for variant in variants:
+            own_images = list(variant.images.all())
+            variant_options.append(
+                {
+                    "variant": variant,
+                    "image_index": image_index_by_variant.get(variant.pk),
+                    "swatch": own_images[0].image if own_images else None,
+                }
+            )
+
+        initial_image_index = 0
+        if selected and selected.pk in image_index_by_variant:
+            initial_image_index = image_index_by_variant[selected.pk]
+
+        return {
+            "gallery": gallery,
+            "variant_options": variant_options,
+            "selected_variant": selected,
+            "initial_image_index": initial_image_index,
+        }
 
     def get_related_products(self, product):
         """Same maker/brand first, then same category — keeps discovery moving."""
@@ -80,30 +157,9 @@ class ProductDetailView(ProductQuerysetMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         product = self.object
-        gallery = []
-        if product.image:
-            gallery.append(
-                {
-                    "image": product.image,
-                    "alt": product.name,
-                }
-            )
-        for item in product.images.all():
-            if product.image and item.image_id == product.image_id:
-                continue
-            gallery.append(
-                {
-                    "image": item.image,
-                    "alt": item.alt_text or product.name,
-                }
-            )
-        context["gallery"] = gallery
+        context.update(self.get_variant_context(product))
         context["business"] = product.business
-        context["in_marketplace"] = product.variants.sellable().exists()
-        context["product_variants"] = product.variants.order_by(
-            "sort_order",
-            "pk",
-        )
+        context["in_marketplace"] = product_has_sellable_variants(product)
         context["videos"] = list(product.videos.all())
         context["related_products"] = self.get_related_products(product)
         return context

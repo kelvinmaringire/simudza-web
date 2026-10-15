@@ -8,10 +8,10 @@ from django.utils import timezone
 from businesses.models import Business
 from categories.models import Category
 from duplicates.models import DuplicateFlag
+from marketplace.test_helpers import add_sellable_variant
 from products.models import Product
 from products.quality import evaluate_product, refresh_product_quality
 from products.services import upsert_default_variant
-from products.test_helpers import add_sellable_variant
 from reviews.models import ProductReview, ReportReason, ReportStatus
 
 
@@ -42,11 +42,17 @@ class ProductQualityTests(TestCase):
         add_sellable_variant(product, price="5.00")
         return product
 
-    def test_complete_product_scores_nine_without_image(self):
+    def test_complete_product_scores_eight_without_image(self):
         product = self._product()
         report = evaluate_product(product)
-        self.assertEqual(report.score, 9)
+        self.assertEqual(report.score, 8)
+        self.assertEqual(report.max_score, 9)
         self.assertIn("missing_image", report.issues)
+
+    def test_price_is_not_a_catalog_quality_check(self):
+        product = self._product()
+        report = evaluate_product(product)
+        self.assertNotIn("price", [c.code for c in report.checks])
 
     def test_missing_image_lowers_score_and_adds_issue(self):
         product = self._product()
@@ -99,7 +105,7 @@ class ProductQualityTests(TestCase):
         product = self._product()
         refresh_product_quality(product)
         product.refresh_from_db()
-        self.assertEqual(product.quality_score, 9)
+        self.assertEqual(product.quality_score, 8)
 
 
 class ProductQualitySignalTests(TestCase):
@@ -121,18 +127,18 @@ class ProductQualitySignalTests(TestCase):
             short_description="s",
             verified_at=timezone.now(),
         )
-        upsert_default_variant(self.product, price="1")
+        upsert_default_variant(self.product)
 
     def test_business_website_clear_lowers_product_score(self):
         refresh_product_quality(self.product)
         self.product.refresh_from_db()
-        self.assertEqual(self.product.quality_score, 9)
+        self.assertEqual(self.product.quality_score, 8)
 
         with self.captureOnCommitCallbacks(execute=True):
             self.business.website = ""
             self.business.save()
         self.product.refresh_from_db()
-        self.assertEqual(self.product.quality_score, 8)
+        self.assertEqual(self.product.quality_score, 7)
 
     def test_business_cosmetic_edit_refreshes_business_only(self):
         Product.objects.filter(pk=self.product.pk).update(quality_checked_at=None)
@@ -166,7 +172,7 @@ class ProductQualitySignalTests(TestCase):
             self.category.is_active = False
             self.category.save()
         self.product.refresh_from_db()
-        self.assertEqual(self.product.quality_score, 8)
+        self.assertEqual(self.product.quality_score, 7)
         self.assertIn("missing_category", self.product.quality_issues)
 
     def test_category_cosmetic_edit_skips_product_refresh(self):
@@ -185,11 +191,10 @@ class ProductQualitySignalTests(TestCase):
                 name=f"P{i}",
                 slug=f"p-{i}",
             )
-            upsert_default_variant(p, price="1")
+            upsert_default_variant(p)
         qs = Product.objects.filter(category=self.category)
-        # products, variants, images, duplicates, reports, bulk update,
-        # empty next batch
-        with self.assertNumQueries(7):
+        # products, images, duplicates, reports, bulk update, empty next batch
+        with self.assertNumQueries(6):
             refresh_product_quality(qs)
         self.assertFalse(qs.filter(quality_checked_at__isnull=True).exists())
 

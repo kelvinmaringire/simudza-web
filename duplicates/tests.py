@@ -4,9 +4,10 @@ from django.urls import reverse
 
 from businesses.models import Business
 from categories.models import Category
+from inventory.models import Inventory
 from products.forms import unique_product_slug
 from products.models import Product
-from products.test_helpers import add_sellable_variant
+from marketplace.test_helpers import add_sellable_variant
 
 from .models import DuplicateFlag
 from .normalize import (
@@ -144,7 +145,7 @@ class ProductDuplicateTests(DuplicateDetectionTestCase):
         importer = Business.objects.create(name="Importer", slug="importer")
         a = self.product("Classic Cola", barcode="06001234567890")
         b = self.product("Fizzy Drink", business=importer, category=self.food)
-        b.variants.update(barcode="6001234567890")
+        Inventory.objects.filter(variant__product=b).update(barcode="6001234567890")
 
         flags = flag_product_duplicates(a)
 
@@ -169,7 +170,7 @@ class ProductDuplicateTests(DuplicateDetectionTestCase):
         flag = flag_product_duplicates(a)[0]
         review_flag(flag, status=DuplicateFlag.Status.DISTINCT)
 
-        b.variants.update(barcode="0111")
+        Inventory.objects.filter(variant__product=b).update(barcode="0111")
         flag_product_duplicates(b)
 
         flag.refresh_from_db()

@@ -406,6 +406,81 @@
         0 0 0 4px color-mix(in oklab, var(--color-primary) 20%, transparent);
 }
 
+/* Directory product page: variant option chips */
+.product-variant-option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 2.75rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 18%, transparent);
+    background-color: var(--color-base-100);
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease,
+        background-color 120ms ease;
+}
+
+.product-variant-option:has(.product-variant-option__swatch) {
+    padding-left: 0.35rem;
+}
+
+.product-variant-option:hover {
+    border-color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+}
+
+.product-variant-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 6%, var(--color-base-100));
+    box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.product-variant-option:has(input:focus-visible) {
+    box-shadow:
+        0 0 0 2px color-mix(in oklab, var(--color-primary) 55%, transparent),
+        0 0 0 4px color-mix(in oklab, var(--color-primary) 20%, transparent);
+}
+
+.product-variant-option__swatch {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    border-radius: 0.5rem;
+    object-fit: cover;
+}
+
+.product-variant-option__label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.product-variant-option__meta {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+}
+
+.product-variant-specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.75rem;
+    font-size: 0.875rem;
+}
+
+.product-variant-specs dt {
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+
+.product-variant-specs dd {
+    font-weight: 500;
+}
+
 /* Soft contact actions on product detail (Call / Email / Website). */
 .product-contact-btn {
     display: inline-flex;

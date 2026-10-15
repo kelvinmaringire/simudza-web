@@ -3,6 +3,8 @@ from wagtail.admin.forms import WagtailAdminModelForm
 from wagtail.admin.forms.models import formfield_for_dbfield
 
 from categories.models import Category
+from inventory.services import inventory_for_variant
+from marketplace.offers import price_for_variant
 from products.models import Product
 
 from .models import Business, save_business_with_unique_slug, unique_business_slug
@@ -224,11 +226,13 @@ class OwnerProductForm(forms.Form):
             self.fields["brand_name"].initial = product.brand_name
             variant = product.variants.order_by("sort_order", "pk").first()
             if variant:
-                self.fields["sku"].initial = variant.sku
-                self.fields["barcode"].initial = variant.barcode
+                inventory = inventory_for_variant(variant)
+                if inventory:
+                    self.fields["sku"].initial = inventory.sku
+                    self.fields["barcode"].initial = inventory.barcode
                 self.fields["size_value"].initial = variant.size_value
                 self.fields["size_unit"].initial = variant.size_unit
-                self.fields["price"].initial = variant.price
+                self.fields["price"].initial = price_for_variant(variant)
             self.fields["business"].widget = forms.HiddenInput()
             _style_fields(self)
 

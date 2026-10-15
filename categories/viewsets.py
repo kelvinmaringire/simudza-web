@@ -16,6 +16,7 @@ from simudza.utils.admin_bulk_edit import (
     BulkEditViewSetMixin,
 )
 from simudza.utils.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_save_actions import SaveActionsViewSetMixin
 
 from .admin_filters import CategoryAttentionFilterSet
 from .forms import CategoryForm
@@ -130,7 +131,9 @@ class CategoryIndexView(BulkEditIndexView):
         )
 
 
-class CategoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
+class CategoryViewSet(
+    SaveActionsViewSetMixin, BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet
+):
     model = Category
     resource_class = CategoryResource
     index_view_class = CategoryIndexView

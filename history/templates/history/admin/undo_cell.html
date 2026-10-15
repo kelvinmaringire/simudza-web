@@ -1,0 +1,8 @@
+{% load i18n %}
+<td>
+    {% if instance.undone_at %}
+        {% trans "Undone" %}
+    {% elif undo_url %}
+        <a href="{{ undo_url }}">{% trans "Undo" %}</a>
+    {% endif %}
+</td>

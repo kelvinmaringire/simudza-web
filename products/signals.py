@@ -4,7 +4,7 @@ from django.dispatch import receiver
 
 from reviews.models import ProductReview
 
-from .models import Product, ProductImage, ProductVariant
+from .models import Product, ProductImage
 from .quality import refresh_product_quality
 
 
@@ -23,7 +23,6 @@ def product_quality_on_save(sender, instance, raw=False, **kwargs):
     _schedule_product_refresh(instance.pk)
 
 
-@receiver(post_save, sender=ProductVariant)
 @receiver(post_save, sender=ProductImage)
 def product_child_quality_on_save(sender, instance, raw=False, **kwargs):
     if raw or not instance.product_id:
@@ -31,7 +30,6 @@ def product_child_quality_on_save(sender, instance, raw=False, **kwargs):
     _schedule_product_refresh(instance.product_id)
 
 
-@receiver(post_delete, sender=ProductVariant)
 @receiver(post_delete, sender=ProductImage)
 def product_child_quality_on_delete(sender, instance, **kwargs):
     if instance.product_id:

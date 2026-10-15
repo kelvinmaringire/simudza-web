@@ -77,7 +77,7 @@ def flag_product_duplicates(product):
     """Detect and record possible duplicates of one product. Returns its flags."""
     product = (
         Product.objects.select_related("image")
-        .prefetch_related("variants", "images__image")
+        .prefetch_related("variants__inventory", "images__image")
         .filter(pk=getattr(product, "pk", product))
         .first()
     )

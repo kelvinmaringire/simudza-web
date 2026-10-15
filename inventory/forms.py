@@ -11,6 +11,8 @@ class InventoryForm(WagtailAdminModelForm):
         # Required so Wagtail widget overrides are applied.
         formfield_callback = formfield_for_dbfield
         fields = [
+            "sku",
+            "barcode",
             "quantity",
             "reserved_quantity",
             "low_stock_threshold",

@@ -1,7 +1,10 @@
+import json
 import uuid
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
+from django.db.models.fields.files import FieldFile
 
 from .context import current_context
 from .formatting import format_field_value
@@ -19,6 +22,15 @@ def _attname(model, field_name):
 def _read_field(instance, field_name):
     field = instance._meta.get_field(field_name)
     return getattr(instance, field.attname)
+
+
+def _json_raw(value):
+    """Raw field value in the form stored on ChangeLog.old_raw / new_raw."""
+    if isinstance(value, FieldFile):
+        return value.name or None
+    if hasattr(value, "_meta") and hasattr(value, "pk"):
+        return value.pk
+    return json.loads(json.dumps(value, cls=DjangoJSONEncoder))
 
 
 def _values_equal(old, new):
@@ -82,6 +94,9 @@ def _build_entries(
                 field_label=str(field.verbose_name),
                 old_value=old_display if action != ChangeLog.Action.CREATED else "",
                 new_value=new_display if action != ChangeLog.Action.DELETED else "",
+                raw_captured=True,
+                old_raw=_json_raw(old_raw),
+                new_raw=_json_raw(new_raw),
                 changed_by=user,
                 changed_by_repr=username,
                 reason=reason or "",

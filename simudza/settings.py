@@ -110,15 +110,18 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "simudza.urls"
 
-# Django enables the cached template loader even when DEBUG is on, and its cache
-# is only flushed by runserver's autoreloader — which never runs under
-# `uvicorn --reload`. Skip it in development so template edits show on refresh.
+# Cached in development too: uncached, each page re-opens thousands of template
+# paths, which takes seconds on a Docker bind mount. runserver's autoreloader
+# clears this cache when a template changes; `uvicorn --reload` would not.
 _TEMPLATE_LOADERS = [
-    "django.template.loaders.filesystem.Loader",
-    "django.template.loaders.app_directories.Loader",
+    (
+        "django.template.loaders.cached.Loader",
+        [
+            "django.template.loaders.filesystem.Loader",
+            "django.template.loaders.app_directories.Loader",
+        ],
+    )
 ]
-if not DEBUG:
-    _TEMPLATE_LOADERS = [("django.template.loaders.cached.Loader", _TEMPLATE_LOADERS)]
 
 TEMPLATES = [
     {

@@ -1,6 +1,6 @@
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
-from django.db.models import Count, F, Min, Q
+from django.db.models import Q
 from django.urls import reverse
 from django.utils.text import slugify
 
@@ -20,22 +20,14 @@ from businesses.verification.levels import (
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 
-from wagtail.admin.panels import FieldPanel
+from wagtail.admin.panels import FieldPanel, InlinePanel
 from wagtail.fields import RichTextField, StreamField
 from wagtail.images import get_image_model
 from wagtail.models import Orderable, Page
 
-from .panels import VariantEditLinkPanel
+from simudza.utils.admin_grid import GridRow
+
 from .streams import ProductClassificationStreamBlock
-
-
-class ProductVariantQuerySet(models.QuerySet):
-    def sellable(self):
-        return self.filter(
-            is_available=True,
-            price__isnull=False,
-            inventory__quantity__gt=F("inventory__reserved_quantity"),
-        ).distinct()
 
 
 def product_served_q(prefix=""):
@@ -60,23 +52,6 @@ class ProductQuerySet(models.QuerySet):
 
     def visible_in_search(self):
         return self.filter(product_searchable_q())
-
-    def with_sellable_variants(self):
-        sellable_filter = Q(
-            variants__is_available=True,
-            variants__price__isnull=False,
-            variants__inventory__quantity__gt=F(
-                "variants__inventory__reserved_quantity"
-            ),
-        )
-        return self.annotate(
-            from_price=Min("variants__price", filter=sellable_filter),
-            sellable_variant_count=Count(
-                "variants",
-                filter=sellable_filter,
-                distinct=True,
-            ),
-        ).filter(sellable_variant_count__gt=0)
 
 
 class Product(ClusterableModel):
@@ -303,17 +278,6 @@ class Product(ClusterableModel):
             kwargs={"slug": self.slug},
         )
 
-    @property
-    def sellable_variants_for_marketplace(self):
-        cached = getattr(self, "sellable_variants_list", None)
-        if cached is not None:
-            return cached
-        return list(
-            self.variants.sellable()
-            .select_related("inventory")
-            .order_by("sort_order", "pk")
-        )
-
 
 class ProductVariant(ClusterableModel, Orderable):
     product = ParentalKey(
@@ -326,16 +290,6 @@ class ProductVariant(ClusterableModel, Orderable):
         max_length=200,
         blank=True,
         help_text='Optional label, e.g. "330 ml can".',
-    )
-
-    sku = models.CharField(
-        max_length=100,
-        blank=True,
-    )
-
-    barcode = models.CharField(
-        max_length=100,
-        blank=True,
     )
 
     size_value = models.DecimalField(
@@ -356,17 +310,6 @@ class ProductVariant(ClusterableModel, Orderable):
         help_text='e.g. "PET bottle", "Can".',
     )
 
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-    )
-
-    is_available = models.BooleanField(
-        default=True,
-    )
-
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -375,18 +318,10 @@ class ProductVariant(ClusterableModel, Orderable):
         auto_now=True,
     )
 
-    objects = ProductVariantQuerySet.as_manager()
-
     panels = [
-        FieldPanel("name"),
-        FieldPanel("size_value"),
-        FieldPanel("size_unit"),
-        FieldPanel("packaging"),
-        FieldPanel("sku"),
-        FieldPanel("barcode"),
-        FieldPanel("price"),
-        FieldPanel("is_available"),
-        VariantEditLinkPanel(),
+        GridRow([FieldPanel("name"), FieldPanel("packaging")]),
+        GridRow([FieldPanel("size_value"), FieldPanel("size_unit")]),
+        InlinePanel("images", label="Variant image"),
     ]
 
     class Meta(Orderable.Meta):
@@ -394,22 +329,8 @@ class ProductVariant(ClusterableModel, Orderable):
         verbose_name_plural = "product variants"
         constraints = [
             models.CheckConstraint(
-                condition=Q(price__isnull=True) | Q(price__gte=0),
-                name="productvariant_price_not_negative",
-            ),
-            models.CheckConstraint(
                 condition=Q(size_value__isnull=True) | Q(size_value__gt=0),
                 name="productvariant_size_value_positive",
-            ),
-            models.UniqueConstraint(
-                fields=["barcode"],
-                condition=~Q(barcode=""),
-                name="unique_productvariant_barcode_nonempty",
-            ),
-            models.UniqueConstraint(
-                fields=["product", "sku"],
-                condition=~Q(sku=""),
-                name="unique_productvariant_sku_per_product_nonempty",
             ),
         ]
 
@@ -489,18 +410,21 @@ class ProductImage(Orderable):
         blank=True,
     )
 
-    is_primary = models.BooleanField(
-        default=False,
-    )
-
     panels = [
         FieldPanel("image"),
         FieldPanel("alt_text"),
-        FieldPanel("is_primary"),
     ]
 
     class Meta(Orderable.Meta):
         pass
+
+    @property
+    def label(self):
+        if self.alt_text:
+            return self.alt_text
+        if self.image_id:
+            return self.image.title
+        return ""
 
 
 class ProductVideo(VideoLink):

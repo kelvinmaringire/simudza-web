@@ -4,7 +4,12 @@ from wagtail.admin.menu import MenuItem
 
 from .admin_views import CartAnalyticsIndexView
 from .cart_analytics import user_can_view_cart_analytics
-from .viewsets import CheckoutViewSet, MarketplaceViewSetGroup, OrderViewSet
+from .viewsets import (
+    CheckoutViewSet,
+    MarketplaceViewSetGroup,
+    OrderViewSet,
+    VariantOfferViewSet,
+)
 
 
 @hooks.register("register_admin_viewset")
@@ -12,6 +17,7 @@ def register_marketplace_viewset_group():
     return MarketplaceViewSetGroup()
 
 
+hooks.register("register_bulk_action", VariantOfferViewSet.bulk_edit_action)
 hooks.register("register_bulk_action", OrderViewSet.bulk_edit_action)
 hooks.register("register_bulk_action", CheckoutViewSet.bulk_edit_action)
 

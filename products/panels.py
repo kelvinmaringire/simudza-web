@@ -1,7 +1,15 @@
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
-from wagtail.admin.panels import Panel
+from wagtail.admin.panels import InlinePanel, Panel
+
+
+class CollapsedInlinePanel(InlinePanel):
+    """Saved children are titled by the related model's ``label`` and start collapsed; new ones stay open."""
+
+    class BoundPanel(InlinePanel.BoundPanel):
+        template_name = "products/panels/collapsed_inline_panel.html"
+
 
 class DataQualityPanel(Panel):
     class BoundPanel(Panel.BoundPanel):
@@ -62,23 +70,3 @@ class DataQualityPanel(Panel):
                 issue_rows,
             )
 
-
-class VariantEditLinkPanel(Panel):
-    class BoundPanel(Panel.BoundPanel):
-        def render_html(self, parent_context):
-            instance = self.instance
-            if instance and instance.pk:
-                from django.urls import reverse
-
-                url = reverse("product_variant:edit", args=[instance.pk])
-                return format_html(
-                    '<p class="help-block">'
-                    '<a href="{}" target="_blank" rel="noopener">{}</a>'
-                    "</p>",
-                    url,
-                    _("Edit images & details"),
-                )
-            return format_html(
-                '<p class="help-block">{}</p>',
-                _("Save the product first to edit variant images."),
-            )

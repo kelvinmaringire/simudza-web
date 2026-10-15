@@ -1,4 +1,10 @@
-from .models import Product, ProductVariant
+"""
+This services.py file manages the default product variant in Simudza. It ensures
+that when a product is saved through a workflow that supports a single variant,
+the system updates the product's first variant or creates one if none exists.
+"""
+
+from .models import ProductVariant
 
 
 def _variant_name_from_size(size_value, size_unit):
@@ -15,11 +21,8 @@ def _variant_name_from_size(size_value, size_unit):
 def upsert_default_variant(
     product,
     *,
-    sku="",
-    barcode="",
     size_value=None,
     size_unit="",
-    price=None,
     packaging="",
 ):
     """
@@ -32,12 +35,9 @@ def upsert_default_variant(
             product=product,
             name=_variant_name_from_size(size_value, size_unit),
         )
-    variant.sku = sku or ""
-    variant.barcode = barcode or ""
     variant.size_value = size_value
     variant.size_unit = size_unit or ""
     variant.packaging = packaging or ""
-    variant.price = price
     if not variant.name:
         variant.name = _variant_name_from_size(size_value, size_unit)
     variant.save()

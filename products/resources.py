@@ -6,7 +6,7 @@ from categories.models import Category
 from products.forms import save_product_with_unique_slug
 from simudza.utils.import_export_mixins import ImportUserMixin, VerificationLevelMixin
 
-from .models import Product, ProductVariant
+from .models import Product
 
 
 class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelResource):
@@ -19,6 +19,24 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
         column_name="category",
         attribute="category",
         widget=ForeignKeyWidget(Category, "slug"),
+    )
+    created_at = fields.Field(
+        attribute="created_at", column_name="created_at", readonly=True
+    )
+    updated_at = fields.Field(
+        attribute="updated_at", column_name="updated_at", readonly=True
+    )
+    # Recomputed from the listing on save, so imports cannot set them.
+    quality_score = fields.Field(
+        attribute="quality_score", column_name="quality_score", readonly=True
+    )
+    quality_issues = fields.Field(
+        attribute="quality_issues", column_name="quality_issues", readonly=True
+    )
+    quality_checked_at = fields.Field(
+        attribute="quality_checked_at",
+        column_name="quality_checked_at",
+        readonly=True,
     )
 
     class Meta:
@@ -40,6 +58,11 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
             "verification_level",
             "verification_reference",
             "verified_at",
+            "quality_score",
+            "quality_issues",
+            "quality_checked_at",
+            "created_at",
+            "updated_at",
         )
         export_order = fields
 
@@ -62,29 +85,3 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
             save_product_with_unique_slug(instance, name=name)
         else:
             instance.save()
-
-
-class ProductVariantResource(resources.ModelResource):
-    product = fields.Field(
-        column_name="product",
-        attribute="product",
-        widget=ForeignKeyWidget(Product, "slug"),
-    )
-
-    class Meta:
-        model = ProductVariant
-        import_id_fields = ("product", "sku")
-        skip_unchanged = True
-        fields = (
-            "product",
-            "name",
-            "sku",
-            "barcode",
-            "size_value",
-            "size_unit",
-            "packaging",
-            "price",
-            "is_available",
-            "sort_order",
-        )
-        export_order = fields

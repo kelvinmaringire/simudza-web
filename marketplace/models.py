@@ -14,7 +14,57 @@ from wagtail.admin.panels import FieldPanel
 from wagtail.fields import RichTextField
 from wagtail.models import Orderable, Page
 
+from inventory.models import in_stock_q
 from marketplace.cart_lifecycle import CartStatus, lifecycle_status_for_cart
+
+
+def offer_on_sale_q(prefix=""):
+    """Priced and switched on for sale."""
+    return Q(**{f"{prefix}is_available": True, f"{prefix}price__isnull": False})
+
+
+def sellable_variant_q(prefix=""):
+    """On sale and in stock. ``prefix`` is the path to a ProductVariant."""
+    return offer_on_sale_q(f"{prefix}offer__") & in_stock_q(f"{prefix}inventory__")
+
+
+class VariantOffer(models.Model):
+    """
+    Selling terms for a product variant. One row per variant, auto-created on save.
+    """
+
+    variant = models.OneToOneField(
+        "products.ProductVariant",
+        on_delete=models.CASCADE,
+        related_name="offer",
+    )
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    is_available = models.BooleanField(
+        default=True,
+        help_text="Untick to stop selling this variant without deleting its price.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["variant__product__name", "variant__sort_order"]
+        verbose_name = "price"
+        verbose_name_plural = "prices"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(price__isnull=True) | Q(price__gte=0),
+                name="variantoffer_price_not_negative",
+            ),
+        ]
+
+    def __str__(self):
+        price = f"${self.price}" if self.price is not None else "no price"
+        return f"{self.variant.product.name} — {self.variant.label} ({price})"
 
 
 class CartQuerySet(models.QuerySet):
@@ -111,7 +161,7 @@ class CartItem(Orderable):
     )
     variant = models.ForeignKey(
         "products.ProductVariant",
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="cart_items",
     )
     quantity = models.PositiveIntegerField(default=1)
@@ -310,11 +360,13 @@ class Checkout(models.Model):
             raise ValidationError("Checkout already has an order.")
 
         from marketplace.cart_workflow import mark_cart_converted
+        from marketplace.offers import price_for_variant
 
         cart_items = list(
             self.cart.items.filter(removed_at__isnull=True).select_related(
                 "variant",
                 "variant__product",
+                "variant__offer",
             )
         )
         if not cart_items:
@@ -325,7 +377,7 @@ class Checkout(models.Model):
         for item in cart_items:
             price = item.price_snapshot
             if price is None:
-                price = item.variant.price
+                price = price_for_variant(item.variant)
             if price is None:
                 raise ValidationError(
                     f"Variant '{item.variant.label}' for "

@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from django.db.models import Q
 
 from businesses.models import Business
+from inventory.services import inventory_for_variant
 from products.models import Product
 
 from .normalize import (
@@ -114,9 +115,21 @@ def _image_hash(image):
     return (getattr(image, "file_hash", "") or "") if image else ""
 
 
+def _variant_identifiers(variants):
+    """(barcodes, skus) from each variant's inventory record."""
+    barcodes, skus = [], []
+    for variant in variants:
+        inventory = inventory_for_variant(variant)
+        if inventory:
+            barcodes.append(inventory.barcode)
+            skus.append(inventory.sku)
+    return barcodes, skus
+
+
 def product_profile(product):
     tokens, name_sizes = product_name_key(product.name)
     variants = list(product.variants.all())
+    raw_barcodes, raw_skus = _variant_identifiers(variants)
     image_hashes = {_image_hash(product.image)}
     image_hashes.update(_image_hash(item.image) for item in product.images.all())
     image_hashes.discard("")
@@ -128,10 +141,8 @@ def product_profile(product):
         business_id=product.business_id,
         brand=" ".join(fold(product.brand_name).split()),
         category_id=product.category_id,
-        barcodes=frozenset(
-            filter(None, (normalize_barcode(v.barcode) for v in variants))
-        ),
-        skus=frozenset(filter(None, (normalize_sku(v.sku) for v in variants))),
+        barcodes=frozenset(filter(None, map(normalize_barcode, raw_barcodes))),
+        skus=frozenset(filter(None, map(normalize_sku, raw_skus))),
         variant_sizes=frozenset(
             filter(None, (canonical_size(v.size_value, v.size_unit) for v in variants))
         ),
@@ -300,11 +311,13 @@ def product_candidates(product, profile, *, extra_pks=()):
     query = Q(business_id=product.business_id) | _prefix_filters("name", profile.tokens)
     if product.brand_name:
         query |= Q(brand_name__iexact=product.brand_name.strip())
-    raw_barcodes = [v.barcode for v in product.variants.all() if v.barcode]
+    raw_barcodes = [
+        b for b in _variant_identifiers(product.variants.all())[0] if b
+    ]
     if raw_barcodes:
-        query |= Q(variants__barcode__in=raw_barcodes)
+        query |= Q(variants__inventory__barcode__in=raw_barcodes)
     for barcode in profile.barcodes:
-        query |= Q(variants__barcode__endswith=barcode)
+        query |= Q(variants__inventory__barcode__endswith=barcode)
     if profile.image_hashes:
         query |= Q(image__file_hash__in=list(profile.image_hashes))
     if extra_pks:
@@ -319,7 +332,7 @@ def product_candidates(product, profile, *, extra_pks=()):
     return (
         Product.objects.filter(pk__in=list(ids))
         .select_related("image")
-        .prefetch_related("variants", "images__image")
+        .prefetch_related("variants__inventory", "images__image")
     )
 
 

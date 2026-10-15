@@ -1,0 +1,40 @@
+{% load i18n l10n wagtailadmin_tags %}
+{% comment %}
+    Copy of wagtailadmin/panels/inline_panel.html (Wagtail 8.0); only the child template differs.
+{% endcomment %}
+
+{{ self.formset.management_form }}
+
+{% if self.formset.non_form_errors %}
+    <div class="error-message">
+        {% for error in self.formset.non_form_errors %}
+            <span>{{ error|escape }}</span>
+        {% endfor %}
+    </div>
+{% endif %}
+
+{% if self.help_text %}
+    {% help_block status="info" %}{{ self.help_text }}{% endhelp_block %}
+{% endif %}
+
+<div id="id_{{ self.formset.prefix }}-FORMS">
+    {% for child in self.children %}
+        {% include "products/panels/collapsed_inline_panel_child.html" %}
+    {% endfor %}
+</div>
+
+<template id="id_{{ self.formset.prefix }}-EMPTY_FORM_TEMPLATE">
+    {% include "products/panels/collapsed_inline_panel_child.html" with child=self.empty_child %}
+</template>
+
+<div class="w-mb-4 -w-ml-4">
+    <button type="button" class="button button-small button-secondary chooser__choose-button" id="id_{{ self.formset.prefix }}-ADD">
+        {% icon name=icon|default:"plus-inverse" %}{% blocktrans trimmed with label=self.label %}Add {{ label }}{% endblocktrans %}
+    </button>
+</div>
+
+<script>
+    (function() {
+        var panel = new InlinePanel(JSON.parse("{{options_json|escapejs}}"));
+    })();
+</script>

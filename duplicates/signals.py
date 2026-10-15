@@ -2,6 +2,7 @@ from django.db import transaction
 from django.db.models.signals import post_save
 
 from businesses.models import Business
+from inventory.models import Inventory
 from products.models import Product, ProductImage, ProductVariant
 
 from .models import DuplicateFlag
@@ -30,6 +31,25 @@ def _check_parent_product(sender, instance, raw=False, **kwargs):
         return
     pk = instance.product_id
     transaction.on_commit(lambda: flag_product_duplicates(pk), robust=True)
+
+
+IDENTIFIER_FIELDS = {"sku", "barcode"}
+
+
+def _check_inventory_product(sender, instance, raw=False, update_fields=None, **kwargs):
+    if raw:
+        return
+    if update_fields is not None and not IDENTIFIER_FIELDS & set(update_fields):
+        return
+    product_id = (
+        ProductVariant.objects.filter(pk=instance.variant_id)
+        .values_list("product_id", flat=True)
+        .first()
+    )
+    if product_id:
+        transaction.on_commit(
+            lambda: flag_product_duplicates(product_id), robust=True
+        )
 
 
 def _refresh_duplicate_pair(flag_pk):
@@ -64,4 +84,5 @@ post_save.connect(_check_business, sender=Business, weak=False)
 post_save.connect(_check_product, sender=Product, weak=False)
 post_save.connect(_check_parent_product, sender=ProductVariant, weak=False)
 post_save.connect(_check_parent_product, sender=ProductImage, weak=False)
+post_save.connect(_check_inventory_product, sender=Inventory, weak=False)
 post_save.connect(_check_duplicate_flag, sender=DuplicateFlag, weak=False)

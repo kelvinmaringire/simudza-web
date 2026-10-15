@@ -1,0 +1,26 @@
+{% load i18n wagtailadmin_tags %}
+<div class="w-flex w-flex-wrap w-items-center w-gap-2">
+    <button
+        type="submit"
+        class="button button-longrunning"
+        data-controller="w-progress w-kbd"
+        data-action="w-progress#activate"
+        data-w-kbd-key-value="mod+s"
+        data-w-kbd-scope-value="global"
+        data-w-progress-active-value="{{ submit_button_active_label }}"
+    >
+        {% icon name="spinner" %}
+        <em data-w-progress-target="label">{{ submit_button_label }}</em>
+    </button>
+    <button type="submit" name="_continue" value="1" class="button button-secondary">
+        {% trans "Save and continue editing" %}
+    </button>
+    {% if can_add %}
+        <button type="submit" name="_addanother" value="1" class="button button-secondary">
+            {% trans "Save and create new" %}
+        </button>
+    {% endif %}
+    {% if can_delete and delete_url %}
+        <a href="{{ delete_url }}" class="button no">{% icon name="bin" %}{{ delete_item_label }}</a>
+    {% endif %}
+</div>
