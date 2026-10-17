@@ -21,6 +21,7 @@ class VariantOfferForm(WagtailAdminModelForm):
         fields = [
             "price",
             "is_available",
+            "stock_mode",
         ]
 
     def save(self, commit=True):

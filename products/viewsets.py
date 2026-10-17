@@ -107,6 +107,7 @@ class ProductViewSet(
         BulkEditField("origin_type"),
         BulkEditField("brand_name"),
         BulkEditField("featured"),
+        BulkEditField("marketplace_enabled"),
         BulkEditField(
             "verification_level",
             applier="verification",
@@ -138,6 +139,7 @@ class ProductViewSet(
         "verification_level",
         "verification_reference",
         "featured",
+        "marketplace_enabled",
     ]
 
     list_filter = [
@@ -146,6 +148,7 @@ class ProductViewSet(
         "verification_level",
         "origin_type",
         "featured",
+        "marketplace_enabled",
         "category",
         "business",
         "issue",
@@ -191,6 +194,7 @@ class ProductViewSet(
                     GridRow(
                         [FieldPanel("verification_reference"), FieldPanel("featured")]
                     ),
+                    FieldPanel("marketplace_enabled"),
                 ],
                 heading="Publishing",
             ),
@@ -223,6 +227,7 @@ class ProductViewSet(
         "status",
         "lifecycle_status",
         "featured",
+        "marketplace_enabled",
         "image",
         "verified_at",
         "verification_level",

@@ -42,3 +42,17 @@ def upsert_default_variant(
         variant.name = _variant_name_from_size(size_value, size_unit)
     variant.save()
     return variant
+
+
+def ensure_marketplace_participation(product):
+    """
+    Marketplace lists (prices, inventory) are per-variant. When a product opts
+    into the marketplace, ensure it has at least one variant so offer/inventory
+    rows exist (created by variant post_save signals).
+    """
+    if not product.pk or not product.marketplace_enabled:
+        return None
+    existing = product.variants.order_by("sort_order", "pk").first()
+    if existing is not None:
+        return existing
+    return upsert_default_variant(product)

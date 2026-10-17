@@ -10,7 +10,7 @@ from django.views.generic import DetailView, ListView
 
 from products.models import Product, ProductImage
 
-from .models import MarketplacePage
+from .models import MarketplacePage, VariantOffer
 from .services import (
     SORT_OPTIONS,
     SORT_ORDERING,
@@ -165,13 +165,17 @@ class MarketplaceProductDetailView(DetailView):
         offers = []
         for variant in sellable_variants:
             available = variant.inventory.available_quantity
+            in_stock = (
+                variant.offer.stock_mode == VariantOffer.StockMode.UNLIMITED
+                or available > 0
+            )
             offer = {
                 "@type": "Offer",
                 "priceCurrency": "USD",
                 "price": str(variant.offer.price),
                 "availability": (
                     "https://schema.org/InStock"
-                    if available > 0
+                    if in_stock
                     else "https://schema.org/OutOfStock"
                 ),
             }
@@ -220,6 +224,10 @@ class MarketplaceProductDetailView(DetailView):
             image_url = product.image.get_rendition("fill-96x96").url
         variant_options = []
         for variant in sellable_variants:
+            unlimited = (
+                variant.offer.stock_mode == VariantOffer.StockMode.UNLIMITED
+            )
+            available = variant.inventory.available_quantity
             variant_options.append(
                 {
                     "id": variant.pk,
@@ -229,7 +237,8 @@ class MarketplaceProductDetailView(DetailView):
                     "packaging": variant.packaging,
                     "sku": variant.inventory.sku,
                     "barcode": variant.inventory.barcode,
-                    "maxQty": variant.inventory.available_quantity,
+                    "stockMode": variant.offer.stock_mode,
+                    "maxQty": 99 if unlimited else available,
                 }
             )
         context.update(
@@ -237,18 +246,20 @@ class MarketplaceProductDetailView(DetailView):
                 "business": product.business,
                 "gallery": gallery,
                 "sellable_variants": sellable_variants,
-                "variant_options_json": mark_safe(
-                    json.dumps(variant_options).translate(JSON_LD_ESCAPES)
-                ),
+                "variant_options": variant_options,
                 "cart_image_url": image_url,
                 "cart_product_name": product.name,
                 "cart_product_url": product.get_marketplace_url(),
                 "available_quantity": available_quantity,
                 "in_stock": any(
-                    v.inventory.available_quantity > 0 for v in sellable_variants
+                    v.offer.stock_mode == VariantOffer.StockMode.UNLIMITED
+                    or v.inventory.available_quantity > 0
+                    for v in sellable_variants
                 ),
                 "low_stock": bool(
                     selected
+                    and selected.offer.stock_mode
+                    == VariantOffer.StockMode.TRACKED
                     and available_quantity > 0
                     and selected.inventory.is_low_stock
                 ),

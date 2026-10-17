@@ -45,6 +45,7 @@ TRACKED_FIELDS = {
         "status",
         "lifecycle_status",
         "featured",
+        "marketplace_enabled",
         "image",
         "verification_level",
         "verification_reference",
@@ -65,6 +66,7 @@ TRACKED_FIELDS = {
     "marketplace.VariantOffer": [
         "price",
         "is_available",
+        "stock_mode",
     ],
     "inventory.Inventory": [
         "sku",

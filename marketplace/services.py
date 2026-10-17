@@ -34,9 +34,9 @@ SELLABLE_VARIANTS_PREFETCH = Prefetch(
 
 
 def get_marketplace_products():
-    """Published products with at least one sellable variant."""
+    """Marketplace-enabled published products with at least one sellable variant."""
     return (
-        with_sellable_variants(Product.objects.all())
+        with_sellable_variants(Product.objects.filter(marketplace_enabled=True))
         .served()
         .select_related(
             "business",

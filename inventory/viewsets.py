@@ -1,16 +1,20 @@
 from django.urls import path
-from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList
+from wagtail.admin.panels import FieldPanel, ObjectList
 from wagtail.admin.viewsets.model import ModelViewSet
 
 from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
+from simudza.utils.admin_grid import GridPanel, GridRow
 from simudza.utils.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_save_actions import SaveActionsViewSetMixin
 
 from .forms import InventoryForm
 from .models import Inventory
 from .resources import InventoryResource
 
 
-class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
+class InventoryViewSet(
+    SaveActionsViewSetMixin, BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet
+):
     model = Inventory
     resource_class = InventoryResource
 
@@ -37,7 +41,6 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
     ]
 
     list_filter = [
-        "variant__product__status",
         "variant__product__category",
         "variant__product__business",
     ]
@@ -54,19 +57,22 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
     # Inventory is auto-created with each variant — edit identifiers and stock only.
     edit_handler = ObjectList(
         [
-            MultiFieldPanel(
+            GridPanel(
                 [
                     FieldPanel("variant", read_only=True),
-                    FieldPanel("sku"),
-                    FieldPanel("barcode"),
+                    GridRow([FieldPanel("sku"), FieldPanel("barcode")]),
                 ],
                 heading="Identifiers",
             ),
-            MultiFieldPanel(
+            GridPanel(
                 [
-                    FieldPanel("quantity"),
-                    FieldPanel("reserved_quantity"),
-                    FieldPanel("low_stock_threshold"),
+                    GridRow(
+                        [
+                            FieldPanel("quantity"),
+                            FieldPanel("reserved_quantity"),
+                            FieldPanel("low_stock_threshold"),
+                        ]
+                    ),
                 ],
                 heading="Stock levels",
             ),
@@ -89,11 +95,22 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
         "updated_at",
     ]
 
+    def get_queryset(self, request=None):
+        # Stock admin only for marketplace products that track quantity.
+        from marketplace.models import VariantOffer
+
+        return Inventory.objects.filter(
+            variant__product__marketplace_enabled=True,
+            variant__offer__stock_mode=VariantOffer.StockMode.TRACKED,
+        ).select_related("variant", "variant__product", "variant__offer")
+
     def get_common_view_kwargs(self, **kwargs):
         view_kwargs = super().get_common_view_kwargs(**kwargs)
-        # No manual create/delete — inventory comes from products.
+        # Wagtail IndexView/EditView read ``queryset``; ViewSet.get_queryset alone
+        # is never called by the admin list.
+        view_kwargs["queryset"] = self.get_queryset()
+        # No manual create — inventory comes from product variants.
         view_kwargs["add_url_name"] = None
-        view_kwargs["delete_url_name"] = None
         return view_kwargs
 
     def get_urlpatterns(self):
@@ -102,6 +119,7 @@ class InventoryViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelView
             path("", self.index_view, name="index"),
             path("results/", self.index_results_view, name="index_results"),
             path(f"edit/<{conv}:pk>/", self.edit_view, name="edit"),
+            path(f"delete/<{conv}:pk>/", self.delete_view, name="delete"),
             path(f"history/<{conv}:pk>/", self.history_view, name="history"),
             path(
                 f"history-results/<{conv}:pk>/",

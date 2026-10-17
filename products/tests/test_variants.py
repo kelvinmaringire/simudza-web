@@ -4,8 +4,9 @@ from django.test import TestCase
 from businesses.models import Business
 from categories.models import Category
 from inventory.models import Inventory
+from marketplace.models import VariantOffer
 from products.models import Product, ProductVariant
-from products.services import upsert_default_variant
+from products.services import ensure_marketplace_participation, upsert_default_variant
 
 
 class ProductVariantDomainTests(TestCase):
@@ -39,3 +40,16 @@ class ProductVariantDomainTests(TestCase):
         self.assertEqual(len(variants), 1)
         self.assertEqual(variants[0].pk, first.pk)
         self.assertEqual(variants[0].packaging, "PET bottle")
+
+    def test_marketplace_enabled_creates_default_variant_offer_and_inventory(self):
+        self.assertFalse(self.product.variants.exists())
+        self.product.marketplace_enabled = True
+        self.product.save()
+
+        variant = self.product.variants.get()
+        self.assertTrue(Inventory.objects.filter(variant=variant).exists())
+        self.assertTrue(VariantOffer.objects.filter(variant=variant).exists())
+
+    def test_ensure_marketplace_participation_noop_when_disabled(self):
+        self.assertIsNone(ensure_marketplace_participation(self.product))
+        self.assertFalse(self.product.variants.exists())

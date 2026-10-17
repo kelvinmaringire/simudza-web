@@ -7,7 +7,9 @@ from wagtail.admin.viewsets.model import ModelViewSet, ModelViewSetGroup
 from history.panels import ChangeHistoryPanel
 from inventory.viewsets import InventoryViewSet
 from simudza.utils.admin_bulk_edit import BulkEditField, BulkEditViewSetMixin
+from simudza.utils.admin_grid import GridPanel, GridRow
 from simudza.utils.admin_import_export import ImportExportViewSetMixin
+from simudza.utils.admin_save_actions import SaveActionsViewSetMixin
 
 from marketplace.cart_lifecycle import CART_STATUS_LABELS
 
@@ -21,17 +23,20 @@ from .resources import (
 )
 
 
-class VariantOfferViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet):
+class VariantOfferViewSet(
+    SaveActionsViewSetMixin, BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet
+):
     model = VariantOffer
     resource_class = VariantOfferResource
 
     bulk_edit_fields = [
         BulkEditField("price"),
         BulkEditField("is_available"),
+        BulkEditField("stock_mode"),
     ]
 
     name = "variant_offer"
-    menu_label = "Prices"
+    menu_label = "Offers"
     menu_icon = "tag"
     add_to_admin_menu = False
     copy_view_enabled = False
@@ -40,12 +45,13 @@ class VariantOfferViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelV
         "variant",
         "price",
         "is_available",
+        "stock_mode",
         "updated_at",
     ]
 
     list_filter = [
         "is_available",
-        "variant__product__status",
+        "stock_mode",
         "variant__product__category",
         "variant__product__business",
     ]
@@ -61,11 +67,11 @@ class VariantOfferViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelV
     # Offers are auto-created with each variant — edit selling terms only.
     edit_handler = ObjectList(
         [
-            MultiFieldPanel(
+            GridPanel(
                 [
                     FieldPanel("variant", read_only=True),
-                    FieldPanel("price"),
-                    FieldPanel("is_available"),
+                    GridRow([FieldPanel("price"), FieldPanel("is_available")]),
+                    FieldPanel("stock_mode"),
                 ],
                 heading="Pricing & availability",
             ),
@@ -81,17 +87,24 @@ class VariantOfferViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelV
         "variant",
         "price",
         "is_available",
+        "stock_mode",
         "created_at",
         "updated_at",
     ]
 
-    def get_queryset(self, request):
-        return VariantOffer.objects.select_related("variant", "variant__product")
+    def get_queryset(self, request=None):
+        # Offers admin is for marketplace participation only.
+        return VariantOffer.objects.filter(
+            variant__product__marketplace_enabled=True,
+        ).select_related("variant", "variant__product")
 
     def get_common_view_kwargs(self, **kwargs):
         view_kwargs = super().get_common_view_kwargs(**kwargs)
+        # Wagtail IndexView/EditView read ``queryset``; ViewSet.get_queryset alone
+        # is never called by the admin list.
+        view_kwargs["queryset"] = self.get_queryset()
+        # No manual create — offers come from product variants.
         view_kwargs["add_url_name"] = None
-        view_kwargs["delete_url_name"] = None
         return view_kwargs
 
     def get_urlpatterns(self):
@@ -100,6 +113,7 @@ class VariantOfferViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelV
             path("", self.index_view, name="index"),
             path("results/", self.index_results_view, name="index_results"),
             path(f"edit/<{conv}:pk>/", self.edit_view, name="edit"),
+            path(f"delete/<{conv}:pk>/", self.delete_view, name="delete"),
             path(f"history/<{conv}:pk>/", self.history_view, name="history"),
             path(
                 f"history-results/<{conv}:pk>/",

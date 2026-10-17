@@ -47,6 +47,7 @@ class VariantOfferResource(resources.ModelResource):
             "variant_sku",
             "price",
             "is_available",
+            "stock_mode",
         )
         export_order = fields
 

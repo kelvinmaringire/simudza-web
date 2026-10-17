@@ -55,6 +55,7 @@ class ProductResource(ImportUserMixin, VerificationLevelMixin, resources.ModelRe
             "status",
             "lifecycle_status",
             "featured",
+            "marketplace_enabled",
             "verification_level",
             "verification_reference",
             "verified_at",

@@ -152,6 +152,12 @@ class Product(ClusterableModel):
         default=False,
     )
 
+    marketplace_enabled = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Allow this product to appear in the marketplace.",
+    )
+
     image = models.ForeignKey(
         get_image_model(),
         on_delete=models.SET_NULL,

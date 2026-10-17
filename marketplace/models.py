@@ -24,14 +24,29 @@ def offer_on_sale_q(prefix=""):
 
 
 def sellable_variant_q(prefix=""):
-    """On sale and in stock. ``prefix`` is the path to a ProductVariant."""
-    return offer_on_sale_q(f"{prefix}offer__") & in_stock_q(f"{prefix}inventory__")
+    """
+    Can be bought now: product opted into marketplace, offer on sale, and
+    either unlimited stock mode or tracked with available units.
+    ``prefix`` is the path to a ProductVariant.
+    """
+    offer = f"{prefix}offer__"
+    on_sale = offer_on_sale_q(offer)
+    in_marketplace = Q(**{f"{prefix}product__marketplace_enabled": True})
+    tracked = Q(**{f"{offer}stock_mode": "tracked"}) & in_stock_q(
+        f"{prefix}inventory__"
+    )
+    unlimited = Q(**{f"{offer}stock_mode": "unlimited"})
+    return in_marketplace & on_sale & (tracked | unlimited)
 
 
 class VariantOffer(models.Model):
     """
     Selling terms for a product variant. One row per variant, auto-created on save.
     """
+
+    class StockMode(models.TextChoices):
+        TRACKED = "tracked", "Track stock"
+        UNLIMITED = "unlimited", "No stock limit"
 
     variant = models.OneToOneField(
         "products.ProductVariant",
@@ -48,13 +63,23 @@ class VariantOffer(models.Model):
         default=True,
         help_text="Untick to stop selling this variant without deleting its price.",
     )
+    stock_mode = models.CharField(
+        max_length=20,
+        choices=StockMode.choices,
+        default=StockMode.UNLIMITED,
+        help_text=(
+            "Track stock: enforce available quantity and reservations. "
+            "No stock limit: Simudza does not cap quantity; still needs a price "
+            "and an active offer. Does not guarantee the seller can fulfil every order."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["variant__product__name", "variant__sort_order"]
-        verbose_name = "price"
-        verbose_name_plural = "prices"
+        verbose_name = "offer"
+        verbose_name_plural = "offers"
         constraints = [
             models.CheckConstraint(
                 condition=Q(price__isnull=True) | Q(price__gte=0),

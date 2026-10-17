@@ -75,6 +75,7 @@ class ProductSlugStabilityTests(TestCase):
             "brand_name": "",
             "status": Product.ProductStatus.PUBLISHED,
             "featured": False,
+            "marketplace_enabled": False,
             "verified_at": "",
         }
         data.update(overrides)

@@ -44,6 +44,7 @@ class ProductForm(WagtailAdminModelForm):
             "brand_name",
             "status",
             "featured",
+            "marketplace_enabled",
             "image",
             "verified_at",
             "verification_level",

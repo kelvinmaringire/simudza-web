@@ -6,10 +6,11 @@
 {% block body_class %}template-marketplace-product{% endblock %}
 
 {% block content %}
+{{ variant_options|json_script:"mp-variant-options" }}
 <article
     class="mp-detail mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-5 lg:px-8"
     x-data="{
-        variants: {{ variant_options_json }},
+        variants: JSON.parse(document.getElementById('mp-variant-options').textContent),
         selectedId: {{ sellable_variants.0.pk }},
         cartLine: {
             name: '{{ cart_product_name|escapejs }}',
@@ -19,7 +20,7 @@
         qty: 1,
         showBar: false,
         get selected() {
-            return this.variants.find(v => v.id === this.selectedId) || this.variants[0];
+            return this.variants.find(function (v) { return v.id === this.selectedId; }.bind(this)) || this.variants[0];
         },
         get inCart() { return this.$store.cart.quantityOf(this.selectedId); },
         get remaining() {
@@ -235,16 +236,16 @@
             <p
                 class="mp-stock"
                 :class="{
-                    'mp-stock--out': !selected || Number(selected.maxQty) === 0,
-                    'mp-stock--low': selected && Number(selected.maxQty) > 0 && Number(selected.maxQty) <= 5
+                    'mp-stock--out': !selected || (selected.stockMode === 'tracked' && Number(selected.maxQty) === 0),
+                    'mp-stock--low': selected && selected.stockMode === 'tracked' && Number(selected.maxQty) > 0 && Number(selected.maxQty) <= 5
                 }"
             >
                 <span class="mp-stock__dot" aria-hidden="true"></span>
-                <span x-show="!selected || Number(selected.maxQty) === 0">Out of stock</span>
-                <span x-show="selected && Number(selected.maxQty) > 0 && Number(selected.maxQty) <= 5" x-cloak>
+                <span x-show="!selected || (selected.stockMode === 'tracked' && Number(selected.maxQty) === 0)">Out of stock</span>
+                <span x-show="selected && selected.stockMode === 'tracked' && Number(selected.maxQty) > 0 && Number(selected.maxQty) <= 5" x-cloak>
                     Only <span x-text="selected.maxQty"></span> left in stock
                 </span>
-                <span x-show="selected && Number(selected.maxQty) > 5" x-cloak>In stock</span>
+                <span x-show="selected && (selected.stockMode === 'unlimited' || Number(selected.maxQty) > 5)" x-cloak>In stock</span>
             </p>
 
             {% if product.short_description %}

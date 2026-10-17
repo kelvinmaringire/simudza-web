@@ -25,7 +25,11 @@ class SaveAndContinueMixin:
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["can_add"] = self.user_has_permission("add")
+        # Hide "Save and create new" when the viewset has no add URL
+        # (e.g. inventory/offers are created with product variants).
+        context["can_add"] = self.user_has_permission("add") and bool(
+            getattr(self, "add_url_name", None)
+        )
         return context
 
 

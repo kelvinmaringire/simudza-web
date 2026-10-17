@@ -125,6 +125,7 @@ class ChangeLogCaptureTests(TestCase):
             "brand_name": "",
             "status": self.product.status,
             "featured": "",
+            "marketplace_enabled": "",
             "verified_at": "",
             "verification_level": self.product.verification_level,
             "verification_reference": "",

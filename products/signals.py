@@ -23,6 +23,15 @@ def product_quality_on_save(sender, instance, raw=False, **kwargs):
     _schedule_product_refresh(instance.pk)
 
 
+@receiver(post_save, sender=Product)
+def product_marketplace_participation_on_save(sender, instance, raw=False, **kwargs):
+    if raw:
+        return
+    from .services import ensure_marketplace_participation
+
+    ensure_marketplace_participation(instance)
+
+
 @receiver(post_save, sender=ProductImage)
 def product_child_quality_on_save(sender, instance, raw=False, **kwargs):
     if raw or not instance.product_id:

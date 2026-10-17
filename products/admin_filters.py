@@ -31,6 +31,7 @@ class ProductQualityFilterSet(WagtailFilterSet):
             "verification_level",
             "origin_type",
             "featured",
+            "marketplace_enabled",
             "category",
             "business",
         ]
