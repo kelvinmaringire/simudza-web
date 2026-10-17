@@ -18,9 +18,10 @@ def add_sellable_variant(
     size_unit="",
     name="",
     stock_mode=VariantOffer.StockMode.TRACKED,
+    enable_marketplace=True,
 ):
-    """Create a marketplace-ready priced variant (tracked stock by default)."""
-    if not product.marketplace_enabled:
+    """Create a priced variant with stock (tracked by default)."""
+    if enable_marketplace and not product.marketplace_enabled:
         product.marketplace_enabled = True
         product.save(update_fields=["marketplace_enabled", "updated_at"])
     variant = upsert_default_variant(

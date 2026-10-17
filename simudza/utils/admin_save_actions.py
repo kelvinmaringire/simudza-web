@@ -4,7 +4,7 @@ Django-admin style footer actions for Wagtail ModelViewSets:
 and "Delete" on edit.
 """
 
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from wagtail.admin.views.generic.models import CreateView, EditView
 
 CONTINUE_PARAM = "_continue"
@@ -25,11 +25,15 @@ class SaveAndContinueMixin:
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Hide "Save and create new" when the viewset has no add URL
-        # (e.g. inventory/offers are created with product variants).
-        context["can_add"] = self.user_has_permission("add") and bool(
-            getattr(self, "add_url_name", None)
-        )
+        can_add = self.user_has_permission("add")
+        if can_add:
+            # Hide "Save and create new" when this model has no add route
+            # (e.g. inventory/offers are created with product variants).
+            try:
+                self.get_add_another_url()
+            except NoReverseMatch:
+                can_add = False
+        context["can_add"] = can_add
         return context
 
 

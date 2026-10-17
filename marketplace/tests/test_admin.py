@@ -35,7 +35,9 @@ class VariantOfferAdminTests(TestCase):
             marketplace_enabled=False,
         )
         listed_offer = add_sellable_variant(listed).offer
-        directory_offer = add_sellable_variant(directory_only).offer
+        directory_offer = add_sellable_variant(
+            directory_only, enable_marketplace=False
+        ).offer
 
         viewset = VariantOfferViewSet()
         qs = viewset.get_queryset()
