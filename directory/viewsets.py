@@ -23,8 +23,7 @@ class DirectoryListingViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, Mo
     menu_label = "Directory"
     menu_icon = "list-ul"
 
-    menu_order = 620
-    add_to_admin_menu = True
+    add_to_admin_menu = False
     copy_view_enabled = False
 
     list_display = [
@@ -57,6 +56,7 @@ class DirectoryListingViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, Mo
                     FieldPanel("product", read_only=True),
                     FieldPanel("featured"),
                     FieldPanel("show_in_directory"),
+                    FieldPanel("views", read_only=True),
                 ],
                 heading="Directory visibility",
             ),

@@ -76,6 +76,7 @@ INSTALLED_APPS = [
 
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
+    "wagtail.contrib.settings",
     "wagtail.embeds",
     "wagtail.sites",
     "accounts.apps.SimudzaUsersAppConfig",
@@ -302,6 +303,13 @@ WAGTAILDOCS_EXTENSIONS = ['csv', 'docx', 'key', 'odt', 'pdf', 'pptx', 'rtf', 'tx
 
 # Maximum upload size for documents in bytes.
 WAGTAILDOCS_MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
+PAYSTACK_PUBLIC_KEY = env_str("paystack_public_key")
+PAYSTACK_SECRET_KEY = env_str("paystack_secret_key")
+# Fallback when Wagtail MarketplaceSettings has not been configured yet.
+# Prefer Settings → Marketplace in Wagtail admin (ZAR or USD).
+PAYSTACK_CURRENCY = env_str("PAYSTACK_CURRENCY", "ZAR")
+MARKETPLACE_DELIVERY_FEE = env_str("MARKETPLACE_DELIVERY_FEE", "5.00")
 
 IMPORT_EXPORT_TMP_STORAGE_CLASS = "import_export.tmp_storages.MediaStorage"
 IMPORT_EXPORT_IMPORT_PERMISSION_CODE = "add"

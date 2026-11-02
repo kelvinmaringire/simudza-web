@@ -26,12 +26,12 @@
                         <div class="min-w-0 flex-1">
                             <div class="flex items-start justify-between gap-2">
                                 <a :href="item.url || null" class="line-clamp-2 text-sm font-medium leading-snug hover:underline" x-text="item.name"></a>
-                                <p class="shrink-0 text-sm font-semibold">$<span x-text="$store.cart.lineTotal(item)"></span></p>
+                                <p class="shrink-0 text-sm font-semibold">{{ currency_symbol }}<span x-text="$store.cart.lineTotal(item)"></span></p>
                             </div>
                             <p class="mt-0.5 text-xs text-base-content/55">
                                 <span x-show="item.variantLabel" x-text="item.variantLabel" x-cloak></span>
                                 <span x-show="item.variantLabel" aria-hidden="true"> · </span>
-                                $<span x-text="item.price"></span> each
+                                {{ currency_symbol }}<span x-text="item.price"></span> each
                             </p>
                             <div class="mt-2 flex items-center justify-between gap-2">
                                 <div class="mp-qty mp-qty--sm" role="group" :aria-label="'Quantity for ' + item.name">
@@ -64,13 +64,43 @@
             </ul>
             <div class="border-base-300 bg-base-100 sticky bottom-0 mt-4 border-t pt-4 pb-2">
                 <div class="flex items-baseline justify-between">
-                    <span class="text-sm text-base-content/70">Subtotal</span>
-                    <span class="text-lg font-semibold">$<span x-text="$store.cart.subtotal"></span></span>
+                    <span class="text-sm text-base-content/70">
+                        <template x-if="$store.cart.taxEnabled && $store.cart.taxMode === 'included'">
+                            <span>Subtotal (tax included)</span>
+                        </template>
+                        <template x-if="!($store.cart.taxEnabled && $store.cart.taxMode === 'included')">
+                            <span>Subtotal</span>
+                        </template>
+                    </span>
+                    <span class="text-lg font-semibold">{{ currency_symbol }}<span x-text="$store.cart.subtotal"></span></span>
                 </div>
+                <template x-if="$store.cart.taxEnabled && Number($store.cart.taxAmount) > 0">
+                    <div class="mt-1 flex items-baseline justify-between text-sm">
+                        <span class="text-base-content/70">
+                            <span x-text="$store.cart.taxMode === 'included' ? 'Tax included' : 'Tax'"></span>
+                            (<span x-text="$store.cart.taxRate + '%'"></span>)
+                        </span>
+                        <span>{{ currency_symbol }}<span x-text="$store.cart.taxAmount"></span></span>
+                    </div>
+                </template>
+                <template x-if="$store.cart.taxEnabled && $store.cart.taxMode === 'excluded' && Number($store.cart.taxAmount) > 0">
+                    <div class="mt-1 flex items-baseline justify-between text-sm font-medium">
+                        <span>Est. total</span>
+                        <span>{{ currency_symbol }}<span x-text="$store.cart.totalWithTax"></span></span>
+                    </div>
+                </template>
                 <p class="mt-1 text-xs text-base-content/50">Delivery calculated at checkout.</p>
-                <button type="button" class="btn btn-primary btn-block mt-4 rounded-full" disabled>
-                    Checkout coming soon
+                {% if user.is_authenticated %}
+                <button
+                    type="button"
+                    class="btn btn-primary btn-block mt-4 rounded-full"
+                    @click="$store.cart.goToCheckout('{% url 'marketplace:checkout' %}')"
+                >
+                    Checkout
                 </button>
+                {% else %}
+                <a href="{% url 'accounts:login' %}?next={% url 'marketplace:checkout' %}" class="btn btn-primary btn-block mt-4 rounded-full">Sign in to checkout</a>
+                {% endif %}
                 <label for="cart-drawer" class="btn btn-ghost btn-block btn-sm mt-2 rounded-full">Continue shopping</label>
             </div>
         </div>

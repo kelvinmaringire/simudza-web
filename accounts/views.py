@@ -122,6 +122,11 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context["display_name"] = (
             user.get_full_name() or user.get_username()
         )
+        orders = (
+            user.orders.prefetch_related("items")
+            .order_by("-created_at")[:50]
+        )
+        context["orders"] = orders
         context["order_count"] = user.orders.count()
 
         listings = owner_listings(user)

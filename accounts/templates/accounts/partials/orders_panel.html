@@ -1,0 +1,107 @@
+{% load marketplace_tax %}
+<section id="orders" class="mt-8 scroll-mt-24">
+    <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-semibold tracking-tight">Your orders</h2>
+            <p class="text-sm text-base-content/65">
+                Purchases from the marketplace after successful payment.
+            </p>
+        </div>
+        {% if order_count %}
+            <span class="badge badge-soft gap-1">{{ order_count }} order{{ order_count|pluralize }}</span>
+        {% endif %}
+    </div>
+
+    {% if orders %}
+    <div class="space-y-4">
+        {% for order in orders %}
+        <div class="card border-base-300 bg-base-100 border shadow-sm">
+            <div class="card-body gap-4 p-4 sm:p-5">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="text-base font-semibold">Order #{{ order.pk }}</h3>
+                        <p class="text-xs text-base-content/60">
+                            {{ order.created_at|date:"j M Y, H:i" }}
+                            {% if order.paid_at %}
+                            · Paid {{ order.paid_at|date:"j M Y" }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="badge badge-sm {% if order.status == 'confirmed' %}badge-success{% elif order.status == 'fulfilled' %}badge-info{% elif order.status == 'cancelled' %}badge-error{% else %}badge-ghost{% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                        <span class="badge badge-sm {% if order.payment_status == 'paid' %}badge-success badge-soft{% else %}badge-warning badge-soft{% endif %}">
+                            {{ order.get_payment_status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <ul class="divide-base-300 divide-y text-sm">
+                    {% for item in order.items.all %}
+                    <li class="flex justify-between gap-3 py-2">
+                        <span class="text-base-content/80">
+                            {{ item.product_name }}
+                            {% if item.variant_label %}
+                            <span class="text-base-content/50">· {{ item.variant_label }}</span>
+                            {% endif %}
+                            <span class="text-base-content/50">× {{ item.quantity }}</span>
+                        </span>
+                        <span class="shrink-0 font-medium">{{ currency_symbol }}{{ item.line_total }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="border-base-300 space-y-1 border-t pt-3 text-sm">
+                    {% if order.tax_enabled and order.tax_amount %}
+                    <div class="flex justify-between text-base-content/70">
+                        <span>
+                            {% if order.tax_pricing_mode == "included" %}
+                            Tax included ({{ order.tax_rate|tax_rate }}%)
+                            {% else %}
+                            Tax ({{ order.tax_rate|tax_rate }}%)
+                            {% endif %}
+                        </span>
+                        <span>{{ currency_symbol }}{{ order.tax_amount }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="text-base-content/70">
+                            {% if order.fulfilment_method %}
+                            {{ order.get_fulfilment_method_display }}
+                            {% if order.fulfilment_method == "delivery" and order.delivery_city %}
+                            · {{ order.delivery_suburb }}, {{ order.delivery_city }}
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="font-semibold">
+                            Total {{ currency_symbol }}{{ order.total }}
+                            <span class="text-base-content/50 font-normal">({{ order.currency|default:currency_code }})</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if order.payment_status == "paid" %}
+                <div class="card-actions justify-end">
+                    <a
+                        href="{% url 'marketplace:order_confirmation' order.pk %}"
+                        class="btn btn-ghost btn-sm"
+                    >
+                        View confirmation
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card border-base-300 bg-base-100 border shadow-sm">
+        <div class="card-body items-center gap-3 py-10 text-center">
+            <p class="font-medium">No orders yet</p>
+            <p class="text-sm text-base-content/60">When you complete a purchase, it will show up here.</p>
+            <a href="{% url 'marketplace:index' %}" class="btn btn-primary btn-sm mt-2">Shop marketplace</a>
+        </div>
+    </div>
+    {% endif %}
+</section>

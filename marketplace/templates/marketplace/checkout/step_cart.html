@@ -1,0 +1,44 @@
+<section class="card bg-base-100 border border-base-300 shadow-sm">
+    <div class="card-body gap-6">
+        <div>
+            <h2 class="text-lg font-semibold">Review your cart</h2>
+            <p class="mt-1 text-sm text-base-content/60">
+                Update quantities in the cart drawer, then continue when everything looks correct.
+            </p>
+        </div>
+
+        <ul class="divide-base-300 divide-y">
+            {% for row in totals.lines %}
+            <li class="flex gap-4 py-4 first:pt-0">
+                <div class="bg-base-200 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg text-xs text-base-content/50">
+                    {% if row.image_url %}
+                    <img src="{{ row.image_url }}" alt="" class="h-16 w-16 object-cover" width="64" height="64" />
+                    {% else %}
+                    No image
+                    {% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium">{{ row.item.variant.product.name }}</p>
+                    {% if row.item.variant.label %}
+                    <p class="text-sm text-base-content/60">{{ row.item.variant.label }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-base-content/70">
+                        {{ currency_symbol }}{{ row.unit_price }} × {{ row.item.quantity }}
+                    </p>
+                </div>
+                <p class="shrink-0 font-medium">{{ currency_symbol }}{{ row.line_total }}</p>
+            </li>
+            {% empty %}
+            <li class="py-6 text-center text-base-content/60">Your cart is empty.</li>
+            {% endfor %}
+        </ul>
+
+        <form method="post" class="flex flex-col gap-3 sm:flex-row sm:justify-between">
+            {% csrf_token %}
+            <a href="{{ marketplace_url }}" class="btn btn-ghost rounded-full">Back to shop</a>
+            <button type="submit" class="btn btn-primary rounded-full" {% if not totals.lines %}disabled{% endif %}>
+                Continue to details
+            </button>
+        </form>
+    </div>
+</section>

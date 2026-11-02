@@ -43,7 +43,36 @@ class VariantOfferTests(TestCase):
         add_sellable_variant(self.product, price="5.00", quantity=3)
         row = with_sellable_variants(Product.objects.all()).get(pk=self.product.pk)
         self.assertEqual(row.from_price, Decimal("5.00"))
+        self.assertEqual(row.to_price, Decimal("5.00"))
         self.assertEqual(row.sellable_variant_count, 1)
+
+    def _sellable_named_variant(self, *, name, price, quantity=3):
+        self.product.marketplace_enabled = True
+        self.product.save(update_fields=["marketplace_enabled", "updated_at"])
+        variant = ProductVariant.objects.create(product=self.product, name=name)
+        set_variant_price(variant, Decimal(price))
+        VariantOffer.objects.filter(variant=variant).update(
+            stock_mode=VariantOffer.StockMode.TRACKED
+        )
+        Inventory.objects.filter(variant=variant).update(
+            quantity=quantity, reserved_quantity=0
+        )
+        return variant
+
+    def test_with_sellable_variants_price_range_when_prices_differ(self):
+        self._sellable_named_variant(name="Small", price="5.00")
+        self._sellable_named_variant(name="Large", price="8.00")
+        row = with_sellable_variants(Product.objects.all()).get(pk=self.product.pk)
+        self.assertEqual(row.from_price, Decimal("5.00"))
+        self.assertEqual(row.to_price, Decimal("8.00"))
+        self.assertEqual(row.sellable_variant_count, 2)
+
+    def test_same_variant_prices_have_equal_from_and_to(self):
+        self._sellable_named_variant(name="Small", price="5.00")
+        self._sellable_named_variant(name="Large", price="5.00")
+        row = with_sellable_variants(Product.objects.all()).get(pk=self.product.pk)
+        self.assertEqual(row.from_price, row.to_price)
+        self.assertEqual(row.sellable_variant_count, 2)
 
     def test_sellable_excludes_zero_stock(self):
         variant = add_sellable_variant(self.product, price="5.00", quantity=0)

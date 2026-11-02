@@ -65,6 +65,7 @@ document.addEventListener("alpine:init", function () {
         canSync: false,
         isLoggedIn: false,
         _syncTimer: null,
+        _syncGen: 0,
 
         get count() {
             return this.items.reduce(function (total, item) {
@@ -84,6 +85,32 @@ document.addEventListener("alpine:init", function () {
                 .toFixed(2);
         },
 
+        get taxAmount() {
+            if (!this.taxEnabled) {
+                return "0.00";
+            }
+            const subtotal = Number(this.subtotal);
+            const rate = Number(this.taxRate) / 100;
+            if (!(subtotal > 0) || !(rate > 0)) {
+                return "0.00";
+            }
+            let tax;
+            if (this.taxMode === "included") {
+                tax = (subtotal * rate) / (1 + rate);
+            } else {
+                tax = subtotal * rate;
+            }
+            return tax.toFixed(2);
+        },
+
+        get totalWithTax() {
+            const subtotal = Number(this.subtotal);
+            if (!this.taxEnabled || this.taxMode === "included") {
+                return subtotal.toFixed(2);
+            }
+            return (subtotal + Number(this.taxAmount)).toFixed(2);
+        },
+
         quantityOf(id) {
             const itemId = Number(id);
             const item = this.items.find(function (entry) {
@@ -101,6 +128,9 @@ document.addEventListener("alpine:init", function () {
             this.canSync = root.dataset.cartSync === "1";
             this.isLoggedIn = root.dataset.cartLoggedIn === "1";
             this.syncUrl = root.dataset.cartSyncUrl || this.syncUrl;
+            this.taxEnabled = root.dataset.taxEnabled === "1";
+            this.taxMode = root.dataset.taxMode || "excluded";
+            this.taxRate = root.dataset.taxRate || "0";
             this.items = readCartStorage();
             getOrCreateCartToken();
             if (this.canSync && (this.isLoggedIn || this.items.length)) {
@@ -108,8 +138,21 @@ document.addEventListener("alpine:init", function () {
             }
         },
 
+        clear() {
+            this.items = [];
+            writeCartStorage(this.items);
+            this._syncGen += 1;
+            try {
+                localStorage.removeItem(CART_TOKEN_KEY);
+            } catch (e) {}
+            getOrCreateCartToken();
+        },
+
         persist() {
             writeCartStorage(this.items);
+            // Invalidate in-flight syncs so a slower "add" response cannot
+            // resurrect an item the user already removed.
+            this._syncGen += 1;
             this.scheduleSync();
         },
 
@@ -216,6 +259,14 @@ document.addEventListener("alpine:init", function () {
             this.persist();
         },
 
+        toggle(line) {
+            if (this.quantityOf(line.id) > 0) {
+                this.remove(line.id);
+                return;
+            }
+            this.add(line);
+        },
+
         openDrawer() {
             const drawer = document.getElementById("cart-drawer");
             if (drawer) {
@@ -225,15 +276,16 @@ document.addEventListener("alpine:init", function () {
 
         sync(options) {
             if (!this.canSync) {
-                return;
+                return Promise.resolve(null);
             }
 
             const token = getOrCreateCartToken();
             if (!token) {
-                return;
+                return Promise.resolve(null);
             }
 
             const apply = !options || options.apply !== false;
+            const gen = this._syncGen;
 
             const payload = {
                 token: token,
@@ -249,7 +301,7 @@ document.addEventListener("alpine:init", function () {
             const csrfToken = getCsrfToken();
             const self = this;
 
-            fetch(this.syncUrl, {
+            return fetch(this.syncUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -268,11 +320,33 @@ document.addEventListener("alpine:init", function () {
                     return response.json();
                 })
                 .then(function (data) {
+                    if (gen !== self._syncGen) {
+                        return data;
+                    }
+                    if (data && data.token) {
+                        try {
+                            localStorage.setItem(CART_TOKEN_KEY, data.token);
+                        } catch (e) {}
+                    }
                     if (data && Object.prototype.hasOwnProperty.call(data, "items")) {
                         self.applyServerItems(data.items);
                     }
+                    return data;
                 })
-                .catch(function () {});
+                .catch(function () {
+                    return null;
+                });
+        },
+
+        goToCheckout(url) {
+            const self = this;
+            const target = url || "/marketplace/checkout/";
+            if (self.isEmpty) {
+                return;
+            }
+            self.sync({ apply: true }).then(function () {
+                window.location.href = target;
+            });
         },
     });
 });

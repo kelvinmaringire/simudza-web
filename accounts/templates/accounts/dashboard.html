@@ -34,7 +34,9 @@
     <div class="stat">
         <div class="stat-title">Orders</div>
         <div class="stat-value">{{ order_count }}</div>
-        <div class="stat-desc">Your purchase history</div>
+        <div class="stat-desc">
+            <a href="#orders" class="link link-hover">View purchase history</a>
+        </div>
     </div>
     <div class="stat">
         <div class="stat-title">Account</div>
@@ -90,6 +92,8 @@
         </div>
     {% endif %}
 </div>
+
+{% include "accounts/partials/orders_panel.html" %}
 
 {% if owner_listings %}
     {% include "accounts/partials/owner_listings_panel.html" %}

@@ -1,0 +1,51 @@
+<section class="card bg-base-100 border border-base-300 shadow-sm">
+    <div class="card-body gap-6">
+        <div>
+            <h2 class="text-lg font-semibold">Review and place order</h2>
+            <p class="mt-1 text-sm text-base-content/60">Check everything below, then pay with Paystack to confirm your order.</p>
+        </div>
+
+        <dl class="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+                <dt class="text-base-content/60">Contact</dt>
+                <dd class="font-medium">{{ checkout.customer_name }}</dd>
+                <dd>{{ checkout.customer_email }}</dd>
+                <dd>{{ checkout.customer_phone }}</dd>
+            </div>
+            <div>
+                <dt class="text-base-content/60">Fulfilment</dt>
+                <dd class="font-medium">{{ checkout.get_fulfilment_method_display }}</dd>
+                {% if checkout.fulfilment_method == "delivery" %}
+                <dd>{{ checkout.delivery_street }}</dd>
+                <dd>{{ checkout.delivery_suburb }}, {{ checkout.delivery_city }}</dd>
+                {% if checkout.delivery_instructions %}
+                <dd class="text-base-content/70">{{ checkout.delivery_instructions }}</dd>
+                {% endif %}
+                {% endif %}
+            </div>
+        </dl>
+
+        {% include "marketplace/checkout/partials/form_errors.html" %}
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <label class="flex cursor-pointer items-start gap-3">
+                {{ form.accept_terms }}
+                <span class="text-sm leading-snug">{{ form.accept_terms.label }}</span>
+            </label>
+            {% if form.accept_terms.errors %}
+            <p class="text-error text-sm">{{ form.accept_terms.errors.0 }}</p>
+            {% endif %}
+            <div class="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
+                <button type="submit" name="action" value="back" class="btn btn-ghost rounded-full">Back</button>
+                <button
+                    type="submit"
+                    class="btn btn-primary rounded-full"
+                    {% if not paystack_configured %}disabled{% endif %}
+                >
+                    Place order and pay
+                </button>
+            </div>
+        </form>
+    </div>
+</section>

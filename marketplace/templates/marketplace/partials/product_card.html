@@ -36,61 +36,77 @@
             <p class="mp-card__brand">{% firstof product.brand_name product.business.name %}</p>
         {% endif %}
         <h3 class="mp-card__name">
-            <a href="{{ product.get_marketplace_url }}" class="mp-card__link">{{ product.name }}</a>
+            <a href="{{ product.get_marketplace_url }}" class="mp-card__link">{{ product.name }}</a>{% if product.sellable_variant_count|default:0 > 1 %} <span class="mp-card__options">({{ product.sellable_variant_count }} options)</span>{% endif %}
         </h3>
-        <p class="mp-card__meta">
-            {% if variants|length == 1 %}
-                {% with v=variants.0 %}
-                    {% if v.size_display %}
-                        <span>{{ v.size_display }}</span>
-                        <span aria-hidden="true">·</span>
-                    {% endif %}
-                {% endwith %}
-            {% elif product.sellable_variant_count|default:0 > 1 %}
-                <span>{{ product.sellable_variant_count }} options</span>
-                <span aria-hidden="true">·</span>
-            {% endif %}
-            <span>{{ product.get_origin_type_display }}</span>
-        </p>
-        {% include "partials/verified_badge.html" with level_meta=product.level_meta verification_reference=product.verification_reference %}
+        {% if variants|length == 1 %}
+            {% with v=variants.0 %}
+                {% if v.size_display %}
+                    <p class="mp-card__meta"><span>{{ v.size_display }}</span></p>
+                {% endif %}
+            {% endwith %}
+        {% endif %}
 
         <div class="mp-card__footer">
             <p class="mp-card__price">
                 <span class="sr-only">Price</span>
-                {% if product.sellable_variant_count|default:0 > 1 %}
-                    From ${{ product.from_price }}
-                {% else %}
-                    ${{ product.from_price }}
+                {% if product.to_price and product.from_price != product.to_price %}
+                    <span class="mp-card__price-from">from</span>
                 {% endif %}
+                <span class="mp-card__price-value">{{ currency_symbol }}{{ product.from_price }}</span>
             </p>
             {% if variants|length == 1 %}
                 {% with v=variants.0 %}
                 <button
                     type="button"
-                    class="mp-card__add btn btn-primary btn-sm"
-                    aria-label="Add {{ product.name }} to cart"
-                    :disabled="$store.cart.quantityOf({{ v.pk }}) >= {{ v.inventory.available_quantity }}"
-                    @click="$store.cart.add({
-                        id: {{ v.pk }},
-                        name: '{{ product.name|escapejs }}',
-                        variantLabel: '{{ v.label|escapejs }}',
-                        price: '{{ v.offer.price }}',
-                        imageUrl: '{% if product.image %}{{ cart_thumb.url|escapejs }}{% endif %}',
-                        url: '{{ product.get_marketplace_url|escapejs }}',
-                        maxQty: {{ v.inventory.available_quantity }}
-                    })"
+                    class="mp-card__add btn btn-sm"
+                    :class="$store.cart.quantityOf({{ v.pk }}) > 0 ? 'btn-outline btn-error' : 'btn-primary'"
+                    :aria-label="$store.cart.quantityOf({{ v.pk }}) > 0 ? 'Remove {{ product.name|escapejs }} from cart' : 'Add {{ product.name|escapejs }} to cart'"
+                    {% if v.offer.stock_mode != "unlimited" %}
+                    :disabled="$store.cart.quantityOf({{ v.pk }}) === 0 && {{ v.inventory.available_quantity }} === 0"
+                    {% endif %}
+                    @click.stop="
+                        if ($store.cart.quantityOf({{ v.pk }}) > 0) {
+                            $store.cart.remove({{ v.pk }});
+                        } else {
+                            $store.cart.add({
+                                id: {{ v.pk }},
+                                name: '{{ product.name|escapejs }}',
+                                variantLabel: '{{ v.label|escapejs }}',
+                                price: '{{ v.offer.price }}',
+                                imageUrl: '{% if product.image %}{{ cart_thumb.url|escapejs }}{% endif %}',
+                                url: '{{ product.get_marketplace_url|escapejs }}',
+                                maxQty: {% if v.offer.stock_mode == 'unlimited' %}99{% else %}{{ v.inventory.available_quantity }}{% endif %}
+                            });
+                        }
+                    "
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
-                        <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
-                        <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
-                        <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
-                    </svg>
-                    <span class="hidden sm:inline">Add</span>
+                    <span class="inline-flex items-center gap-1" x-show="$store.cart.quantityOf({{ v.pk }}) === 0">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                            <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
+                            <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                            <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
+                        </svg>
+                        <span class="hidden sm:inline">Add</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1" x-show="$store.cart.quantityOf({{ v.pk }}) > 0" x-cloak>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="hidden sm:inline">Remove</span>
+                    </span>
                 </button>
                 {% endwith %}
             {% else %}
-                <a href="{{ product.get_marketplace_url }}" class="mp-card__add btn btn-primary btn-sm">
-                    Choose option
+                <a href="{{ product.get_marketplace_url }}" class="mp-card__add btn btn-outline btn-primary btn-sm inline-flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                        <path d="M8 6h13" />
+                        <path d="M8 12h13" />
+                        <path d="M8 18h13" />
+                        <path d="M3 6h.01" />
+                        <path d="M3 12h.01" />
+                        <path d="M3 18h.01" />
+                    </svg>
+                    <span class="hidden sm:inline">Choose option</span>
                 </a>
             {% endif %}
         </div>

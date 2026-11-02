@@ -2,7 +2,6 @@ import uuid
 from decimal import Decimal
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce
@@ -15,7 +14,25 @@ from wagtail.fields import RichTextField
 from wagtail.models import Orderable, Page
 
 from inventory.models import in_stock_q
-from marketplace.cart_lifecycle import CartStatus, lifecycle_status_for_cart
+from marketplace.cart.cart_lifecycle import CartStatus, lifecycle_status_for_cart
+from marketplace.settings import TaxPricingMode
+
+
+class FulfilmentMethod(models.TextChoices):
+    COLLECTION = "collection", "Collection"
+    DELIVERY = "delivery", "Delivery"
+
+
+class PaymentProvider(models.TextChoices):
+    PAYSTACK = "paystack", "Paystack"
+
+
+class PaymentStatus(models.TextChoices):
+    UNPAID = "unpaid", "Unpaid"
+    PENDING = "pending", "Pending"
+    PAID = "paid", "Paid"
+    FAILED = "failed", "Failed"
+    ABANDONED = "abandoned", "Abandoned"
 
 
 def offer_on_sale_q(prefix=""):
@@ -112,7 +129,7 @@ class CartQuerySet(models.QuerySet):
         )
 
     def with_lifecycle(self, *, now=None):
-        from marketplace.cart_lifecycle import annotate_lifecycle
+        from marketplace.cart.cart_lifecycle import annotate_lifecycle
 
         return annotate_lifecycle(self, now=now)
 
@@ -283,12 +300,53 @@ class Order(ClusterableModel):
     )
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tax_enabled = models.BooleanField(default=False)
+    tax_pricing_mode = models.CharField(
+        max_length=20,
+        choices=TaxPricingMode.choices,
+        blank=True,
+    )
+    tax_rate = models.DecimalField(max_digits=6, decimal_places=4, default=0)
+    tax_base = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    currency = models.CharField(max_length=3, blank=True)
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    customer_name = models.CharField(max_length=200, blank=True)
+    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length=32, blank=True)
+    fulfilment_method = models.CharField(
+        max_length=20,
+        choices=FulfilmentMethod.choices,
+        blank=True,
+    )
+    delivery_city = models.CharField(max_length=120, blank=True)
+    delivery_suburb = models.CharField(max_length=120, blank=True)
+    delivery_street = models.CharField(max_length=250, blank=True)
+    delivery_instructions = models.TextField(blank=True)
+    payment_provider = models.CharField(
+        max_length=32,
+        choices=PaymentProvider.choices,
+        blank=True,
+    )
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.UNPAID,
+    )
+    payment_reference = models.CharField(max_length=100, blank=True, db_index=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["payment_reference"],
+                condition=~Q(payment_reference=""),
+                name="unique_order_payment_reference_nonempty",
+            ),
+        ]
 
     def __str__(self):
         return f"Order #{self.pk}"
@@ -368,79 +426,95 @@ class Checkout(models.Model):
         blank=True,
         related_name="checkout",
     )
+    customer_name = models.CharField(max_length=200, blank=True)
+    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length=32, blank=True)
+    fulfilment_method = models.CharField(
+        max_length=20,
+        choices=FulfilmentMethod.choices,
+        blank=True,
+    )
+    delivery_city = models.CharField(max_length=120, blank=True)
+    delivery_suburb = models.CharField(max_length=120, blank=True)
+    delivery_street = models.CharField(max_length=250, blank=True)
+    delivery_instructions = models.TextField(blank=True)
+    payment_provider = models.CharField(
+        max_length=32,
+        choices=PaymentProvider.choices,
+        blank=True,
+    )
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.UNPAID,
+    )
+    payment_reference = models.CharField(max_length=100, blank=True, db_index=True)
+    payment_access_code = models.CharField(max_length=64, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    # Frozen tax / payable snapshot at Paystack initialize time.
+    tax_enabled = models.BooleanField(default=False)
+    tax_pricing_mode = models.CharField(
+        max_length=20,
+        choices=TaxPricingMode.choices,
+        blank=True,
+    )
+    tax_rate = models.DecimalField(max_digits=6, decimal_places=4, default=0)
+    tax_base = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    merchandise_subtotal = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0
+    )
+    currency = models.CharField(max_length=3, blank=True)
+    total_payable = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["payment_reference"],
+                condition=~Q(payment_reference=""),
+                name="unique_checkout_payment_reference_nonempty",
+            ),
+        ]
 
     def __str__(self):
         return f"Checkout #{self.pk} ({self.get_status_display()})"
 
     @transaction.atomic
     def complete(self):
-        if self.status == self.CheckoutStatus.COMPLETED:
-            raise ValidationError("Checkout is already completed.")
-        if self.order_id:
-            raise ValidationError("Checkout already has an order.")
+        from marketplace.checkout.checkout_workflow import finish_paid_checkout
 
-        from marketplace.cart_workflow import mark_cart_converted
-        from marketplace.offers import price_for_variant
+        return finish_paid_checkout(self)
 
-        cart_items = list(
-            self.cart.items.filter(removed_at__isnull=True).select_related(
-                "variant",
-                "variant__product",
-                "variant__offer",
-            )
-        )
-        if not cart_items:
-            raise ValidationError("Cart is empty.")
 
-        subtotal = Decimal("0")
-        order_items_data = []
-        for item in cart_items:
-            price = item.price_snapshot
-            if price is None:
-                price = price_for_variant(item.variant)
-            if price is None:
-                raise ValidationError(
-                    f"Variant '{item.variant.label}' for "
-                    f"'{item.variant.product.name}' has no price set."
-                )
-            subtotal += price * item.quantity
-            order_items_data.append(
-                {
-                    "product": item.variant.product,
-                    "variant": item.variant,
-                    "product_name": item.variant.product.name,
-                    "variant_label": item.variant.label,
-                    "unit_price": price,
-                    "quantity": item.quantity,
-                }
-            )
+class CheckoutStockReservation(models.Model):
+    """Tracks inventory reserved while payment is pending."""
 
-        delivery_fee = self.delivery_fee or Decimal("0")
-        total = subtotal + delivery_fee
+    checkout = models.ForeignKey(
+        Checkout,
+        on_delete=models.CASCADE,
+        related_name="stock_reservations",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.CASCADE,
+        related_name="checkout_reservations",
+    )
+    quantity = models.PositiveIntegerField()
 
-        order = Order.objects.create(
-            user=self.user,
-            status=Order.OrderStatus.PENDING,
-            subtotal=subtotal,
-            delivery_fee=delivery_fee,
-            total=total,
-        )
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["checkout", "variant"],
+                name="unique_checkout_variant_reservation",
+            ),
+        ]
 
-        for data in order_items_data:
-            OrderItem.objects.create(order=order, **data)
-
-        self.order = order
-        self.status = self.CheckoutStatus.COMPLETED
-        self.save(update_fields=["order", "status", "updated_at"])
-
-        mark_cart_converted(self.cart, order=order)
-
-        return order
+    def __str__(self):
+        return f"Checkout {self.checkout_id} — {self.variant_id} × {self.quantity}"
 
 
 class MarketplacePage(Page):

@@ -6,3 +6,4 @@ class MarketplaceConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        from . import settings as marketplace_settings  # noqa: F401

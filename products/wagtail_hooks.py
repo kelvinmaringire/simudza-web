@@ -2,6 +2,7 @@ from wagtail import hooks
 from wagtail.admin.viewsets.base import ViewSetGroup
 
 from categories.viewsets import CategoryViewSet
+from directory.viewsets import DirectoryListingViewSet
 
 from .viewsets import ProductViewSet, product_chooser_viewset
 
@@ -13,6 +14,7 @@ class CatalogueViewSetGroup(ViewSetGroup):
     items = (
         ProductViewSet,
         CategoryViewSet,
+        DirectoryListingViewSet,
     )
 
 

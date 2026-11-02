@@ -1,0 +1,31 @@
+<section class="card bg-base-100 border border-base-300 shadow-sm">
+    <div class="card-body gap-6">
+        <div>
+            <h2 class="text-lg font-semibold">Payment</h2>
+            <p class="mt-1 text-sm text-base-content/60">You’ll complete payment securely on Paystack after reviewing your order.</p>
+        </div>
+
+        {% if not paystack_configured %}
+        <div role="alert" class="alert alert-warning text-sm">
+            <span>Online payment is not configured. Checkout cannot proceed until Paystack keys are set.</span>
+        </div>
+        {% else %}
+        {% include "marketplace/checkout/partials/form_errors.html" %}
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <fieldset class="space-y-2">
+                {% for radio in form.payment_method %}
+                <label class="border-base-300 flex cursor-pointer gap-3 rounded-xl border p-4">
+                    {{ radio.tag }}
+                    <span class="text-sm">{{ radio.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </fieldset>
+            <div class="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
+                <button type="submit" name="action" value="back" class="btn btn-ghost rounded-full">Back</button>
+                <button type="submit" class="btn btn-primary rounded-full">Continue to review</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</section>

@@ -6,10 +6,15 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from marketplace.models import Cart, CartEvent, CartItem
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Prefetch
+
+from marketplace.models import Cart, CartEvent, CartItem, VariantOffer
 from marketplace.offers import price_for_variant, sellable_variants
+from products.models import ProductVariantImage
 
 MAX_CART_LINES = 100
+UNLIMITED_CART_MAX = 99
 
 
 def _sellable_variants_by_id(variant_ids):
@@ -17,8 +22,19 @@ def _sellable_variants_by_id(variant_ids):
         variant.pk: variant
         for variant in sellable_variants()
         .filter(pk__in=variant_ids)
-        .select_related("product", "product__image")
+        .select_related("product", "product__image", "offer", "inventory")
     }
+
+
+def max_purchasable_quantity(variant):
+    """How many units can go in the cart for this sellable variant."""
+    try:
+        offer = variant.offer
+    except ObjectDoesNotExist:
+        return variant.inventory.available_quantity
+    if offer.stock_mode == VariantOffer.StockMode.UNLIMITED:
+        return UNLIMITED_CART_MAX
+    return variant.inventory.available_quantity
 
 
 def _normalize_wanted_items(items, sellable):
@@ -31,13 +47,26 @@ def _normalize_wanted_items(items, sellable):
             quantity = 0
         if variant_id not in sellable or quantity <= 0:
             continue
-        available = sellable[variant_id].inventory.available_quantity
-        wanted[variant_id] = min(quantity, available)
+        capped = min(quantity, max_purchasable_quantity(sellable[variant_id]))
+        if capped <= 0:
+            continue
+        wanted[variant_id] = capped
     return wanted
 
 
 def get_open_cart_for_user(user):
     return Cart.objects.open().filter(user=user).first()
+
+
+def _unused_cart_token(preferred=None):
+    """Return preferred token if free, otherwise a fresh UUID.
+
+    Converted carts keep their token, so reusing a client token after checkout
+    would hit marketplace_cart_token unique and break sync.
+    """
+    if preferred is not None and not Cart.objects.filter(token=preferred).exists():
+        return preferred
+    return uuid.uuid4()
 
 
 def get_or_create_open_cart(user, *, token=None):
@@ -46,7 +75,7 @@ def get_or_create_open_cart(user, *, token=None):
         return cart
     return Cart.objects.create(
         user=user,
-        token=token or uuid.uuid4(),
+        token=_unused_cart_token(token),
         last_activity_at=timezone.now(),
     )
 
@@ -172,8 +201,9 @@ def merge_guest_cart(guest_cart, user):
             qty = item.quantity
             if variant_id in existing:
                 qty = max(qty, existing[variant_id].quantity)
-            available = sellable[variant_id].inventory.available_quantity
-            merge_wanted[variant_id] = min(qty, available)
+            capped = min(qty, max_purchasable_quantity(sellable[variant_id]))
+            if capped > 0:
+                merge_wanted[variant_id] = capped
 
         if merge_wanted:
             _apply_snapshot(target, merge_wanted, sellable)
@@ -194,6 +224,15 @@ def mark_cart_converted(cart, *, order):
     return cart
 
 
+def cart_thumb_url_for_variant(variant):
+    """Prefer the variant's own first image; fall back to the product image."""
+    own = list(variant.images.all()[:1])
+    image = own[0].image if own else getattr(variant.product, "image", None)
+    if image is None:
+        return ""
+    return image.get_rendition("fill-96x96").url
+
+
 def serialize_cart_lines(cart):
     rows = (
         cart.items.filter(removed_at__isnull=True)
@@ -204,15 +243,21 @@ def serialize_cart_lines(cart):
             "variant__inventory",
             "variant__offer",
         )
+        .prefetch_related(
+            Prefetch(
+                "variant__images",
+                queryset=ProductVariantImage.objects.select_related("image").order_by(
+                    "sort_order",
+                    "pk",
+                ),
+            )
+        )
         .order_by("sort_order", "pk")
     )
     lines = []
     for row in rows:
         variant = row.variant
         product = variant.product
-        image_url = ""
-        if product.image:
-            image_url = product.image.get_rendition("fill-96x96").url
         price = row.price_snapshot
         if price is None:
             price = price_for_variant(variant)
@@ -222,9 +267,9 @@ def serialize_cart_lines(cart):
                 "name": product.name,
                 "variantLabel": variant.label,
                 "price": str(price or "0"),
-                "imageUrl": image_url,
+                "imageUrl": cart_thumb_url_for_variant(variant),
                 "url": product.get_marketplace_url(),
-                "maxQty": variant.inventory.available_quantity,
+                "maxQty": max_purchasable_quantity(variant),
                 "quantity": row.quantity,
             }
         )
@@ -271,7 +316,7 @@ def sync_cart(*, token, user=None, items, apply=True):
     cart = get_guest_cart_by_token(token_uuid)
     if cart is None:
         cart = Cart.objects.create(
-            token=token_uuid,
+            token=_unused_cart_token(token_uuid),
             last_activity_at=timezone.now(),
         )
 

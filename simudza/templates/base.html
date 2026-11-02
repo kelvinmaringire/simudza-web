@@ -6,6 +6,9 @@
     data-cart-sync="{% if cart_can_sync %}1{% else %}0{% endif %}"
     data-cart-logged-in="{% if user.is_authenticated %}1{% else %}0{% endif %}"
     data-cart-sync-url="{% url 'marketplace:cart_sync' %}"
+    data-tax-enabled="{% if tax_enabled %}1{% else %}0{% endif %}"
+    data-tax-mode="{{ tax_pricing_mode|default:'excluded' }}"
+    data-tax-rate="{{ tax_rate|default:'0' }}"
 >
     <head>
         <meta charset="utf-8" />

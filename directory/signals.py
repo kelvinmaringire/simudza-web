@@ -18,5 +18,7 @@ def ensure_directory_listing(product):
 
 
 @receiver(post_save, sender=Product)
-def create_directory_listing_for_product(sender, instance, created, **kwargs):
+def create_directory_listing_for_product(sender, instance, raw=False, **kwargs):
+    if raw:
+        return
     ensure_directory_listing(instance)

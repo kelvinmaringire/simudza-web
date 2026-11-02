@@ -116,10 +116,10 @@
 </div>
 
 <div class="form-control w-full">
-    <span class="label py-1"><span class="label-text text-xs">Price (USD)</span></span>
+    <span class="label py-1"><span class="label-text text-xs">Price ({{ currency_code }})</span></span>
     <div class="flex items-center gap-2">
         <label class="input input-sm bg-base-100 w-full">
-            <span class="text-base-content/50">$</span>
+            <span class="text-base-content/50">{{ currency_symbol }}</span>
             <input
                 type="number"
                 name="min_price"
@@ -133,7 +133,7 @@
         </label>
         <span class="text-base-content/40" aria-hidden="true">–</span>
         <label class="input input-sm bg-base-100 w-full">
-            <span class="text-base-content/50">$</span>
+            <span class="text-base-content/50">{{ currency_symbol }}</span>
             <input
                 type="number"
                 name="max_price"

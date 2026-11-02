@@ -11,7 +11,10 @@
     class="mp-detail mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-5 lg:px-8"
     x-data="{
         variants: JSON.parse(document.getElementById('mp-variant-options').textContent),
-        selectedId: {{ sellable_variants.0.pk }},
+        selectedId: {{ selected_variant.pk }},
+        active: {{ initial_image_index }},
+        count: {{ gallery|length }},
+        touchX: null,
         cartLine: {
             name: '{{ cart_product_name|escapejs }}',
             imageUrl: '{{ cart_image_url|escapejs }}',
@@ -19,6 +22,10 @@
         },
         qty: 1,
         showBar: false,
+        cartOpen: false,
+        variantLabels: {
+            {% for option in picker_options %}{{ option.variant.pk }}: '{{ option.variant.label|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}
+        },
         get selected() {
             return this.variants.find(function (v) { return v.id === this.selectedId; }.bind(this)) || this.variants[0];
         },
@@ -26,6 +33,37 @@
         get remaining() {
             if (!this.selected) return 0;
             return Math.max(Number(this.selected.maxQty) - this.inCart, 0);
+        },
+        selectVariant(id, index) {
+            this.selectedId = Number(id);
+            this.qty = 1;
+            if (index !== null && index !== undefined && index !== '') {
+                this.active = Number(index);
+            }
+            if (this.selected && this.selected.imageUrl) {
+                this.cartLine.imageUrl = this.selected.imageUrl;
+            }
+            const url = new URL(window.location.href);
+            url.searchParams.set('variant', id);
+            window.history.replaceState({}, '', url);
+            const announcer = document.getElementById('product-variant-announcer');
+            if (announcer) {
+                announcer.textContent = (this.variantLabels[this.selectedId] || '') + ' selected.';
+            }
+        },
+        select(i, variantId) {
+            if (this.count > 0) {
+                this.active = ((i % this.count) + this.count) % this.count;
+            }
+            if (variantId) {
+                this.selectVariant(variantId, this.active);
+            }
+        },
+        onTouchEnd(e) {
+            if (this.touchX === null || this.count < 2) return;
+            const dx = e.changedTouches[0].clientX - this.touchX;
+            if (Math.abs(dx) > 40) this.select(this.active + (dx < 0 ? 1 : -1));
+            this.touchX = null;
         },
         dec() { this.qty = Math.max(1, this.qty - 1); },
         inc() { this.qty = Math.min(Math.max(this.remaining, 1), this.qty + 1); },
@@ -39,12 +77,18 @@
                 id: this.selected.id,
                 variantLabel: this.selected.label,
                 price: this.selected.price,
-                maxQty: this.selected.maxQty
+                maxQty: this.selected.maxQty,
+                imageUrl: this.selected.imageUrl || this.cartLine.imageUrl
             }), Math.min(count || this.qty, this.remaining));
             this.qty = 1;
         }
     }"
     x-init="
+        const drawer = document.getElementById('cart-drawer');
+        if (drawer) {
+            cartOpen = drawer.checked;
+            drawer.addEventListener('change', () => { cartOpen = drawer.checked; });
+        }
         if ('IntersectionObserver' in window && $refs.buyActions) {
             new IntersectionObserver(([entry]) => {
                 showBar = !entry.isIntersecting && entry.boundingClientRect.top < 0;
@@ -67,32 +111,20 @@
     </nav>
 
     <section
-        class="mt-3 grid gap-6 sm:mt-4 lg:grid-cols-12 lg:items-start lg:gap-10 xl:gap-14"
+        class="mt-3 grid gap-4 sm:mt-4 sm:gap-5 lg:grid-cols-2 lg:items-start lg:gap-8 xl:gap-10"
         aria-labelledby="product-title"
     >
-        {# Gallery #}
+        {# Gallery — same 1/2 column sizing as directory product detail #}
         <div
-            class="min-w-0 lg:sticky lg:top-5 lg:col-span-7"
+            class="min-w-0 lg:sticky lg:top-3"
             {% if gallery|length > 1 %}
-            x-data="{
-                active: 0,
-                count: {{ gallery|length }},
-                touchX: null,
-                select(i) { this.active = ((i % this.count) + this.count) % this.count; },
-                onTouchEnd(e) {
-                    if (this.touchX === null) return;
-                    const dx = e.changedTouches[0].clientX - this.touchX;
-                    if (Math.abs(dx) > 40) this.select(this.active + (dx < 0 ? 1 : -1));
-                    this.touchX = null;
-                }
-            }"
             @keydown.arrow-right="select(active + 1)"
             @keydown.arrow-left="select(active - 1)"
             {% endif %}
         >
             {% if gallery %}
                 <div
-                    class="mp-gallery product-image-well"
+                    class="mp-gallery product-image-well relative flex aspect-square w-full"
                     {% if gallery|length > 1 %}
                     @touchstart.passive="touchX = $event.touches[0].clientX"
                     @touchend="onTouchEnd($event)"
@@ -102,9 +134,9 @@
                     {% endif %}
                 >
                     {% for item in gallery %}
-                        {% image item.image max-1200x1200 as slide %}
+                        {% image item.image max-960x960 as slide %}
                         <img
-                            class="mp-gallery__img"
+                            class="mp-gallery__img absolute inset-0 m-auto max-h-full max-w-full object-contain p-4 sm:p-6 lg:p-8"
                             src="{{ slide.url }}"
                             alt="{{ item.alt }}"
                             width="{{ slide.width }}"
@@ -114,7 +146,7 @@
                             {% if gallery|length > 1 %}
                             x-show="active === {{ forloop.counter0 }}"
                             x-transition.opacity.duration.200ms
-                            {% if not forloop.first %}x-cloak{% endif %}
+                            {% if forloop.counter0 != initial_image_index %}x-cloak{% endif %}
                             {% endif %}
                         />
                     {% endfor %}
@@ -135,16 +167,17 @@
                 </div>
 
                 {% if gallery|length > 1 %}
-                    <ul class="mt-3 hidden gap-2 overflow-x-auto pb-1 sm:flex" aria-label="Product images">
+                    <ul class="mt-2 flex gap-1.5 overflow-x-auto pb-0.5" aria-label="Product images">
                         {% for item in gallery %}
-                            {% image item.image max-160x160 as thumb %}
+                            {% image item.image max-96x96 as thumb %}
                             <li class="shrink-0">
                                 <button
                                     type="button"
-                                    class="product-gallery-thumb product-image-well product-image-well--thumb flex size-16 items-center justify-center p-1.5 transition outline-none lg:size-20"
+                                    class="product-gallery-thumb product-image-well product-image-well--thumb flex size-12 items-center justify-center p-1 transition outline-none sm:size-14"
                                     :aria-selected="active === {{ forloop.counter0 }}"
                                     :aria-current="active === {{ forloop.counter0 }}"
-                                    @click="select({{ forloop.counter0 }})"
+                                    data-variant="{{ item.variant_id|default:'' }}"
+                                    @click="select({{ forloop.counter0 }}, {% if item.variant_id %}{{ item.variant_id }}{% else %}null{% endif %})"
                                     aria-label="Show image {{ forloop.counter }} of {{ gallery|length }}"
                                 >
                                     <img class="max-h-full max-w-full object-contain" src="{{ thumb.url }}" alt="" width="{{ thumb.width }}" height="{{ thumb.height }}" draggable="false" loading="lazy" />
@@ -154,14 +187,14 @@
                     </ul>
                 {% endif %}
             {% else %}
-                <div class="mp-gallery product-image-well">
-                    <span class="product-image-well__empty text-sm">No image</span>
+                <div class="product-image-well product-image-well__empty flex aspect-square w-full text-sm">
+                    No image
                 </div>
             {% endif %}
         </div>
 
         {# Buy box #}
-        <div class="min-w-0 lg:col-span-5">
+        <div class="min-w-0 lg:pt-1">
             {% if product.brand_name or business %}
                 <p class="mp-detail__brand">
                     {% if business %}
@@ -183,52 +216,70 @@
                         </a>
                     </li>
                 {% endif %}
-                {% if product.effective_verified_at %}
-                    <li>
-                        <span class="mp-tag mp-tag--verified">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.403 12.652a3 3 0 0 0 0-5.304 3 3 0 0 0-3.75-3.751 3 3 0 0 0-5.305 0 3 3 0 0 0-3.751 3.75 3 3 0 0 0 0 5.305 3 3 0 0 0 3.75 3.751 3 3 0 0 0 5.305 0 3 3 0 0 0 3.751-3.75Zm-2.546-4.46a.75.75 0 0 0-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" /></svg>
-                            Verified
-                        </span>
-                    </li>
-                {% endif %}
+                <li>
+                    <a
+                        href="{{ product.get_absolute_url }}"
+                        class="link link-hover inline-flex items-center gap-1 text-xs font-normal text-base-content/60 hover:text-base-content"
+                    >
+                        View in directory
+                        <span aria-hidden="true">→</span>
+                    </a>
+                </li>
                 {% if product.featured %}
                     <li><span class="mp-tag mp-tag--featured">Featured</span></li>
                 {% endif %}
             </ul>
 
-            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                {% load review_report_tags %}
-                {% product_report_reason_choices as reason_choices %}
-                {% url 'reviews:report_product' product.slug as report_url %}
-                {% include "reviews/partials/report_modal.html" with report_kind="product" report_pk=product.pk report_url=report_url listing_label=product.name reason_choices=reason_choices %}
-            </div>
-            {% if request.GET.reported %}
-                <p class="mt-2 text-sm text-success" role="status">Thanks — your report was submitted.</p>
-            {% endif %}
-
-            {% if sellable_variants|length > 1 %}
-                <fieldset class="mt-5">
-                    <legend class="text-sm font-medium text-base-content/70">Choose option</legend>
-                    <ul class="mt-2 flex flex-wrap gap-2" role="list">
-                        <template x-for="v in variants" :key="v.id">
-                            <li>
-                                <button
-                                    type="button"
-                                    class="btn btn-sm rounded-full"
-                                    :class="selectedId === v.id ? 'btn-primary' : 'btn-outline'"
-                                    @click="selectedId = v.id; qty = 1"
-                                    x-text="v.label"
-                                ></button>
-                            </li>
-                        </template>
-                    </ul>
+            {% if picker_options|length > 1 %}
+                <fieldset class="product-variant-picker mt-5 max-w-prose">
+                    <legend class="text-sm text-base-content/65">
+                        Option:
+                        <span class="font-semibold text-base-content" x-text="variantLabels[selectedId]">{{ selected_variant.label }}</span>
+                    </legend>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        {% for option in picker_options %}
+                            <label
+                                for="mp-variant-option-{{ option.variant.pk }}"
+                                class="product-variant-option"
+                            >
+                                <input
+                                    id="mp-variant-option-{{ option.variant.pk }}"
+                                    type="radio"
+                                    name="variant"
+                                    value="{{ option.variant.pk }}"
+                                    class="sr-only"
+                                    {% if option.variant == selected_variant %}checked{% endif %}
+                                    x-model.number="selectedId"
+                                    @change="selectVariant($event.target.value, {% if option.image_index != None %}{{ option.image_index }}{% else %}null{% endif %})"
+                                />
+                                {% if option.swatch %}
+                                    {% image option.swatch fill-64x64 as swatch %}
+                                    <img
+                                        class="product-variant-option__swatch"
+                                        src="{{ swatch.url }}"
+                                        alt=""
+                                        width="32"
+                                        height="32"
+                                        draggable="false"
+                                    />
+                                {% endif %}
+                                <span class="min-w-0">
+                                    <span class="product-variant-option__label">{{ option.variant.label }}</span>
+                                    {% if option.variant.size_display and option.variant.size_display != option.variant.label %}
+                                        <span class="product-variant-option__meta">{{ option.variant.size_display }}</span>
+                                    {% endif %}
+                                </span>
+                            </label>
+                        {% endfor %}
+                    </div>
                 </fieldset>
+                <p id="product-variant-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></p>
             {% endif %}
 
             <div class="mt-5 flex flex-wrap items-end gap-x-3 gap-y-1">
                 <p class="mp-detail__price">
                     <span class="sr-only">Price</span>
-                    $<span x-text="selected ? selected.price : ''"></span>
+                    {{ currency_symbol }}<span x-text="selected ? selected.price : ''"></span>
                 </p>
                 <p class="pb-1 text-sm text-base-content/55" x-show="selected && selected.sizeDisplay" x-text="selected.sizeDisplay" x-cloak></p>
             </div>
@@ -253,44 +304,83 @@
             {% endif %}
 
             <div class="mp-buy" x-ref="buyActions">
-                <template x-if="selected && Number(selected.maxQty) > 0">
+                {# Already in cart — same quantity controls as the main cart drawer #}
+                <template x-if="selected && Number(selected.maxQty) > 0 && inCart > 0">
                     <div>
-                    <div class="flex items-stretch gap-2.5">
-                        <div class="mp-qty" role="group" aria-label="Quantity">
-                            <button type="button" class="mp-qty__btn" @click="dec()" :disabled="qty <= 1" aria-label="Decrease quantity">−</button>
-                            <input
-                                type="number"
-                                inputmode="numeric"
-                                min="1"
-                                :max="Math.max(remaining, 1)"
-                                class="mp-qty__input"
-                                :value="qty"
-                                @change="setQty($event.target.value); $event.target.value = qty"
-                                aria-label="Quantity"
-                            />
-                            <button type="button" class="mp-qty__btn" @click="inc()" :disabled="qty >= remaining" aria-label="Increase quantity">+</button>
+                        <div class="flex items-stretch gap-2.5">
+                            <div class="mp-qty" role="group" aria-label="Quantity in cart">
+                                <button
+                                    type="button"
+                                    class="mp-qty__btn"
+                                    :aria-label="inCart > 1 ? 'Decrease quantity' : 'Remove from cart'"
+                                    @click="$store.cart.setQuantity(selectedId, inCart - 1)"
+                                >−</button>
+                                <span class="mp-qty__value" x-text="inCart"></span>
+                                <button
+                                    type="button"
+                                    class="mp-qty__btn"
+                                    aria-label="Increase quantity"
+                                    :disabled="inCart >= Number(selected.maxQty)"
+                                    @click="$store.cart.setQuantity(selectedId, inCart + 1)"
+                                >+</button>
+                            </div>
+                            <label for="cart-drawer" class="btn btn-outline btn-primary btn-lg mp-buy__cta cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true">
+                                    <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
+                                    <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                                    <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
+                                </svg>
+                                View cart
+                            </label>
                         </div>
-                        <button
-                            type="button"
-                            class="btn btn-primary btn-lg mp-buy__cta"
-                            @click="add()"
-                            :disabled="remaining === 0"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true">
-                                <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
-                                <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
-                                <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
-                            </svg>
-                            <span x-text="remaining === 0 ? 'Maximum in cart' : 'Add to cart'">Add to cart</span>
-                        </button>
-                    </div>
-                    <p class="mp-buy__note" x-show="inCart > 0" x-cloak>
-                        <span x-text="inCart + (inCart === 1 ? ' item' : ' items') + ' in your cart'"></span>
-                        <span aria-hidden="true">·</span>
-                        <label for="cart-drawer" class="link link-primary cursor-pointer font-medium">View cart</label>
-                    </p>
+                        <p class="mp-buy__note">
+                            <span x-text="inCart + (inCart === 1 ? ' item' : ' items') + ' in your cart'"></span>
+                            <span aria-hidden="true">·</span>
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-xs px-1 text-error"
+                                @click="$store.cart.remove(selectedId)"
+                            >
+                                Remove
+                            </button>
+                        </p>
                     </div>
                 </template>
+
+                {# Not in cart yet #}
+                <template x-if="selected && Number(selected.maxQty) > 0 && inCart === 0">
+                    <div>
+                        <div class="flex items-stretch gap-2.5">
+                            <div class="mp-qty" role="group" aria-label="Quantity">
+                                <button type="button" class="mp-qty__btn" @click="dec()" :disabled="qty <= 1" aria-label="Decrease quantity">−</button>
+                                <input
+                                    type="number"
+                                    inputmode="numeric"
+                                    min="1"
+                                    :max="Math.max(Number(selected.maxQty), 1)"
+                                    class="mp-qty__input"
+                                    :value="qty"
+                                    @change="setQty($event.target.value); $event.target.value = qty"
+                                    aria-label="Quantity"
+                                />
+                                <button type="button" class="mp-qty__btn" @click="inc()" :disabled="qty >= Number(selected.maxQty)" aria-label="Increase quantity">+</button>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-primary btn-lg mp-buy__cta"
+                                @click="add()"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5" aria-hidden="true">
+                                    <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
+                                    <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                                    <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
+                                </svg>
+                                Add to cart
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
                 <template x-if="!selected || Number(selected.maxQty) === 0">
                     <div>
                         <button type="button" class="btn btn-lg btn-disabled w-full rounded-full" disabled>Out of stock</button>
@@ -371,9 +461,6 @@
                     <div><dt>Barcode</dt><dd x-text="selected.barcode"></dd></div>
                 </template>
             </dl>
-            <a href="{{ product.get_absolute_url }}" class="mt-4 inline-flex text-sm text-base-content/60 link link-hover">
-                View directory listing →
-            </a>
         </section>
     </div>
 
@@ -393,10 +480,10 @@
         </section>
     {% endif %}
 
-    {# Mobile sticky purchase bar — appears once the main Add to cart scrolls away #}
+    {# Mobile sticky bar — hidden while the main cart drawer is open #}
     <div
         class="mp-sticky-bar lg:hidden"
-        x-show="showBar && selected && Number(selected.maxQty) > 0"
+        x-show="showBar && !cartOpen && selected && Number(selected.maxQty) > 0"
         x-cloak
         x-transition:enter="transition duration-200 ease-out"
         x-transition:enter-start="translate-y-full opacity-0"
@@ -405,10 +492,28 @@
     >
         <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium">{{ product.name }}</p>
-            <p class="text-base font-semibold">$<span x-text="selected ? selected.price : ''"></span></p>
+            <p class="text-base font-semibold">{{ currency_symbol }}<span x-text="selected ? selected.price : ''"></span></p>
         </div>
-        <button type="button" class="btn btn-primary rounded-full px-5" @click="add(1)" :disabled="remaining === 0">
-            <span x-text="remaining === 0 ? 'In cart' : 'Add to cart'">Add to cart</span>
+        <label
+            for="cart-drawer"
+            class="btn btn-outline btn-primary rounded-full px-5 cursor-pointer"
+            x-show="inCart > 0"
+            x-cloak
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true">
+                <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6" />
+                <circle cx="9" cy="20" r="1" fill="currentColor" stroke="none" />
+                <circle cx="17" cy="20" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            View cart
+        </label>
+        <button
+            type="button"
+            class="btn btn-primary rounded-full px-5"
+            x-show="inCart === 0"
+            @click="add(1)"
+        >
+            Add to cart
         </button>
     </div>
 </article>

@@ -1,7 +1,7 @@
 """Variant selling terms (price, on sale) and the "can be bought now" rule."""
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, Min
+from django.db.models import Count, Max, Min
 
 from products.models import ProductVariant
 
@@ -36,10 +36,11 @@ def sellable_variants():
 
 
 def with_sellable_variants(product_queryset):
-    """Annotate ``from_price`` and ``sellable_variant_count``; keep products with one or more."""
+    """Annotate prices and sellable counts; keep products with one or more."""
     sellable = sellable_variant_q("variants__")
     return product_queryset.annotate(
         from_price=Min("variants__offer__price", filter=sellable),
+        to_price=Max("variants__offer__price", filter=sellable),
         sellable_variant_count=Count("variants", filter=sellable, distinct=True),
     ).filter(sellable_variant_count__gt=0)
 

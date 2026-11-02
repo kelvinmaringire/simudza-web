@@ -1,0 +1,49 @@
+<div class="card bg-base-100 border border-base-300 shadow-sm">
+    <div class="card-body gap-3 p-5">
+        <h2 class="card-title text-base">Order summary</h2>
+        <ul class="divide-base-300 divide-y text-sm">
+            {% for row in totals.lines %}
+            <li class="flex justify-between gap-3 py-2">
+                <span class="text-base-content/80">
+                    {{ row.item.variant.product.name }}
+                    {% if row.item.variant.label %}
+                    <span class="text-base-content/50">· {{ row.item.variant.label }}</span>
+                    {% endif %}
+                    <span class="text-base-content/50">× {{ row.item.quantity }}</span>
+                </span>
+                <span class="shrink-0 font-medium">{{ currency_symbol }}{{ row.line_total }}</span>
+            </li>
+            {% empty %}
+            <li class="py-2 text-base-content/60">No items yet.</li>
+            {% endfor %}
+        </ul>
+        <div class="border-base-300 space-y-1 border-t pt-3 text-sm">
+            <div class="flex justify-between">
+                <span class="text-base-content/70">
+                    {% if totals.tax_enabled and totals.tax_pricing_mode == "included" %}
+                    Subtotal (tax included)
+                    {% else %}
+                    Subtotal
+                    {% endif %}
+                </span>
+                <span>{{ currency_symbol }}{{ totals.subtotal }}</span>
+            </div>
+            {% if totals.tax_enabled and totals.tax_amount %}
+            <div class="flex justify-between">
+                <span class="text-base-content/70">
+                    {% if totals.tax_pricing_mode == "included" %}
+                    Tax included ({{ totals.tax_rate_display }}%)
+                    {% else %}
+                    Tax ({{ totals.tax_rate_display }}%)
+                    {% endif %}
+                </span>
+                <span>{{ currency_symbol }}{{ totals.tax_amount }}</span>
+            </div>
+            {% endif %}
+            <div class="flex justify-between text-base font-semibold">
+                <span>Total ({{ totals.currency|default:currency_code }})</span>
+                <span>{{ currency_symbol }}{{ totals.total }}</span>
+            </div>
+        </div>
+    </div>
+</div>

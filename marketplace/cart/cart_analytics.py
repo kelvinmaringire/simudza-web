@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.db.models import Count, Sum
 
-from marketplace.cart_lifecycle import (
+from marketplace.cart.cart_lifecycle import (
     CART_STATUS_LABELS,
     CartStatus,
     analytics_cart_queryset,

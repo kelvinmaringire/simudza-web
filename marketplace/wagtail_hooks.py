@@ -3,7 +3,7 @@ from wagtail import hooks
 from wagtail.admin.menu import MenuItem
 
 from .admin_views import CartAnalyticsIndexView
-from .cart_analytics import user_can_view_cart_analytics
+from marketplace.cart.cart_analytics import user_can_view_cart_analytics
 from .viewsets import (
     CheckoutViewSet,
     MarketplaceViewSetGroup,

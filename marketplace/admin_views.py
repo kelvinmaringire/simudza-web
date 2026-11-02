@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 from wagtail.admin.views.generic.base import WagtailAdminTemplateMixin
 
-from marketplace.cart_analytics import cart_analytics_summary, user_can_view_cart_analytics
+from marketplace.cart.cart_analytics import cart_analytics_summary, user_can_view_cart_analytics
 
 
 class CartAnalyticsIndexView(WagtailAdminTemplateMixin, TemplateView):

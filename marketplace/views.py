@@ -8,9 +8,12 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
-from products.models import Product, ProductImage
+from products.models import Product, ProductImage, ProductVariantImage
+from products.views import build_gallery
 
 from .models import MarketplacePage, VariantOffer
+from .offers import sellable_variants
+from .settings import get_marketplace_currency
 from .services import (
     SORT_OPTIONS,
     SORT_ORDERING,
@@ -21,11 +24,10 @@ from .services import (
     get_marketplace_origins,
     get_marketplace_products,
     get_related_marketplace_products,
-    get_sellable_variants_for_product,
     parse_price,
     sort_marketplace_products,
 )
-from .cart_workflow import serialize_cart_lines, sync_cart
+from marketplace.cart.cart_workflow import serialize_cart_lines, sync_cart
 
 JSON_LD_ESCAPES = {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
 
@@ -142,24 +144,36 @@ class MarketplaceProductDetailView(DetailView):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        sellable_variants = get_sellable_variants_for_product(self.object)
-        if not sellable_variants:
+        sellable = self.get_sellable_variants(self.object)
+        if not sellable:
             return redirect(self.object.get_absolute_url())
         context = self.get_context_data(
             object=self.object,
-            sellable_variants=sellable_variants,
+            sellable_variants=sellable,
         )
         return self.render_to_response(context)
 
-    def get_gallery(self, product):
-        gallery = []
-        if product.image:
-            gallery.append({"image": product.image, "alt": product.name})
-        for item in product.images.all():
-            if product.image and item.image_id == product.image_id:
-                continue
-            gallery.append({"image": item.image, "alt": item.alt_text or product.name})
-        return gallery
+    def get_sellable_variants(self, product):
+        images = Prefetch(
+            "images",
+            queryset=ProductVariantImage.objects.select_related("image").order_by(
+                "sort_order",
+                "pk",
+            ),
+        )
+        return list(
+            sellable_variants()
+            .filter(product=product)
+            .prefetch_related(images)
+            .order_by("sort_order", "pk")
+        )
+
+    def get_selected_variant(self, variants):
+        wanted = self.request.GET.get("variant", "")
+        for variant in variants:
+            if str(variant.pk) == wanted:
+                return variant
+        return variants[0] if variants else None
 
     def get_json_ld(self, product, gallery, sellable_variants):
         offers = []
@@ -171,7 +185,7 @@ class MarketplaceProductDetailView(DetailView):
             )
             offer = {
                 "@type": "Offer",
-                "priceCurrency": "USD",
+                "priceCurrency": get_marketplace_currency(),
                 "price": str(variant.offer.price),
                 "availability": (
                     "https://schema.org/InStock"
@@ -211,24 +225,50 @@ class MarketplaceProductDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         product = self.object
-        sellable_variants = kwargs.get("sellable_variants")
-        if sellable_variants is None:
-            sellable_variants = get_sellable_variants_for_product(product)
-        selected = sellable_variants[0] if sellable_variants else None
+        sellable = kwargs.get("sellable_variants")
+        if sellable is None:
+            sellable = self.get_sellable_variants(product)
+        selected = self.get_selected_variant(sellable)
         available_quantity = (
             selected.inventory.available_quantity if selected else 0
         )
-        gallery = self.get_gallery(product)
+        gallery = build_gallery(product, sellable)
+
+        image_index_by_variant = {}
+        for index, item in enumerate(gallery):
+            vid = item.get("variant_id")
+            if vid is not None and vid not in image_index_by_variant:
+                image_index_by_variant[vid] = index
+
+        initial_image_index = 0
+        if selected and selected.pk in image_index_by_variant:
+            initial_image_index = image_index_by_variant[selected.pk]
+
         image_url = ""
-        if product.image:
+        if selected and selected.pk in image_index_by_variant:
+            swatch = gallery[image_index_by_variant[selected.pk]]["image"]
+            image_url = swatch.get_rendition("fill-96x96").url
+        elif product.image:
             image_url = product.image.get_rendition("fill-96x96").url
-        variant_options = []
-        for variant in sellable_variants:
+
+        cart_variants = []
+        picker_options = []
+        for variant in sellable:
             unlimited = (
                 variant.offer.stock_mode == VariantOffer.StockMode.UNLIMITED
             )
             available = variant.inventory.available_quantity
-            variant_options.append(
+            image_index = image_index_by_variant.get(variant.pk)
+            own_images = list(variant.images.all())
+            if own_images:
+                variant_image_url = own_images[0].image.get_rendition(
+                    "fill-96x96"
+                ).url
+            elif product.image:
+                variant_image_url = product.image.get_rendition("fill-96x96").url
+            else:
+                variant_image_url = ""
+            cart_variants.append(
                 {
                     "id": variant.pk,
                     "label": variant.label,
@@ -239,14 +279,27 @@ class MarketplaceProductDetailView(DetailView):
                     "barcode": variant.inventory.barcode,
                     "stockMode": variant.offer.stock_mode,
                     "maxQty": 99 if unlimited else available,
+                    "imageIndex": image_index,
+                    "imageUrl": variant_image_url,
                 }
             )
+            picker_options.append(
+                {
+                    "variant": variant,
+                    "image_index": image_index,
+                    "swatch": own_images[0].image if own_images else None,
+                }
+            )
+
         context.update(
             {
                 "business": product.business,
                 "gallery": gallery,
-                "sellable_variants": sellable_variants,
-                "variant_options": variant_options,
+                "sellable_variants": sellable,
+                "selected_variant": selected,
+                "initial_image_index": initial_image_index,
+                "variant_options": cart_variants,
+                "picker_options": picker_options,
                 "cart_image_url": image_url,
                 "cart_product_name": product.name,
                 "cart_product_url": product.get_marketplace_url(),
@@ -254,7 +307,7 @@ class MarketplaceProductDetailView(DetailView):
                 "in_stock": any(
                     v.offer.stock_mode == VariantOffer.StockMode.UNLIMITED
                     or v.inventory.available_quantity > 0
-                    for v in sellable_variants
+                    for v in sellable
                 ),
                 "low_stock": bool(
                     selected
@@ -267,7 +320,7 @@ class MarketplaceProductDetailView(DetailView):
                 "product_json_ld": self.get_json_ld(
                     product,
                     gallery,
-                    sellable_variants,
+                    sellable,
                 ),
             }
         )
@@ -311,6 +364,11 @@ def cart_sync(request):
 
     if user:
         lines = serialize_cart_lines(cart) if cart else []
-        return JsonResponse({"items": lines})
+        payload = {"items": lines}
+        if cart is not None:
+            payload["token"] = str(cart.token)
+        return JsonResponse(payload)
 
+    if cart is not None and str(cart.token) != str(token):
+        return JsonResponse({"token": str(cart.token)}, status=200)
     return HttpResponse(status=204)

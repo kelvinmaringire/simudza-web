@@ -11,7 +11,7 @@ from simudza.utils.admin_grid import GridPanel, GridRow
 from simudza.utils.admin_import_export import ImportExportViewSetMixin
 from simudza.utils.admin_save_actions import SaveActionsViewSetMixin
 
-from marketplace.cart_lifecycle import CART_STATUS_LABELS
+from marketplace.cart.cart_lifecycle import CART_STATUS_LABELS
 
 from .forms import CartForm, CheckoutForm, OrderForm, VariantOfferForm
 from .models import Cart, Checkout, Order, VariantOffer
@@ -227,6 +227,7 @@ class OrderViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet)
     list_display = [
         "user",
         "status",
+        "payment_status",
         "total",
         "created_at",
     ]
@@ -250,6 +251,11 @@ class OrderViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet)
                     FieldPanel("status"),
                     FieldPanel("subtotal"),
                     FieldPanel("delivery_fee"),
+                    FieldPanel("tax_enabled"),
+                    FieldPanel("tax_pricing_mode"),
+                    FieldPanel("tax_rate"),
+                    FieldPanel("tax_amount"),
+                    FieldPanel("currency"),
                     FieldPanel("total"),
                 ],
                 heading="Order",
@@ -264,8 +270,17 @@ class OrderViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewSet)
     inspect_view_fields = [
         "user",
         "status",
+        "payment_status",
+        "payment_reference",
+        "customer_email",
+        "fulfilment_method",
         "subtotal",
         "delivery_fee",
+        "tax_enabled",
+        "tax_pricing_mode",
+        "tax_rate",
+        "tax_amount",
+        "currency",
         "total",
         "created_at",
         "updated_at",
@@ -285,6 +300,7 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
         "user",
         "cart",
         "status",
+        "payment_status",
         "order",
         "created_at",
     ]
@@ -309,6 +325,12 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
                     FieldPanel("delivery_fee"),
                     FieldPanel("status"),
                     FieldPanel("order"),
+                    FieldPanel("tax_enabled"),
+                    FieldPanel("tax_pricing_mode"),
+                    FieldPanel("tax_rate"),
+                    FieldPanel("tax_amount"),
+                    FieldPanel("total_payable"),
+                    FieldPanel("currency"),
                 ],
                 heading="Checkout",
             ),
@@ -323,6 +345,14 @@ class CheckoutViewSet(BulkEditViewSetMixin, ImportExportViewSetMixin, ModelViewS
         "cart",
         "delivery_fee",
         "status",
+        "payment_status",
+        "payment_reference",
+        "customer_email",
+        "tax_enabled",
+        "tax_rate",
+        "tax_amount",
+        "total_payable",
+        "currency",
         "order",
         "created_at",
         "updated_at",

@@ -67,6 +67,15 @@
                     </label>
                 </li>
                 <li>
+                    <a href="{% url 'accounts:dashboard' %}#orders">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><path d="M6 2h12l2 6H4L6 2Z"></path><path d="M4 8v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path><path d="M10 12h4"></path></svg>
+                        Orders
+                        {% if order_count %}
+                        <span class="badge badge-sm">{{ order_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li>
                     <a href="{% url 'accounts:password_change' %}" class="{% if url_name == 'password_change' or url_name == 'password_change_done' %}menu-active{% endif %}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
                         Change password

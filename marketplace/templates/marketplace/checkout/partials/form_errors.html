@@ -1,0 +1,7 @@
+{% if form and form.non_field_errors %}
+<div class="alert alert-error mb-4 text-sm">
+    {% for error in form.non_field_errors %}
+    <span>{{ error }}</span>
+    {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load marketplace_tax %}
+
+{% block title %}Order confirmed{% endblock %}
+{% block body_class %}template-checkout-confirmation{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl px-4 py-12 sm:px-6" x-data x-init="$store.cart.clear()">
+    <div class="text-center">
+        <p class="text-success text-sm font-medium">Payment received</p>
+        <h1 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Thank you for your order</h1>
+        <p class="mt-2 text-base-content/60">Order #{{ order.pk }}</p>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 mt-8 shadow-sm">
+        <div class="card-body gap-4">
+            <h2 class="text-base font-semibold">Summary</h2>
+            <ul class="divide-base-300 divide-y text-sm">
+                {% for item in order.items.all %}
+                <li class="flex justify-between gap-3 py-2">
+                    <span>{{ item.product_name }}{% if item.variant_label %} · {{ item.variant_label }}{% endif %} × {{ item.quantity }}</span>
+                    <span>{{ currency_symbol }}{{ item.line_total }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="border-base-300 space-y-1 border-t pt-3 text-sm">
+                <div class="flex justify-between">
+                    <span>
+                        {% if order.tax_enabled and order.tax_pricing_mode == "included" %}
+                        Subtotal (tax included)
+                        {% else %}
+                        Subtotal
+                        {% endif %}
+                    </span>
+                    <span>{{ currency_symbol }}{{ order.subtotal }}</span>
+                </div>
+                {% if order.tax_enabled and order.tax_amount %}
+                <div class="flex justify-between">
+                    <span>
+                        {% if order.tax_pricing_mode == "included" %}
+                        Tax included ({{ order.tax_rate|tax_rate }}%)
+                        {% else %}
+                        Tax ({{ order.tax_rate|tax_rate }}%)
+                        {% endif %}
+                    </span>
+                    <span>{{ currency_symbol }}{{ order.tax_amount }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between"><span>Delivery</span><span>{{ currency_symbol }}{{ order.delivery_fee }}</span></div>
+                <div class="flex justify-between font-semibold">
+                    <span>Total paid ({{ order.currency|default:currency_code }})</span>
+                    <span>{{ currency_symbol }}{{ order.total }}</span>
+                </div>
+            </div>
+            <dl class="border-base-300 grid gap-2 border-t pt-4 text-sm">
+                <div class="flex justify-between gap-4">
+                    <dt class="text-base-content/60">Payment</dt>
+                    <dd>{{ order.get_payment_status_display }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                    <dt class="text-base-content/60">Fulfilment</dt>
+                    <dd>{{ order.get_fulfilment_method_display }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <a href="{% url 'marketplace:index' %}" class="btn btn-primary rounded-full">Continue shopping</a>
+        <a href="{% url 'accounts:dashboard' %}" class="btn btn-ghost rounded-full">Go to dashboard</a>
+    </div>
+</div>
+{% endblock %}

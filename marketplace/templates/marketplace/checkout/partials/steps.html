@@ -1,0 +1,12 @@
+<nav aria-label="Checkout progress">
+    <ul class="steps steps-vertical w-full lg:steps-horizontal">
+        {% for key, label in step_nav %}
+        <li
+            class="step {% if forloop.counter0 <= step_index %}step-primary{% endif %}"
+            {% if key == step %}aria-current="step"{% endif %}
+        >
+            <span class="text-xs sm:text-sm">{{ label }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>
