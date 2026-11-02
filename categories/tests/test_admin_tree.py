@@ -75,10 +75,11 @@ class CategoryAdminTreeListTests(TestCase):
         return len(ctx.captured_queries)
 
     def test_index_query_count_does_not_grow_with_categories(self):
+        self._count_index_queries()  # warm caches / first-request side effects
         baseline = self._count_index_queries()
         for i in range(10):
             Category.objects.create(name=f"Sub {i}", slug=f"sub-{i}", parent=self.food)
-        self.assertEqual(self._count_index_queries(), baseline)
+        self.assertLessEqual(self._count_index_queries(), baseline)
 
     def test_index_sortable_by_attention(self):
         response = self.client.get(

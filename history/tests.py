@@ -13,7 +13,7 @@ from history.backfill import backfill_raw_values
 from history.context import change_context
 from history.models import ChangeLog
 from history.undo import UndoError, batch_entries, undo_blocker, undo_entries
-from marketplace.test_helpers import add_sellable_variant
+from marketplace.tests.helpers import add_sellable_variant
 from products.models import Product
 
 

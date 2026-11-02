@@ -51,7 +51,7 @@ class VerificationWorkflowTests(TestCase):
             slug="owned-item",
             verified_at=days_ago(120),
         )
-        from marketplace.test_helpers import add_sellable_variant
+        from marketplace.tests.helpers import add_sellable_variant
 
         self.variant = add_sellable_variant(self.product, price="10.00")
         self.orphan = Business.objects.create(

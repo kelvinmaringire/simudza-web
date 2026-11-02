@@ -8,7 +8,7 @@ from django.utils import timezone
 from businesses.models import Business
 from categories.models import Category
 from duplicates.models import DuplicateFlag
-from marketplace.test_helpers import add_sellable_variant
+from marketplace.tests.helpers import add_sellable_variant
 from products.models import Product
 from products.quality import evaluate_product, refresh_product_quality
 from products.services import upsert_default_variant

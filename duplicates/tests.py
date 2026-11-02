@@ -7,7 +7,7 @@ from categories.models import Category
 from inventory.models import Inventory
 from products.forms import unique_product_slug
 from products.models import Product
-from marketplace.test_helpers import add_sellable_variant
+from marketplace.tests.helpers import add_sellable_variant
 
 from .models import DuplicateFlag
 from .normalize import (
